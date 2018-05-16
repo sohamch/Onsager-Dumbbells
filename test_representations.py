@@ -27,13 +27,6 @@ class DB_Tests(unittest.TestCase):
     Format of a dumbbell object - "i o R (+-)1" -> basis site, orientation, unit cell location, jumping
                                    atom indicator respectively.
     """
-    # def setup(self):
-    #     """
-    #     Setup a tetragonal crystal to run the tests.
-    #     """
-    #     crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
-
-    #test equality comparison
     def test_equality(self):
         or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))#orientation 1
         or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))#orientation 2
@@ -82,20 +75,6 @@ class SdPair_Tests(unittest.TestCase):
     Test case - tetragonal lattice.
     Format of a pair object - "i_s R_s db" -> solute location (state), dumbbell state
     """
-    # def setup():
-    #     """
-    #     Setup a tetragonal crystal to run the tests.
-    #     """
-    #     self.crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
-
-    or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))#orientation 1
-    or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))#orientation 2
-    or_x = np.array([1.,0.,0.])/la.norm(np.array([1.,0.,0.]))#orientation along x
-
-    db1 = dumbbell(0,or_1,np.array([0.,0.,0.]),1)#create a dumbbell state
-    db1n = dumbbell(0,or_1,np.array([0.,0.,0.]),-1)#create a dumbbell state
-    db2 = dumbbell(0,or_2,np.array([1.,0.,0.]),1)
-
     #test equality comparison
     def test_equality(self):
         or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))#orientation 1
@@ -194,16 +173,6 @@ class SdPair_Tests(unittest.TestCase):
 
 
 class jump_Tests(unittest.TestCase):
-
-    def setup():
-        """
-        Setup a tetragonal crystal to run the tests.
-        """
-        self.crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
-
-    or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))#orientation 1
-    or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))#orientation 2
-    or_3 = np.array([1.,0.,1.])/la.norm(np.array([1.,0.,1.]))#orientation 3
 
     def test_dx(self):
         or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))
