@@ -55,7 +55,7 @@ class DB_Tests(unittest.TestCase):
         self.assertEqual(db_f,db1+j1)
         
     #Test Application of group operations
-    def testgops(self):
+    def test_gop(self):
         or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))
         db1 = dumbbell(0,or_1,np.array([1.,0.,0.]),1)
         db_list=[]
@@ -142,7 +142,7 @@ class SdPair_Tests(unittest.TestCase):
         
         
     #Test Application of group operations
-    def testgops(self):
+    def test_gop(self):
         pair1 = SdPair(0,np.array([1.,0.,0.]),db1)
         db2 = dumbbell(0,or_x,np.array([1.,0.,0.]))
         pair2 = sdPair(0,np.array([0.,0.,0.]),db2)
