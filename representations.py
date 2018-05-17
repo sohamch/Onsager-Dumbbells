@@ -34,11 +34,11 @@ class dumbbell(namedtuple('dumbbell','i o R c')):
         if not isinstance(other,jump):
             raise TypeError("Can only add a jump to a state.")
 
-        if not (self.i==other.i and np.allclose(self.o,other.or1,atol=1e-8)
-                and np.allclose(self.R,other.R1,atol=1e-8) and self.c==other.c1):
+        if not (self.i==other.db1.i and np.allclose(self.o,other.db1.o)
+                and np.allclose(self.R,other.db1.R) and self.c==other.db1.c):
             raise ArithmeticError("Initial state of Jump object must match current dumbbell state")
 
-        return self.__class__(other.j,other.or2,other.R2,other.c2)
+        return other.db2
 
     def gop(self,crys,chem,g):
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
@@ -70,14 +70,14 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
     def __add__(self,other):
         if not isinstance(other,jump):
             raise TypeError("Can only add a jump to a state.")
-        if not (self.db.i==other.i and self.db.c==other.c1 and np.allclose(self.db.R,other.R1) and np.allclose(self.db.o,other.or1)):
+        if not (self.db.i==other.db1.i and self.db.c==other.db1.c and np.allclose(self.db.R,other.db1.R) and np.allclose(self.db.o,other.db1.o)):
             raise ArithmeticError("Initial state of the jump must match current dumbbell state")
 
         #check if mixed dumbbell jump
         if(self.i_s==self.db.i and np.allclose(self.R_s,self.db.R) and self.db.c==1):
-            return self.__class__(other.j,other.R2,dumbbell(other.j,other.or2,other.R2,other.c2))
+            return self.__class__(other.db2.i,other.db2.R,other.db2)
 
-        return self.__class__(self.i_s,self.R_s,dumbbell(other.j,other.or2,other.R2,other.c2))
+        return self.__class__(self.i_s,self.R_s,other.db2)
 
         #return self.__class__(self.i_s,self.R_s,other.R2,self.dx+other.dx,self.c)
 
@@ -94,17 +94,13 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
 # In[12]:
 
 
-class jump(namedtuple('jump','i j or1 or2 R1 R2 c1 c2')):
+class jump(namedtuple('jump','db1,db2')):
 
-    def __init__(self,i,j,or1,or2,R1,R2,c1,c2):#How to go about doing this in a better way?
-        self.dx = self.R2-self.R1
+    def __init__(self,db1,db2):#How to go about doing this in a better way?
+        self.dx = self.db2.R-self.db1.R
 
     def __eq__(self,other):
-        true_object = self.__class__ == other.__class__
-        true_indices = self.i==other.i and self.c1==other.c1 and self.c2==other.c2
-        true_orientations = np.allclose(self.or1,other.or1) and np.allclose(self.or2,other.or2)
-        true_locations = np.allclose(self.R1,other.R1) and np.allclose(self.R2,other.R2)
-        return (true_object and true_indices and true_orientations and true_locations)
+        return(self.db1==other.db1 and self.db2==other.db2)
 
     def __ne__(self,other):
         return not self.__eq__(other)
@@ -113,16 +109,13 @@ class jump(namedtuple('jump','i j or1 or2 R1 R2 c1 c2')):
         if not isinstance(other,self.__class__):
             raise TypeError("Can only add two jumps.")
 
-        if not (self.j==other.i and np.allclose(self.or2,other.or1) and np.allclose(self.R2,other.R1)
-                and self.c2==other.c1):
+        if not (self.db2.i==other.db1.i and np.allclose(self.db2.o,other.db1.o) and np.allclose(self.db2.R,other.db1.R)
+                and self.db2.c==other.db1.c):
             raise ArithmeticError("Starting point of second jump does not match end point of first")
 
-        return self.__class__(self.i,other.j,self.or1,other.or2,self.R1,other.R2,
-                              self.c1,other.c2)
+        return self.__class__(self.db1,other.db2)
 
     def gop(self,crys,chem,g): #Find symmetry equivalent jumps - required when making composite jumps.
-        R1new,inew = crys.g_pos(g, self.R1, (chem, self.i))
-        R2new,jnew = crys.g_pos(g, self.R2, (chem, self.j))
-        or1_new = np.dot(g.cartrot,self.or1)
-        or2_new = np.dot(g.cartrot,self.or2)
-        return self.__class__(inew,jnew,or1_new,or2_new,R1new,R2new,self.c1,self.c2)
+        db1new=self.db1.gop(crys,chem,g)
+        db2new=self.db2.gop(crys,chem,g)
+        return self.__class__(db1new,db2new)
