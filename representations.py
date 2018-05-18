@@ -1,11 +1,3 @@
-
-# coding: utf-8
-
-# import modules
-
-# In[3]:
-#This is a new line
-
 import numpy as np
 import numpy.linalg as la
 import onsager.crystal as crystal
@@ -18,9 +10,6 @@ from collections import namedtuple
 # 3. Should be able to add a jump to a dumbbell state.
 # 4. Should be able to apply a given group operation (crystal specified) to a dumbbell.
 
-# In[5]:
-
-
 class dumbbell(namedtuple('dumbbell','i o R c')):
 
     def __eq__(self,other):
@@ -29,16 +18,6 @@ class dumbbell(namedtuple('dumbbell','i o R c')):
             return (True and true_class)
     def __ne__(self,other):
         return not self.__eq__(other)
-
-    def __add__(self,other):
-        if not isinstance(other,jump):
-            raise TypeError("Can only add a jump to a state.")
-
-        if not (self.i==other.db1.i and np.allclose(self.o,other.db1.o)
-                and np.allclose(self.R,other.db1.R) and self.c==other.db1.c):
-            raise ArithmeticError("Initial state of Jump object must match current dumbbell state")
-
-        return other.db2
 
     def gop(self,crys,chem,g):
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
@@ -52,9 +31,6 @@ class dumbbell(namedtuple('dumbbell','i o R c')):
 # 3. We should be able to apply Group operations to it to generate new pairs.
 # 4. We should be able to add a Jump object to a Pair object to create another pair object.
 # 5. We should be able to test for equality.
-
-# In[10]:
-
 
 class SdPair(namedtuple('SdPair',"i_s R_s db")):
 
@@ -89,11 +65,9 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
 
 
 
-# Jump objects are rather simple, contain just initial and final orientations, location and pointers towards jumping/active atom (+1 for head of orientation vector, -1 for tail of orientation vector).
-
-# In[12]:
-
-
+# Jump objects are rather simple, contain just initial and final orientations
+# Also adding a jump to a dumbbell is now done here.
+# dumbell objects are not aware of jump objects.
 class jump(namedtuple('jump','db1,db2')):
 
     def __init__(self,db1,db2):#How to go about doing this in a better way?
@@ -106,14 +80,27 @@ class jump(namedtuple('jump','db1,db2')):
         return not self.__eq__(other)
 
     def __add__(self,other):
-        if not isinstance(other,self.__class__):
-            raise TypeError("Can only add two jumps.")
+        if not (isinstance(other,self.__class__) or isinstance(other,dumbbell)):
+            raise TypeError("Can add a jump only to a dumbbell or another jump")
+        #Add a jump to another jump.
+        if isinstance(other,jump):
+            if not (self.db2==other.db1):
+                raise ArithmeticError("Final dumbbell state of first jump operand must equal the initial dumbbell state of the second jump operand.")
+            return self.__class__(self.db1,other.db2)
+        #Add a jump to a dumbbell
+        if isinstance(other,dumbbell):
+            if not(self.db1==other):
+                raise ArithmeticError("Initial state of the jump operand must be the same as the dumbbell operand in the sum.")
+            return self.db2
 
-        if not (self.db2.i==other.db1.i and np.allclose(self.db2.o,other.db1.o) and np.allclose(self.db2.R,other.db1.R)
-                and self.db2.c==other.db1.c):
-            raise ArithmeticError("Starting point of second jump does not match end point of first")
+    def __radd__(self,other):
+        return self.__add__(other)
 
-        return self.__class__(self.db1,other.db2)
+        # if not (self.db2.i==other.db1.i and np.allclose(self.db2.o,other.db1.o) and np.allclose(self.db2.R,other.db1.R)
+        #         and self.db2.c==other.db1.c):
+        #     raise ArithmeticError("Starting point of second jump does not match end point of first")
+        #
+        # return self.__class__(self.db1,other.db2)
 
     def gop(self,crys,chem,g): #Find symmetry equivalent jumps - required when making composite jumps.
         db1new=self.db1.gop(crys,chem,g)

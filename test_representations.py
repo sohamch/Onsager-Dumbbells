@@ -27,18 +27,6 @@ class DB_Tests(unittest.TestCase):
         self.assertEqual(db3,db2) #test equality and inequality operators
         self.assertNotEqual(db1,db3)
 
-    #test addition with a jump object
-    def test_jump(self):
-        or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))
-        db1 = dumbbell(0,or_1,np.array([0.,0.,0.]),1)
-        or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))
-        db_f = dumbbell(0,or_2,np.array([1.,0.,0.]),1)
-        j1 = jump(db1,db_f)
-        db_f = dumbbell(0,or_2,np.array([1.,0.,0.]),1)
-        with self.assertRaises(ArithmeticError):
-            db_f+j1
-        self.assertEqual(db_f,db1+j1)
-
     #Test Application of group operations
     def test_gop(self):
         crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
@@ -173,6 +161,7 @@ class jump_Tests(unittest.TestCase):
         self.assertTrue(np.allclose(j.dx,j.db2.R-j.db1.R))
 
     def test_add(self):
+        #Addition of jumps
         or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))
         or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))
         or_3 = np.array([1.,0.,1.])/la.norm(np.array([1.,0.,1.]))
@@ -191,6 +180,12 @@ class jump_Tests(unittest.TestCase):
         with self.assertRaises(ArithmeticError):
             j3+j1
         self.assertEqual(j3,j1+j2)
+
+        #Addition of jumps and dumbbells
+        with self.assertRaises(ArithmeticError):
+            db2+j1
+        self.assertEqual(db1+j1,db2)
+        self.assertEqual(j1+db1,db2)
 
     def test_gop(self):
         crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
