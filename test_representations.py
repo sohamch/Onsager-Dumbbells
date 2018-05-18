@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[1]:
-
-
 import numpy as np
 import numpy.linalg as la
 import onsager.crystal as crystal
@@ -16,9 +10,6 @@ from collections import namedtuple
 # 1. Equality testing - Test whether the \__eq__ function performs as expected.
 # 2. Addition of a jump object to a state - Test whether the \__add__ function performs as expected.
 # 3. Application of group operations - Test whether correct number of states are produced that are symmetry equivalent.
-
-# In[4]:
-
 
 class DB_Tests(unittest.TestCase):
     """
@@ -56,7 +47,7 @@ class DB_Tests(unittest.TestCase):
         db_list=[]
         for g in crys.G:
             db2 = db1.gop(crys,0,g)
-            if not any(db2==db for db in db_list) and not any(np.dot(a.o,db2.o)==-1 for a in db_list):
+            if not any(db2==db for db in db_list) and not any(np.dot(a.o,db2.o)+1.<1e-8 for a in db_list):
                 db_list.append(db2)
         self.assertEqual(len(db_list),4)
         #should have 4 equivalent positions, and 2 states each for +- vectors.
@@ -66,9 +57,6 @@ class DB_Tests(unittest.TestCase):
 # 1. Equality testing - Test whether the \__eq__ function performs as expected.
 # 2. Adding a jump - Test whether \__add__ performs as expected
 # 3. Test whether group operations generate the correct number of symmetrically equivalent pairs
-
-# In[6]:
-
 
 class SdPair_Tests(unittest.TestCase):
     """
@@ -156,12 +144,12 @@ class SdPair_Tests(unittest.TestCase):
         pair_list2.append(pair2)
         for g in crys.G:
             pairn = pair1.gop(crys,0,g)
-            if not any(pair==pairn for pair in pair_list1) and not any(np.dot(a.db.o,pairn.db.o)==-1 for a in pair_list1):
+            if not any(pair==pairn for pair in pair_list1) and not any(np.dot(a.db.o,pairn.db.o)+1.<1e-8 for a in pair_list1):
                 pair_list1.append(pairn)
 
         for g in crys.G:
             pairn = pair2.gop(crys,0,g)
-            if not any(pair==pairn for pair in pair_list2) and not any(np.dot(a.db.o,pairn.db.o)==-1 for a in pair_list2):
+            if not any(pair==pairn for pair in pair_list2) and not any(np.dot(a.db.o,pairn.db.o)+1.<1e-8 for a in pair_list2):
                 pair_list2.append(pairn)
         self.assertEqual(len(pair_list1),4)
         self.assertEqual(len(pair_list2),4) #4 fold symmetry about z, 2fold about x and y.
@@ -171,9 +159,6 @@ class SdPair_Tests(unittest.TestCase):
 # For jump objects, need to check the following two for now:
 # 1. Addition of jump objects to produce third jump object
 # 2. Applying group operations to produce symmetry equivalent jump objects.
-
-# In[7]:
-
 
 class jump_Tests(unittest.TestCase):
 
@@ -223,7 +208,7 @@ class jump_Tests(unittest.TestCase):
         for g in crys.G:
             j1 = j.gop(crys,0,g)
             if not any(j1==j2 for j2 in symm_jump_list):
-                if not any(np.dot(j2.db1.o,j1.db1.o)==-1 for j2 in symm_jump_list):
-                    if not any(np.dot(j2.db2.o,j1.db2.o)==-1 for j2 in symm_jump_list):
+                if not any(np.dot(j2.db1.o,j1.db1.o)+1.<1e-8 for j2 in symm_jump_list):
+                    if not any(np.dot(j2.db2.o,j1.db2.o)+1.<1e-8 for j2 in symm_jump_list):
                         symm_jump_list.append(j1)
         self.assertEqual(len(symm_jump_list),4)
