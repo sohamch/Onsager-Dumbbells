@@ -85,7 +85,7 @@ class jump(namedtuple('jump','state1 state2')):
                 raise ArithmeticError("Final state of first jump operand must equal the initial state of the second jump operand.")
             return self.__class__(self.state1,other.state2)
 
-        #Add a jump to a dumbbell
+        #Add a jump to a dumbbell.
         if isinstance(other,dumbbell):
             if not(self.state1==other):
                 raise ArithmeticError("Initial state of the jump operand must be the same as the dumbbell operand in the sum.")

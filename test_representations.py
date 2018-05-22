@@ -129,7 +129,7 @@ class jump_Tests(unittest.TestCase):
             j3+j1
         self.assertEqual(j3,j1+j2)
 
-        #Addition of jumps and dumbbells
+        #Addition of jumps and dumbbells.
         with self.assertRaises(ArithmeticError):
             db2+j1
         self.assertEqual(db1+j1,db2)
