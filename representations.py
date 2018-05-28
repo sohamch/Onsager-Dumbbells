@@ -70,6 +70,27 @@ class jump(namedtuple('jump','state1 state2')):
         if not isinstance(self.state2,self.state1.__class__):
             raise TypeError("Incompatible Initial and final states. They must be of the same type.")
 
+        #Check for invalid jumps involving mixed dumbbell SdPair objects
+        if isinstance(self.state1,SdPair):
+           #Check that we have a mixed dumbbell as initial state:
+           if (self.state1.i_s==self.state1.db.i and np.allclose(self.state1.R_s,self.state1.db.R)):
+
+               #check that if solute atom jumps from a mixed dumbbell, it leads to another mixed dumbbell
+               if(self.state1.db.c==1):#solute is the active atom
+                   if not(self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
+                       raise ArithmeticError("Invalid Transition - solute atom jumping from mixed dumbbell must lead to another mixed dumbbell")
+
+               #Check that if solvent atom jumps, it does not lead to another mixed dumbbell.
+               if(self.state1.db.c==-1):#solvent is the active atom
+                   if (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
+                       raise ArithmeticError("Invalid Transition - solvent atom jumping from mixed dumbbell cannot lead to another mixed dumbbell")
+
+              #Check that the active atom is not changed when everything else between the initial and final states are the same.
+              #This is an edge case, might have to find a better way to deal with this
+               if (self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s) and np.allclose(self.state1.db.o,self.state2.db.o)):
+                   if(self.state1.db.c != self.state2.db.c):
+                       raise ArithmeticError("Invalid transition - Rotation in fixed site, but active atom changes - unphysical.")
+
     def __eq__(self,other):
         return(self.state1==other.state1 and self.state2==other.state2)
 
@@ -93,14 +114,6 @@ class jump(namedtuple('jump','state1 state2')):
         if isinstance(other,SdPair):
             if not(self.state1==other):
                 raise ArithmeticError("Initial state of the jump operand must be the same as the dumbbell of the pair operand in the sum.")
-            #check that if the solute atom in a mixed dumbbell jumps, it leads to another mixed dumbbell.
-            if(other.i_s==other.db.i and np.allclose(other.R_s,other.db.R) and other.db.c==1):
-                if not (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
-                    raise ArithmeticError("Incorrect final state. Solute atom jumping from a mixed dumbbell must lead to another mixed dumbbell.")
-            #check that if the solvent atom in a mixed dumbbell jumps, it does not lead to another mixed dumbbell.
-            if not (other.i_s==other.db.i and np.allclose(other.R_s,other.db.R) and other.db.c==1):
-                if (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
-                    raise ArithmeticError("Incorrect final state. Solvent atom jumping from a mixed dumbbell must not lead to another mixed dumbbell.")
             return self.state2
 
     def __radd__(self,other):

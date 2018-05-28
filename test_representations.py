@@ -108,6 +108,34 @@ class SdPair_Tests(unittest.TestCase):
 
 class jump_Tests(unittest.TestCase):
 
+    def test_jump_validation(self):
+        #Test that invalid jumps are caught for mixed dumbbells
+
+        #Check that no change except flipping of 'c' is caught
+        or_1 = np.array([0.,0.,1.])
+        R1 = np.array([1.,0.,0.])
+        db1 = dumbbell(0,or_1,R1,1)
+        db2 = dumbbell(0,or_1,R1,-1)
+        pair1 = SdPair(0,np.array([1.,0.,0.]),db1)
+        pair2 = SdPair(0,np.array([1.,0.,0.]),db2)
+        with self.assertRaises(ArithmeticError):
+            j=jump(pair1,pair2)
+        #Check that if solute atom jumps from a mixed dumbbell, then not generating another mixed dumbbell is caught
+        R2 = np.array([0.,0.,0.])
+        or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))
+        db3 = dumbbell(0,or_2,R2,-1)
+        pair3 = SdPair(0,np.array([1.,0.,0.]),db2)
+        with self.assertRaises(ArithmeticError):
+            j=jump(pair1,pair3)
+
+        #Check that if solvent atom jumps from a mixed dumbbell, then generating another mixed dumbbell is caught
+        db1 = dumbbell(0,or_1,np.array([2.,0.,0.]),-1)
+        pair1 = SdPair(0,np.array([2.,0.,0.]),db1)
+        db2 = dumbbell(0,or_1,R1,1)
+        pair2 = SdPair(0,np.array([1.,0.,0.]),db2)
+        with self.assertRaises(ArithmeticError):
+            j=jump(pair1,pair2)
+
     def test_add(self):
         #Addition of jumps
         or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))
