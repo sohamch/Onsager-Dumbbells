@@ -63,41 +63,43 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
 # Jump dbects are rather simple, contain just initial and final orientations
 # Also adding a jump to a dumbbell is now done here.
 # dumbell dbects are not aware of jump dbects.
-class jump(namedtuple('jump','crys,state1 state2')):
+class jump(namedtuple('jump','state1 state2')):
     #Crystal object is required to calculate the displacement dx
-    def __init__(self,crys,state1,state2):
+    def __init__(self,state1,state2):
         #Do Type checking of input stateects
         if not isinstance(self.state2,self.state1.__class__):
             raise TypeError("Incompatible Initial and final states. They must be of the same type.")
-        if isinstance(self.state1,dumbbell):
-            dR = self.state2.R - self.state1.R
-            du = self.state2.i - self.state1.i
-            self.dx = self.crys.unit2cart(dR,du)
-        if isinstance(self.state1,SdPair):
-           # First, Check for invalid jumps involving mixed dumbbell SdPair objects
-           #Check that we have a mixed dumbbell as initial state:
-           if (self.state1.i_s==self.state1.db.i and np.allclose(self.state1.R_s,self.state1.db.R)):
 
+        if isinstance(self.state1,SdPair):
+           # First check that if we don't have a mixed dumbbell, then solute remain fixed.
+           if not(self.state1.i_s==self.state1.db.i and np.allclose(self.state1.R_s,self.state1.db.R)):
+               #not a mixed dumbbell
+               if not(self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
+                   raise ArithmeticError("Solute atom cannot jump unless part of a mixed dumbbell")
+           # Now, Check for invalid jumps involving mixed dumbbell SdPair objects
+           else:#we have a mixed dumbell
                #check that if solute atom jumps from a mixed dumbbell, it leads to another mixed dumbbell
                if(self.state1.db.c==1):#solute is the active atom
                    if not(self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
                        raise ArithmeticError("Invalid Transition - solute atom jumping from mixed dumbbell must lead to another mixed dumbbell")
 
-               #Check that if solvent atom jumps, it does not lead to another mixed dumbbell.
+               #Check that if solvent atom jumps, it does not lead to another mixed dumbbell
+               #And that the solute location remain the same.
                if(self.state1.db.c==-1):#solvent is the active atom
+                   #Check that solute does not move
                    if (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
                        raise ArithmeticError("Invalid Transition - solvent atom jumping from mixed dumbbell cannot lead to another mixed dumbbell")
-
+                   #Check that solute remains in the same location in the final state
+                   if not (self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
+                       raise ArithmeticError("Invalid Transition - solute must remain in the same site if solvent moves from a mixed dumbbell")
               #Check that the active atom is not changed when everything else between the initial and final states are the same.
               #This is an edge case, might have to find a better way to deal with this
                if (self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s) and np.allclose(self.state1.db.o,self.state2.db.o)):
                    if(self.state1.db.c != self.state2.db.c):
-                       raise ArithmeticError("Invalid transition - Rotation in fixed site, but active atom changes - unphysical.")
+                       raise ArithmeticError("Invalid transition - Rotation of mixed dumbbell in fixed site, but active atom changes - unphysical.")
                #Now calculate dx based on dumbbell displacement:
-               dR = self.state2.db.R - self.state1.db.R
-               du = self.state2.db.i - self.state1.db.i
-               self.dx = self.crys.unit2cart(dR,du)
-               
+
+
     def __eq__(self,other):
         return(self.state1==other.state1 and self.state2==other.state2)
 
