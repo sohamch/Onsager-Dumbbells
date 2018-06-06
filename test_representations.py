@@ -129,7 +129,7 @@ class jump_Tests(unittest.TestCase):
         pair2 = SdPair(0,np.array([1.,0.,0.]),db2)
         with self.assertRaises(ArithmeticError):
             j=jump(pair1,pair2)
-            
+
         #Check that if solute atom jumps from a mixed dumbbell, then not generating another mixed dumbbell is caught
         R2 = np.array([0.,0.,0.])
         or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))
@@ -175,8 +175,8 @@ class jump_Tests(unittest.TestCase):
 
     def test_gop(self):
         crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
-        or_1 = np.array([0.,0.,1.])
-        or_2 = np.array([0.,0.,1.])
+        or_1 = np.array([1.,0.,0.])
+        or_2 = np.array([0.,1.,0.])
         db1 = dumbbell(0,or_1,np.array([0,1,0]),1)
         db2 = dumbbell(0,or_1,np.array([1,0,0]),-1)
         j = jump(db1,db2)
@@ -185,4 +185,4 @@ class jump_Tests(unittest.TestCase):
             j_new = j.gop(crys,0,g)
             if not any (j2==j_new for j2 in j_list):
                 j_list.append(j_new)
-        self.assertEqual(len(j_list),16)
+        self.assertEqual(len(j_list),4)
