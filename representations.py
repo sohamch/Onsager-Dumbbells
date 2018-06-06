@@ -10,7 +10,7 @@ from collections import namedtuple
 # 3. Should be able to add a jump to a dumbbell state.
 # 4. Should be able to apply a given group operation (crystal specified) to a dumbbell.
 
-class dumbbell(namedtuple('dumbbell','i o R c')):
+class dumbbell(namedtuple('dumbbell','i o R')):
 
     def costheta(self,other):
         return(np.dot(self.o,other.o)/(la.norm(self.o)*la.norm(other.o)))
@@ -18,18 +18,15 @@ class dumbbell(namedtuple('dumbbell','i o R c')):
     def __eq__(self,other):
         zero=np.zeros(len(self.o))
         true_class = isinstance(other,self.__class__)
-        c1 = true_class and (self.i==other.i and np.allclose(self.o,other.o,atol=1e-8) and np.allclose(self.R,other.R,atol=1e-8) and self.c==other.c)
+        c1 = true_class and (self.i==other.i and np.allclose(self.o,other.o,atol=1e-8) and np.allclose(self.R,other.R,atol=1e-8))
         return c1
     def __ne__(self,other):
         return not self.__eq__(other)
 
     def gop(self,crys,chem,g):
-        zero=np.zeros(len(self.o))
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
         o1 = np.dot(g.cartrot,self.o)
-        if np.allclose(self.o + o1, zero,atol=1e-8):#zero is not exactly representable. Add tolerance for safety.
-            return self.__class__(i1,self.o,r1,self.c*(-1))
-        return self.__class__(i1,o1,r1,self.c)
+        return self.__class__(i1,o1,r1)
 
 
 # A Pair obect (that represents a dumbbell-solute state) should have the following attributes:

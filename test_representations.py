@@ -21,36 +21,24 @@ class DB_Tests(unittest.TestCase):
     def test_equality(self):
         or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))#orientation 1
         or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))#orientation 2
-        db1 = dumbbell(0,or_1,np.array([0.,0.,0.]),1)#create a dumbbell state
-        db2 = dumbbell(0,or_2,np.array([1.,0.,0.]),1)#db2=db3 != db1 deliberately
-        db3 = dumbbell(0,or_2,np.array([1.,0.,0.]),1)
+        db1 = dumbbell(0,or_1,np.array([0.,0.,0.]))#create a dumbbell state
+        db2 = dumbbell(0,or_2,np.array([1.,0.,0.]))#db2=db3 != db1 deliberately
+        db3 = dumbbell(0,or_2,np.array([1.,0.,0.]))
         self.assertEqual(db3,db2) #test equality and inequality operators
         self.assertNotEqual(db1,db3)
 
     #Test Application of group operations
     def test_gop(self):
         crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
-        or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))
-        db1 = dumbbell(0,or_1,np.array([1.,0.,0.]),1)
-        db_list=[]
-        db_list.append(db1)
+        or_1 = np.array([0.,1.,1.])
+        db1 = dumbbell(0,or_1,np.array([1.,0.,0.]))
+        dblist=[]
+        dblist.append(db1)
         for g in crys.G:
-            db2 = db1.gop(crys,0,g)
-            if not any(db2==db for db in db_list):
-                db_list.append(db2)
-        self.assertEqual(len(db_list),8)
-        c=False
-        c_neg=0
-        c_pos=0
-        for i in range(8):
-            if db_list[i].c == 1:
-                c_pos+=1
-            if db_list[i].c == -1:
-                c_neg+=1
-        self.assertEqual(c_pos,4)
-        self.assertEqual(c_neg,4)
-        #should have 4 equivalent positions, and 2 states each for +- vectors.
-
+            dbnew = db1.gop(crys,0,g)
+            if not any(db2==dbnew for db2 in dblist):
+                dblist.append(dbnew)
+        self.assertEqual(len(dblist),8)
 
 # Test For solute-dumbbell pairs
 # 1. Equality testing - Test whether the \__eq__ function performs as expected.
@@ -65,13 +53,13 @@ class SdPair_Tests(unittest.TestCase):
     """
     #test equality comparison
     def test_equality(self):
-        or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))#orientation 1
-        or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))#orientation 2
-        or_x = np.array([1.,0.,0.])/la.norm(np.array([1.,0.,0.]))#orientation along x
+        or_1 = np.array([0.,0.,1.])
+        or_2 = np.array([0.,1.,1.])
+        or_x = np.array([1.,0.,0.])
 
-        db1 = dumbbell(0,or_1,np.array([0.,0.,0.]),1)#create a dumbbell state
-        db1n = dumbbell(0,or_1,np.array([0.,0.,0.]),-1)#create a dumbbell state
-        db2 = dumbbell(0,or_2,np.array([1.,0.,0.]),1)
+        db1 = dumbbell(0,or_1,np.array([0.,0.,0.]))#create a dumbbell state
+        db1n = dumbbell(0,or_1,np.array([0.,0.,0.]))#create a dumbbell state
+        db2 = dumbbell(0,or_2,np.array([1.,0.,0.]))
 
         pair1 = SdPair(0,np.array([1.,0.,0.]),db1)
         pair2 = SdPair(0,np.array([1.,0.,0.]),db2)
@@ -83,7 +71,7 @@ class SdPair_Tests(unittest.TestCase):
 
     def test_gop(self):
         crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
-        or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))
+        or_1 = np.array([0.,0.,1.])
         db1 = dumbbell(0,or_1,np.array([1.,0.,0.]),1)
         pair1 = SdPair(0,np.array([1.,0.,0.]),db1)
         pair_list=[]
