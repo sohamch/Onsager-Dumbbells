@@ -72,23 +72,15 @@ class SdPair_Tests(unittest.TestCase):
     def test_gop(self):
         crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
         or_1 = np.array([0.,0.,1.])
-        db1 = dumbbell(0,or_1,np.array([1.,0.,0.]),1)
+        db1 = dumbbell(0,or_1,np.array([1.,0.,0.]))
         pair1 = SdPair(0,np.array([1.,0.,0.]),db1)
         pair_list=[]
+        pair_list.append(pair1)
         for g in crys.G:
             pairn = pair1.gop(crys,0,g)
             if not any(pair==pairn for pair in pair_list):
                 pair_list.append(pairn)
         self.assertEqual(len(pair_list),8)
-        c_neg=0
-        c_pos=0
-        for i in range(8):
-            if pair_list[i].db.c == 1:
-                c_pos+=1
-            if pair_list[i].db.c == -1:
-                c_neg+=1
-        self.assertEqual(c_pos,8)
-        self.assertEqual(c_neg,0)
 
 # For jump objects, need to check the following two for now:
 # 1. Addition of jump objects to produce third jump object
@@ -100,77 +92,89 @@ class jump_Tests(unittest.TestCase):
         #Test that invalid jumps are caught for mixed dumbbells
         #Check that solute does not jump in a seperated solute-dumbbell pair.
         or_1 = np.array([0.,0.,1.])
-        R1 = np.array([1.,0.,0.])
-        db1 = dumbbell(0,or_1,R1,1)
-        db2 = dumbbell(0,or_1,R1,-1)
-        pair1 = SdPair(0,np.array([0.,1.,0.]),db1)
-        pair2 = SdPair(0,np.array([1.,0.,0.]),db2)
+        R1 = np.array([1,0,0])
+        db1 = dumbbell(0,or_1,R1)
+        db2 = dumbbell(0,or_1,R1)
+        db3 = dumbbell(0,or_1,np.array([0,1,0]))
+        pair1 = SdPair(0,np.array([0,1,0]),db1)
+        pair2 = SdPair(0,np.array([1,0,0]),db2)
         with self.assertRaises(ArithmeticError):
-            j=jump(pair1,pair2)
+            j=jump(pair1,pair2,1,1)
 
-        #Check that no other change except flipping of 'c' is caught
-        or_1 = np.array([0.,0.,1.])
-        R1 = np.array([1.,0.,0.])
-        db1 = dumbbell(0,or_1,R1,1)
-        db2 = dumbbell(0,or_1,R1,-1)
-        pair1 = SdPair(0,np.array([1.,0.,0.]),db1)
-        pair2 = SdPair(0,np.array([1.,0.,0.]),db2)
+        #check that mixed dumbbell jumps are created properly
+        pair3 = SdPair(0,np.array([0,2,0]),db3)
         with self.assertRaises(ArithmeticError):
-            j=jump(pair1,pair2)
-
+            j=jump(pair2,pair3,1,1)
         #Check that if solute atom jumps from a mixed dumbbell, then not generating another mixed dumbbell is caught
-        R2 = np.array([0.,0.,0.])
-        or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))
-        db3 = dumbbell(0,or_2,R2,-1)
-        pair3 = SdPair(0,np.array([1.,0.,0.]),db2)
         with self.assertRaises(ArithmeticError):
-            j=jump(pair1,pair3)
-
-        #Check that if solvent atom jumps from a mixed dumbbell, then generating another mixed dumbbell is caught
-        db1 = dumbbell(0,or_1,np.array([2.,0.,0.]),-1)
-        pair1 = SdPair(0,np.array([2.,0.,0.]),db1)
-        db2 = dumbbell(0,or_1,R1,1)
-        pair2 = SdPair(0,np.array([1.,0.,0.]),db2)
+            j=jump(pair2,pair1,1,1)
+        pair3 = SdPair(0,np.array([0.,1.,0.]),db3)
+        #check that if solvent atom jumps, not another mixed dumbbell is created
         with self.assertRaises(ArithmeticError):
-            j=jump(pair1,pair2)
+            j=jump(pair2,pair3,-1,-1)
+        #check that not indicating the same active atom in intial and final atom for mixed dumbbells is caught.
+        with self.assertRaises(ArithmeticError):
+            j=jump(pair2,pair3,1,-1)
 
     def test_add(self):
         #Addition of jumps
-        or_1 = np.array([0.,0.,1.])/la.norm(np.array([0.,0.,1.]))
-        or_2 = np.array([0.,1.,1.])/la.norm(np.array([0.,1.,1.]))
-        or_3 = np.array([1.,0.,1.])/la.norm(np.array([1.,0.,1.]))
+        #1. Test with dumbbells
+        or_1 = np.array([0,0,1])
+        or_2 = np.array([0,1,0])
+        db = dumbbell(0,or_1,np.array([1,0,0]))
+        db1 = dumbbell(0,or_1,np.array([0,0,0]))
+        db2 = dumbbell(0,or_2,np.array([0,1,0]))
+        j = jump(db1,db2,1,1)
+        dbf = db + j
+        dbftrue = dumbbell(0,or_2,np.array([1,1,0]))
+        self.assertEqual(dbf,dbftrue)
+        dbffalse = dumbbell(0,or_1,np.array([1,1,0]))
+        self.assertNotEqual(dbf,dbffalse)
+        dbffalse = dumbbell(0,or_2,np.array([0,1,0]))
+        self.assertNotEqual(dbf,dbffalse)
 
-        R1 = np.array([0.,1.,0.])
-        R2 = np.array([0.,0.,0.])
-        R3 = np.array([0.,0.,1.])
+        #Test addition for separated solute-dumbell pair - translation of jumps
+        or_1 = np.array([1,0,0])
+        or_2 = np.array([1,1,0])
+        db1 = dumbbell(0,or_1,np.array([-1,0,0]))
+        db2 = dumbbell(0,or_2,np.array([-1,-1,0]))
+        pair1 = SdPair(0,np.array([0,0,0]),db1)
+        db1shift = dumbbell(db1.i,db1.o,db1.R + np.array([0,1,0]))
+        pair1_shift = SdPair(0,np.array([0,1,0]),db1shift)
+        pair2 = SdPair(0,np.array([0,0,0]),db2)
+        j = jump(pair1,pair2,1,1)
+        pair3 = pair1_shift + j
+        db3 = dumbbell(db2.i,db2.o,np.array([-1,0,0]))
+        pair3true = SdPair(0,np.array([0,1,0]),db3)
+        self.assertEqual(pair3,pair3true)
 
-        db1 = dumbbell(0,or_1,R1,1)
-        db2 = dumbbell(0,or_2,R2,1)
-        db3 = dumbbell(0,or_2,R2,1)
+        #Test addition for mixed dumbbell - translation of jumps
+        or_1 = np.array([-1,0,0])
+        or_2 = np.array([-1,0,0])
+        db1 = dumbbell(0,or_1,np.array([0,0,0]))
+        db2 = dumbbell(0,or_2,np.array([0,-1,0]))
+        pair1 = SdPair(0,np.array([0,0,0]),db1)
+        pair2 = SdPair(0,np.array([0,-1,0]),db2)
+        db1shift = dumbbell(db1.i,db1.o,db1.R + np.array([0,1,0]))
+        pair1_shift = SdPair(0,np.array([0,1,0]),db1shift)
+        j = jump(pair1,pair2,1,1)
+        pair3 = pair1_shift + j
+        db3 = dumbbell(db2.i,db2.o,np.array([0,0,0]))
+        pair3true = SdPair(0,np.array([0,0,0]),db3)
+        self.assertEqual(pair3,pair3true)
+        self.assertNotEqual(pair3,pair2)
 
-        j1 = jump(db1,db2)
-        j2 = jump(db2,db3)
-        j3 = jump(db1,db3)
-        with self.assertRaises(ArithmeticError):
-            j3+j1
-        self.assertEqual(j3,j1+j2)
-
-        #Addition of jumps and dumbbells.
-        with self.assertRaises(ArithmeticError):
-            db2+j1
-        self.assertEqual(db1+j1,db2)
-        self.assertEqual(j1+db1,db2)
 
     def test_gop(self):
         crys = crystal.Crystal(np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
         or_1 = np.array([1.,0.,0.])
         or_2 = np.array([0.,1.,0.])
-        db1 = dumbbell(0,or_1,np.array([0,1,0]),1)
-        db2 = dumbbell(0,or_1,np.array([1,0,0]),-1)
-        j = jump(db1,db2)
+        db1 = dumbbell(0,or_1,np.array([0,1,0]))
+        db2 = dumbbell(0,or_1,np.array([1,0,0]))
+        j = jump(db1,db2,1,1)
         j_list=[]
         for g in crys.G:
             j_new = j.gop(crys,0,g)
             if not any (j2==j_new for j2 in j_list):
                 j_list.append(j_new)
-        self.assertEqual(len(j_list),4)
+        self.assertEqual(len(j_list),8)
