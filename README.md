@@ -1,2 +1,2 @@
 # dumbbell_functions_initial
-I'll upload functions I define related to mixed dumbbells here.
+All modules related to developing the jumpnetwork function for dumbbells
