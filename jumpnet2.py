@@ -44,12 +44,22 @@ def gen_orsets(crys,chem,p_or_fam,m_or_fam):
         mixedlist.append(omlist)
     return purelist,mixedlist
 
-# def gensets(crys,chem,purelist,mixedlist):
-#     wyck_sites = crys.sitelist(chem)
-#     n = len(wyck_sites)
-#     for i in range(n):
-#         plist = purelist[i]
-#         atomlist=wyck_sites[i]
-#         for j in range(len(atomlist)):
-#             for op in plist:
-#                 site_or_pair = tuple([atomlist[j],op])
+def gensets(crys,chem,purelist,mixedlist):
+    pairs_pure=[]
+    pairs_mixed=[]
+    wyck_sites = crys.sitelist(chem)
+    n = len(wyck_sites)
+    for i in range(n):
+        plist = purelist[i]
+        mlist = mixedlist[i]
+        atomlist=wyck_sites[i]
+        for j in range(len(atomlist)):
+            site_or_pair=[]
+            for op in plist:
+                site_or_pair.append(tuple([atomlist[j],op]))
+            pairs_pure.append(site_or_pair)
+            site_or_pair=[]
+            for op in mlist:
+                site_or_pair.append(tuple([atomlist[j],op]))
+            pairs_mixed.append(site_or_pair)
+    return pairs_pure,pairs_mixed

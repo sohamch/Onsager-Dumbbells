@@ -34,4 +34,14 @@ class test_gen_orsets(unittest.TestCase):
         self.assertEqual(len(mlist),2)
         # self.assertEqual(len(plist[0]),4)
         # self.assertEqual(len(mlist[0]),8)
-# class test_gen_pairsets(unittest.TestCase)
+    def test_gensets(self):
+        fam_p0 = [np.array([1.,1.,0.]),np.array([1.,0.,0.])]
+        fam_p12 = [np.array([1.,1.,1.]),np.array([1.,1.,0.])]
+        purelist=[fam_p0,fam_p12]
+        fam_m0 = [np.array([1.,1.,0.]),np.array([1.,0.,0.])]
+        fam_m12 = [np.array([1.,1.,1.]),np.array([1.,1.,0.])]
+        mixlist=[fam_m0,fam_m12]
+        plist, mlist = gen_orsets(omega_Ti,0,purelist,mixlist)
+        pairs_pure,pairs_mixed = gensets(omega_Ti,0,plist,mlist)
+        self.assertEqual(len(pairs_pure),3)
+        self.assertEqual(len(pairs_mixed),3)

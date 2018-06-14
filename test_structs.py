@@ -1,6 +1,6 @@
 import numpy as np
 import onsager.crystal as crystal
-
+#This will be used to store crystal structures needed to create tests
 #omega_Ti crystal structure
 a0=4.576855
 c_a=2.828683/a0
