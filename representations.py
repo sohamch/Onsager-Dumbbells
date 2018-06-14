@@ -89,7 +89,7 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
         if not (isinstance(self.state1,other.__class__) and isinstance(self.state2,other.__class__)):
             raise TypeError("Incompatible operand and jump states.")
         if isinstance(other,dumbbell):
-          #check that initial dumbbell state of jump and input dumbbell
+          #check that the initial dumbbell state of the jump and the input dumbbell
           #have the same configuration
             if not (np.allclose(self.state1.o,other.o) and self.state1.i==other.i):
                 raise ArithmeticError("Operand dumbbell and initial dumbbell of jump must have same configuration (basis site coordinate and orientation")
