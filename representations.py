@@ -54,9 +54,9 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
         dbnew = self.db.gop(crys,chem,g)
         return self.__class__(i_s_new,R_s_new,dbnew)
 
-# Jump dbects are rather simple, contain just initial and final orientations
+# Jump obects are rather simple, contain just initial and final orientations
 # Also adding a jump to a dumbbell is now done here.
-# dumbell dbects are not aware of jump dbects.
+# dumbell/pair obects are not aware of jump dbects.
 class jump(namedtuple('jump','state1 state2 c1 c2')):
     def __init__(self,state1,state2,c1,c2):
         #Do Type checking of input stateects
