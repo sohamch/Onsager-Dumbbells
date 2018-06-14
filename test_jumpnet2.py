@@ -32,8 +32,7 @@ class test_gen_orsets(unittest.TestCase):
         plist, mlist = gen_orsets(omega_Ti,0,purelist,mixlist)
         self.assertEqual(len(plist),2)
         self.assertEqual(len(mlist),2)
-        # self.assertEqual(len(plist[0]),4)
-        # self.assertEqual(len(mlist[0]),8)
+        
     def test_gensets(self):
         fam_p0 = [np.array([1.,1.,0.]),np.array([1.,0.,0.])]
         fam_p12 = [np.array([1.,1.,1.]),np.array([1.,1.,0.])]
