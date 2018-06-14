@@ -76,8 +76,3 @@ def jumpnetwork(crys,chem,pairs_pure,pairs_mixed):
             if (state[0]==i[0] and np.allclose(state[1]+i[1],z,atol=1e-8)):
                 return dumbbell(i[0],i[1],db.R),-c
         return db,c
-    def collide_self(crys,jump):
-        #collision check between three atoms.
-
-    def collide_others(crys,jump):
-        #from vacancy case, need change of dx.
