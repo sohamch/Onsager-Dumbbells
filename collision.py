@@ -57,4 +57,4 @@ def collsion_self(crys,chem,jump,cutoff12,cutoff13):
     c12 = isnotcolliding(a01,a11,a02,a12,cutoff12)
     c13 = isnotcolliding(a01,a11,a03,a13,cutoff13)
     # c23 = isnotcolliding(a02,a12,a03,a13,cutoff)
-    return (c12 and c13)
+    return not(c12 and c13)
