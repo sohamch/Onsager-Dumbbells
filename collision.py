@@ -14,21 +14,22 @@ def collsion_self(crys,chem,jump,cutoff12,cutoff13):
         cutoff12 - minimum allowed distance between the two atoms in the initial dumbbell.
         cutoff13 - minimum allowed distance between the two atoms in the final dumbbell.
     Returns:
-        True if no atoms collide. False otherwise
+        True if atoms collide. False otherwise
     """
     def isnotcolliding(a0i,a1i,a0j,a1j,cutoff):
         num = np.dot((a1i-a1j),(a0i-a0j))
         den = np.dot((a1i-a1j),(a1i-a1j))
-        tmin = -num/den
-        # print("tmin = ",tmin)
-        mindist2 = np.dot(((a0i+a1i*tmin)-(a0j+a1j*tmin)),((a0i+a1i*tmin)-(a0j+a1j*tmin)))
+        tmin = np.round(-num/den,decimals=6)
+        # print(tmin)
+        mindist2 = np.round(np.dot(((a0i+a1i*tmin)-(a0j+a1j*tmin)),((a0i+a1i*tmin)-(a0j+a1j*tmin))),decimals=4)
         # print ("mindist^2 = ",mindist2)
-        if tmin < 0. or tmin > 1.:
-            return True #no atoms collide within transition time.
-        elif (mindist2-cutoff**2)>1e-8:
-            return True #no atoms collide
+        # print ("cutoff^2 = ",np.round(cutoff**2,decimals=6))
+        if tmin <= 0 or tmin >= 1:
+            return False #no atoms collide within transition time.
+        elif (mindist2>=np.round(cutoff**2,decimals=6)):
+            return False #no atoms collide
         else:
-            return False #atoms collide
+            return True #atoms collide
     #create the initial and final locations of the atoms
     if isinstance(jump.state1,dumbbell):
         R1i = crys.unit2cart(jump.state1.R,crys.basis[chem][jump.state1.i])+(jump.c1/2.)*jump.state1.o
@@ -37,6 +38,7 @@ def collsion_self(crys,chem,jump,cutoff12,cutoff13):
         R1f = crys.unit2cart(jump.state2.R,crys.basis[chem][jump.state2.i])+(jump.c2/2.)*jump.state2.o
         R2f = crys.unit2cart(jump.state1.R,crys.basis[chem][jump.state1.i])
         R3f = crys.unit2cart(jump.state2.R,crys.basis[chem][jump.state2.i])-(jump.c2/2.)*jump.state2.o
+        # print(R1i,R2i,R3i,R1f,R2f,R3f)
     elif isinstance(jump.state1,SdPair):
         R1i = crys.unit2cart(jump.state1.db.R,crys.basis[chem][jump.state1.db.i])+(jump.c1/2.)*jump.state1.db.o
         R2i = crys.unit2cart(jump.state1.db.R,crys.basis[chem][jump.state1.db.i])-(jump.c1/2.)*jump.state1.db.o
@@ -46,7 +48,7 @@ def collsion_self(crys,chem,jump,cutoff12,cutoff13):
         R3f = crys.unit2cart(jump.state2.db.R,crys.basis[chem][jump.state2.db.i])-(jump.c2/2.)*jump.state2.db.o
 
     if np.allclose(R1i,R1f):
-        return True #not considering rotations(yet).
+        return False #not considering rotations(yet).
     a01=R1i.copy()
     a11=(R1f-R1i)
     a02=R2i.copy()
@@ -55,6 +57,8 @@ def collsion_self(crys,chem,jump,cutoff12,cutoff13):
     a13=(R3f-R3i)
     #check the booleans for each pair
     c12 = isnotcolliding(a01,a11,a02,a12,cutoff12)
+    # print(c12)
     c13 = isnotcolliding(a01,a11,a03,a13,cutoff13)
+    # print(c13)
     # c23 = isnotcolliding(a02,a12,a03,a13,cutoff)
-    return not(c12 and c13)
+    return (c12 and c13)
