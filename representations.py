@@ -23,6 +23,10 @@ class dumbbell(namedtuple('dumbbell','i o R')):
     def __ne__(self,other):
         return not self.__eq__(other)
 
+    def __neg__(self):
+        #negation is used to flip the orientation vector
+        return self.__class__(self.i,-self.o,self.R)
+
     def gop(self,crys,chem,g):
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
         o1 = np.dot(g.cartrot,self.o)
@@ -69,8 +73,8 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
                     raise ArithmeticError("Solute atom cannot jump unless part of mixed dumbell")
             #If a mixed dumbbell, then initial and final states must indicate the position of the same atom.
             else:
-                if not self.c1==self.c2:
-                    raise ArithmeticError("The same active atom must transition between state1 and state2 (must have same c values) for a mixed dumbbell")
+                # if not self.c1==self.c2:
+                #     raise ArithmeticError("The same active atom must transition between state1 and state2 (must have same c values) for a mixed dumbbell")
                 if self.c1==1:
                     if not (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
                         raise ArithmeticError("Solute atom jumping from mixed dumbbell must lead to another mixed dumbbell")
@@ -112,9 +116,32 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
             if self.c1==-1:
                 dbnew = dumbbell(self.state2.db.i,self.state2.db.o,self.state2.db.R+other.R_s-self.state1.R_s)
                 return SdPair(dbnew.i,dbnew.R,dbnew)
+        if isinstance(other,self.__class__):
+            #Add two jumps
+            if not(self.state2==other.state1 and self.c2==other.c1):
+                raise ArithmeticError("Initial state of second jump must be the same as the final state of the first jump")
+                return self.__class__(self.state1,other.state2,self.c1,other.c2)
 
     def __radd__(self,other):
         return self.__add__(other)
+
+    def __neg__(self):
+        #negation is used to flip the transition in the opposite direction
+        return self.__class__(self.state2,self.state1,self.c2,self.c1)
+    def __str__(self):
+        if isinstance(self.state1,SdPair):
+            strrep = "Jump object:\nInitial state:\n\t"
+            strrep += "Solute loctation :basis index = {}, lattice vector = {}\n\t".format(self.state1.i_s,self.state1.R_s)
+            strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state1.db.i,self.state1.db.R,self.state1.db.o)
+            strrep += "Final state:\n\t"
+            strrep += "Solute loctation :basis index = {}, lattice vector = {}\n\t".format(self.state2.i_s,self.state2.R_s)
+            strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state2.db.i,self.state2.db.R,self.state2.db.o)
+        if isinstance(self.state1,dumbbell):
+            strrep = "Jump object:\nInitial state:\n\t"
+            strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state1.i,self.state1.R,self.state1.o)
+            strrep += "Final state:\n\t"
+            strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state2.i,self.state2.R,self.state2.o)
+        return(strrep)
 
     def gop(self,crys,chem,g): #Find symmetry equivalent jumps - required when making composite jumps.
         state1new=self.state1.gop(crys,chem,g)
