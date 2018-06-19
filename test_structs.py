@@ -12,7 +12,8 @@ omega_Ti = crystal.Crystal(alatt,[[u1,u2,u3]],["Ti"])
 #simple tetragonal crystal structure
 tet = crystal.Crystal(np.array([[1.2,0.,0.],[0.,1.2,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
 #simple cubic
-cube = crystal.Crystal(np.array([[1.5,0.,0.],[0.,1.5,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
+cube = crystal.Crystal(np.array([[2.8,0.,0.],[0.,2.8,0.],[0.,0.,2.8]]),[[np.zeros(3)]])
 #BCC Fe
 Fe_bcc = crystal.Crystal.BCC(0.286,"Fe")
-#Garnet crystal structure - for extremely involved tests
+print(Fe_bcc)
+ 
