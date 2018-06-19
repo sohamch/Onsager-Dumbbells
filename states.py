@@ -4,7 +4,7 @@ from representations import *
 
 class dbStates(object):
     """
-    Class to generate all the possible dumbbell configurations for given basis sites
+    Class to generate all possible dumbbell configurations for given basis sites
     """
     def __init__(self,crys,iorlist):
         self.crys = crys
