@@ -32,6 +32,7 @@ def collsion_self(crys,chem,jump,cutoff12,cutoff13):
             return True #atoms collide
     #create the initial and final locations of the atoms
     if isinstance(jump.state1,dumbbell):
+        #Shorten this part with a function later on
         R1i = crys.unit2cart(jump.state1.R,crys.basis[chem][jump.state1.i])+(jump.c1/2.)*jump.state1.o
         R2i = crys.unit2cart(jump.state1.R,crys.basis[chem][jump.state1.i])-(jump.c1/2.)*jump.state1.o
         R3i = crys.unit2cart(jump.state2.R,crys.basis[chem][jump.state2.i])
