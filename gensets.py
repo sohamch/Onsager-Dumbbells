@@ -2,6 +2,15 @@ import numpy as np
 from representations import *
 
 def genpuresets(crys,chem,family):
+    if not isinstance(family,list):
+        raise TypeError("Enter the families as a list of lists")
+    for i in family:
+        if not isinstance(i,list):
+            raise TypeError("Enter the families for each site as a list of np arrays")
+        for j in i:
+            if not isinstance(j,np.ndarray):
+                raise TypeError("Enter individual orientation families as numpy arrays")
+                
     sitelist = crys.sitelist(chem)
     #Get the Wyckoff sets
     pairlist=[]
