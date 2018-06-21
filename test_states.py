@@ -24,9 +24,9 @@ class test_sets(unittest.TestCase):
         db1 = dumbbell(0,o1,np.array([1,0,0]))
         db2 = dumbbell(0,o2,np.array([2,0,0]))
         jmp = jump(db1,db2,1,1)
-        listG = list(tet.G)
+        listG = list(tet2.G)
         op = 1#np.random.randint(0,len(listG))
         g = listG[op]
         jmp_new,(p1,p2) = dbStates_tet2.gdumb(g,jmp)
-        self.assertEqual(p1,1)
-        self.assertEqual(p2,-1)
+        self.assertEqual(p1,-1) #checked orientations of new jump separately
+        self.assertEqual(p2,-1)#checked orientations of new jump separately
