@@ -16,4 +16,3 @@ tet2 = crystal.Crystal(np.array([[1.2,0.,0.],[0.,1.2,0.],[0.,0.,1.5]]),[[np.zero
 cube = crystal.Crystal(np.array([[2.8,0.,0.],[0.,2.8,0.],[0.,0.,2.8]]),[[np.zeros(3)]])
 #BCC Fe
 Fe_bcc = crystal.Crystal.BCC(0.286,"Fe")
-print(Fe_bcc)
