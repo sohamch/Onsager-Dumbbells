@@ -10,14 +10,6 @@ class dbStates(object):
                       2. Given an (i,or) pair, check which pair in the set a group operation maps it onto.
     """
     def __init__(self,crys,chem,iorlist):
-        #Do some type checking
-        if not isinstance(iorlist,list):
-            raise TypeError("The entered orientation families must be in a list")
-        for i in iorlist:
-            if not isinstance(i,np.ndarray):
-                raise TypeError("orientation families are needed as numpy arrays")
-        if not isinstance(crys,crystal.Crystal):
-            raise TypeError("Unrecognized crystal object type")
         self.crys = crys
         self.chem = chem
         self.iorlist = iorlist
