@@ -11,6 +11,7 @@ class test_sets(unittest.TestCase):
         famp12 = [np.array([1.,1.,1.]),np.array([1.,1.,0.])]
         family = [famp0,famp12]
         pairs_pure = genpuresets(tet2,0,family)
+
         self.assertEqual(len(pairs_pure),len(tet2.sitelist(0)))
         self.assertEqual(len(pairs_pure[0]),4)
-        #Check the (i,or) pairs for sites 1 and 2 manually.
+        self.assertEqual(len(pairs_pure[1]),12)
