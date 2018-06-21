@@ -15,7 +15,7 @@ class dbStates(object):
             raise TypeError("The entered orientation families must be in a list")
         for i in iorlist:
             if not isinstance(i,np.ndarray):
-                raise TypeError("Please provide the orientation families as numpy arrays")
+                raise TypeError("orientation families are needed as numpy arrays")
         if not isinstance(crys,crystal.Crystal):
             raise TypeError("Unrecognized crystal object type")
         self.crys = crys
