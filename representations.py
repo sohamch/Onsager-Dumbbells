@@ -10,7 +10,7 @@ from collections import namedtuple
 # 3. Should be able to add a jump to a dumbbell state.
 # 4. Should be able to apply a given group operation (crystal specified) to a dumbbell.
 
-class dumbbell(namedtuple('dumbbell','i o R c')):
+class dumbbell(namedtuple('dumbbell','i o R')):
 
     def costheta(self,other):
         return(np.dot(self.o,other.o)/(la.norm(self.o)*la.norm(other.o)))
@@ -18,20 +18,22 @@ class dumbbell(namedtuple('dumbbell','i o R c')):
     def __eq__(self,other):
         zero=np.zeros(len(self.o))
         true_class = isinstance(other,self.__class__)
-        return true_class and (self.i==other.i and np.allclose(self.o,other.o) and np.allclose(self.R,other.R) and self.c==other.c)
+        c1 = true_class and (self.i==other.i and np.allclose(self.o,other.o,atol=1e-8) and np.allclose(self.R,other.R,atol=1e-8))
+        return c1
     def __ne__(self,other):
         return not self.__eq__(other)
 
+    def __neg__(self):
+        #negation is used to flip the orientation vector
+        return self.__class__(self.i,-self.o,self.R)
+
     def gop(self,crys,chem,g):
-        zero=np.zeros(len(self.o))
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
         o1 = np.dot(g.cartrot,self.o)
-        if np.allclose(self.o + o1, zero,atol=1e-8):#zero is not exactly representable. Add tolerance for safety.
-            return self.__class__(i1,self.o,r1,self.c*(-1))
-        return self.__class__(i1,o1,r1,self.c)
+        return self.__class__(i1,o1,r1)
 
 
-# A Pair dbect (that represents a dumbbell-solute state) should have the following attributes:
+# A Pair obect (that represents a dumbbell-solute state) should have the following attributes:
 # 1. It should have the locations of the solute and dumbbell.
 # 2. A pair dbect contains information regarding which atom in the dumbbell is going to jump.
 # 3. We should be able to apply Group operations to it to generate new pairs.
@@ -54,81 +56,94 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
         zero = np.zeros(len(self.db.o))
         R_s_new, (ch,i_s_new) = crys.g_pos(g,self.R_s,(chem,self.i_s))
         dbnew = self.db.gop(crys,chem,g)
-        if (np.allclose(self.R_s,self.db.R) and self.i_s==self.db.i):#if mixed dumbbell
-             if np.allclose(self.db.o,dbnew.o) and self.db.c*dbnew.c+1.<1e-8:#meaning dumbbell has been rotated by 180 degrees
-                 dbnew2 = dumbbell(dbnew.i,-1*dbnew.o,dbnew.R,self.db.c)
-                 return self.__class__(i_s_new,R_s_new,dbnew2)
         return self.__class__(i_s_new,R_s_new,dbnew)
 
-# Jump dbects are rather simple, contain just initial and final orientations
+# Jump obects are rather simple, contain just initial and final orientations
 # Also adding a jump to a dumbbell is now done here.
-# dumbell dbects are not aware of jump dbects.
-class jump(namedtuple('jump','state1 state2')):
-    #Crystal object is required to calculate the displacement dx
-    def __init__(self,state1,state2):
+# dumbell/pair obects are not aware of jump dbects.
+class jump(namedtuple('jump','state1 state2 c1 c2')):
+    def __init__(self,state1,state2,c1,c2):
         #Do Type checking of input stateects
         if not isinstance(self.state2,self.state1.__class__):
             raise TypeError("Incompatible Initial and final states. They must be of the same type.")
-
         if isinstance(self.state1,SdPair):
-           # First check that if we don't have a mixed dumbbell, then solute remain fixed.
-           if not(self.state1.i_s==self.state1.db.i and np.allclose(self.state1.R_s,self.state1.db.R)):
-               #not a mixed dumbbell
-               if not(self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
-                   raise ArithmeticError("Solute atom cannot jump unless part of a mixed dumbbell")
-           # Now, Check for invalid jumps involving mixed dumbbell SdPair objects
-           else:#we have a mixed dumbell
-               #check that if solute atom jumps from a mixed dumbbell, it leads to another mixed dumbbell
-               if(self.state1.db.c==1):#solute is the active atom
-                   if not(self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
-                       raise ArithmeticError("Invalid Transition - solute atom jumping from mixed dumbbell must lead to another mixed dumbbell")
-
-               #Check that if solvent atom jumps, it does not lead to another mixed dumbbell
-               #And that the solute location remain the same.
-               if(self.state1.db.c==-1):#solvent is the active atom
-                   #Check that solute does not move
-                   if (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
-                       raise ArithmeticError("Invalid Transition - solvent atom jumping from mixed dumbbell cannot lead to another mixed dumbbell")
-                   #Check that solute remains in the same location in the final state
-                   if not (self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
-                       raise ArithmeticError("Invalid Transition - solute must remain in the same site if solvent moves from a mixed dumbbell")
-              #Check that the active atom is not changed when everything else between the initial and final states are the same.
-              #This is an edge case, might have to find a better way to deal with this
-               if (self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s) and np.allclose(self.state1.db.o,self.state2.db.o)):
-                   if(self.state1.db.c != self.state2.db.c):
-                       raise ArithmeticError("Invalid transition - Rotation of mixed dumbbell in fixed site, but active atom changes - unphysical.")
-               #Now calculate dx based on dumbbell displacement:
-
+         #If not a mixed dumbbell, solute cannot move
+            if not (self.state1.i_s==self.state1.db.i and np.allclose(self.state1.R_s,self.state1.db.R)):
+                if not (self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
+                    raise ArithmeticError("Solute atom cannot jump unless part of mixed dumbell")
+            #If a mixed dumbbell, then initial and final states must indicate the position of the same atom.
+            else:
+                # if not self.c1==self.c2:
+                #     raise ArithmeticError("The same active atom must transition between state1 and state2 (must have same c values) for a mixed dumbbell")
+                if self.c1==1:
+                    if not (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R)):
+                        raise ArithmeticError("Solute atom jumping from mixed dumbbell must lead to another mixed dumbbell")
+                if self.c1==-1:
+                    if not (self.state2.i_s==self.state1.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
+                        raise ArithmeticError("Solvent atom jumping from mixed dumbbell means solute must remain fixed.")
 
     def __eq__(self,other):
-        return(self.state1==other.state1 and self.state2==other.state2)
+        return(self.state1==other.state1 and self.state2==other.state2 and self.c1==other.c1 and self.c2==other.c2)
 
     def __ne__(self,other):
         return not self.__eq__(other)
 
     def __add__(self,other):
-        if not (isinstance(other,self.__class__) or isinstance(other,dumbbell) or isinstance(other,SdPair)):
-            raise TypeError("Can add a jump only to a dumbbell or a pair or another jump")
-        #Add a jump to another jump.
-        if isinstance(other,jump):
-            if not (self.state2==other.state1):
-                raise ArithmeticError("Final state of first jump operand must equal the initial state of the second jump operand.")
-            return self.__class__(self.state1,other.state2)
-
-        #Add a jump to a dumbbell.
+          #Do type checking of input operands and jump states
+        if not (isinstance(self.state1,other.__class__) and isinstance(self.state2,other.__class__)):
+            raise TypeError("Incompatible operand and jump states.")
         if isinstance(other,dumbbell):
-            if not(self.state1==other):
-                raise ArithmeticError("Initial state of the jump operand must be the same as the dumbbell operand in the sum.")
-            return self.state2
+          #check that the initial dumbbell state of the jump and the input dumbbell
+          #have the same configuration
+            if not (np.allclose(self.state1.o,other.o) and self.state1.i==other.i):
+                raise ArithmeticError("Operand dumbbell and initial dumbbell of jump must have same configuration (basis site coordinate and orientation")
+            return (dumbbell(self.state2.i,self.state2.o,other.R+self.state2.R))
         if isinstance(other,SdPair):
-            if not(self.state1==other):
-                raise ArithmeticError("Initial state of the jump operand must be the same as the dumbbell of the pair operand in the sum.")
-            return self.state2
+          #Check arithmetic compatibility of dumbbells
+            if not (np.allclose(self.state1.db.o,other.db.o) and self.state1.db.i==other.db.i):
+                raise ArithmeticError("Operand pair's dumbbell and initial pair's dumbell of jump must have same configuration (basis site coordinate and orientation")
+              #check that the pair is translated with the same pair configuration.
+            if not (self.state1.i_s == other.i_s and np.allclose(-self.state1.R_s+self.state1.db.R,-other.R_s+other.db.R)):
+                raise ArithmeticError("Operand pair and initial pair of jump must have same relative configurations")
+              #if not a mixed dumbbell, solute stays fixed
+            if not (other.i_s==other.db.i and np.allclose(other.R_s,other.db.R)):
+                dbnew = dumbbell(self.state2.db.i,self.state2.db.o,self.state2.db.R+other.R_s-self.state1.R_s)
+                return SdPair(other.i_s,other.R_s,dbnew)
+             #if a mixed dumbbell, check that the correct final state has been reached
+            if self.c1==1:
+                dbnew = dumbbell(self.state2.db.i,self.state2.db.o,self.state2.db.R+other.R_s-self.state1.R_s)
+                return SdPair(dbnew.i,dbnew.R,dbnew)
+            if self.c1==-1:
+                dbnew = dumbbell(self.state2.db.i,self.state2.db.o,self.state2.db.R+other.R_s-self.state1.R_s)
+                return SdPair(dbnew.i,dbnew.R,dbnew)
+        if isinstance(other,self.__class__):
+            #Add two jumps
+            if not(self.state2==other.state1 and self.c2==other.c1):
+                raise ArithmeticError("Initial state of second jump must be the same as the final state of the first jump")
+                return self.__class__(self.state1,other.state2,self.c1,other.c2)
 
     def __radd__(self,other):
         return self.__add__(other)
 
+    def __neg__(self):
+        #negation is used to flip the transition in the opposite direction
+        return self.__class__(self.state2,self.state1,self.c2,self.c1)
+    def __str__(self):
+        if isinstance(self.state1,SdPair):
+            strrep = "Jump object:\nInitial state:\n\t"
+            strrep += "Solute loctation :basis index = {}, lattice vector = {}\n\t".format(self.state1.i_s,self.state1.R_s)
+            strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state1.db.i,self.state1.db.R,self.state1.db.o)
+            strrep += "Final state:\n\t"
+            strrep += "Solute loctation :basis index = {}, lattice vector = {}\n\t".format(self.state2.i_s,self.state2.R_s)
+            strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state2.db.i,self.state2.db.R,self.state2.db.o)
+        if isinstance(self.state1,dumbbell):
+            strrep = "Jump object:\nInitial state:\n\t"
+            strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state1.i,self.state1.R,self.state1.o)
+            strrep += "Final state:\n\t"
+            strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state2.i,self.state2.R,self.state2.o)
+        return(strrep)
+
     def gop(self,crys,chem,g): #Find symmetry equivalent jumps - required when making composite jumps.
         state1new=self.state1.gop(crys,chem,g)
         state2new=self.state2.gop(crys,chem,g)
-        return self.__class__(state1new,state2new)
+        return self.__class__(state1new,state2new,self.c1,self.c2)
