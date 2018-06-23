@@ -12,6 +12,4 @@ class test_sets(unittest.TestCase):
         family = [famp0,famp12]
         pairs_pure = genpuresets(tet2,0,family)
 
-        self.assertEqual(len(pairs_pure),len(tet2.sitelist(0)))
-        self.assertEqual(len(pairs_pure[0]),4)
-        self.assertEqual(len(pairs_pure[1]),12)
+        self.assertEqual(len(pairs_pure),16)
