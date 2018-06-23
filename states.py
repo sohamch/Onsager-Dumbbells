@@ -11,18 +11,13 @@ class dbStates(object):
                       2. Given an (i,or) pair, check which pair in the set a group operation maps it onto.
     """
     def __init__(self,crys,chem,iorlist):
-        if not isinstance(famlist,list):
+        if not isinstance(iorlist,list):
             raise TypeError("Enter the families as a list of lists")
-        for i in famlist:
-            if not isinstance(i,list):
-                raise TypeError("Enter the families for each site as a list of np arrays")
-            for j in i:
-                if not isinstance(j,np.ndarray):
-                    raise TypeError("Enter individual orientation families as numpy arrays")
+
         self.crys = crys
         self.chem = chem
         self.iorlist = iorlist
-        self.symorlist = self.gensymset(crys,chem,iorlist)
+        self.symorlist = self.__class__.gensymset(crys,chem,iorlist)
         #Store both iorlist and symorlist so that we can compare them later if needed.
         self.threshold = crys.threshold
 
@@ -57,22 +52,42 @@ class dbStates(object):
         return tup
 
     def gensymset(crys,chem,iorlist):
+        def matchvec(vec1,vec2):
+            return np.allclose(vec1,vec2,atol=crys.threshold) or np.allclose(vec1+vec2,0,atol=crys.threshold)
 
-        def inlist(tup):
-            return any(tup[0]==x[0] and np.allclose(tup[1],x[1],atol=1e-8) for x in iorlist)
+        def insymlist(ior,symlist):
+            return any(ior[0]==x[0] and matchvec(ior[1],x[1]) for lis in symlist for x in lis)
 
-        #first make a set of the unique orientations supplied - each taken only once
+        def inset(ior,set):
+            return any(ior[0]==x[0] and matchvec(ior[1],x[1]) for x in set)
+        #first make a set of the unique pairs supplied - each taken only once
         #That way we won't need to do redundant group operations
-        z = np.zeros(3)
-        orset=[]
+        orset = []
         for ior in iorlist:
-            if not any(i==x[0] and (np.allclose(tup[1],x[1],atol=crys.threshold) or np.allclose(tup[1]+x[1],z,atol=crys.threshold)) for x in orset):
-                orset.append(tup[1])
+            if not inset(ior,orset):
+                orset.append(ior)
 
-        #Now, start with the first pair in orset
+        #Now check for valid group transitions within orset.
+        #If the result of a group operation (j,o1) or it's negative (j,-o1) is not there is orset, append it to orset.
         ior = orset[0]
-        symlist=[]
         newlist=[]
-        newlist.append(tup)
+        symlist=[]
+        newlist.append(ior)
         for g in crys.G:
-            ior_new = tuple([g.indexmap[chem][ior[0]],crys.g_direc(g,ior[1])])
+            R, (ch,inew) = crys.g_pos(g,np.array([0,0,0]),(chem,ior[0]))
+            onew  = np.dot(g.cartrot,ior[1])
+            if not inset((inew,onew),newlist):
+                newlist.append((inew,onew))
+        symlist.append(newlist)
+        for ior in orset[1:]:
+            if insymlist(ior,symlist):
+                continue
+            newlist=[]
+            newlist.append(ior)
+            for g in crys.G:
+                R, (ch,inew) = crys.g_pos(g,np.array([0,0,0]),(chem,ior[0]))
+                onew  = np.dot(g.cartrot,ior[1])
+                if not inset((inew,onew),newlist):
+                    newlist.append((inew,onew))
+            symlist.append(newlist)
+        return symlist
