@@ -3,7 +3,7 @@ import onsager.crystal as crystal
 from representations import *
 from test_structs import *
 
-def collision_self(crys,chem,jump,cutoff12,cutoff13=None):
+def collsion_self(crys,chem,jump,cutoff12,cutoff13=None):
     """
     Check if the three atoms involved in a dumbbell jumping from one site to the next
     are colliding or not.
@@ -91,38 +91,15 @@ def collision_others(crys,chem,jmp,supervect,closestdistance):
     if isinstance(closestdistance,list):
         closest2list = [x**2 for c,x in enumerate(closestdistance)]
     else:
-        closest2list = [closestdistance**2 for c in range(crys.Nchem)]
+        closest2list = [x**2 for c in range(crys.Nchem)]
     #First extract the necessary parameters for calculating the transport vector
-    (i1,i2) = (jmp.state1.i,jmp.state2.i) if isinstance(jmp.state1,dumbbell) else (jmp.state1.db.i,jmp.state2.db.i)
-    (R1,R2) = (jmp.state1.R,jmp.state2.R) if isinstance(jmp.state1,dumbbell) else (jmp.state1.db.R,jmp.state2.db.R)
-    (o1,o2) = (jmp.state1.o,jmp.state2.o) if isinstance(jmp.state1,dumbbell) else (jmp.state1.db.o,jmp.state2.db.o)
+    (i1,i2) = (jmp.state1.i,jmp.state2.i) if isinstance(jmps.state1,dumbbell) else (jmp.state1.db.i,jmp.state2.db.i)
+    (R1,R2) = (jmp.state1.R,jmp.state2.R) if isinstance(jmps.state1,dumbbell) else (jmp.state1.db.R,jmp.state2.db.R)
+    (o1,o2) = (jmp.state1.o,jmp.state2.o) if isinstance(jmps.state1,dumbbell) else (jmp.state1.db.o,jmp.state2.db.o)
     c1,c2 =jmp.c2,jmp.c2
-    # print(i1,R1,i2,R2)
     #Now construct the transport vector
     dvec = (c2/2.)*o2 - (c1/2.)*o1
-    dR = crys.unit2cart(R2,crys.basis[chem][i2]) - crys.unit2cart(R1,crys.basis[chem][i1])
+    dR = crys.unit2cart(R2-R1,crys.basis[chem][i2]-crys.basis[chem][i1])
     dx = dR+dvec
-    dx2 = np.dot(dx,dx)
     #now test against other atoms, treating the initial atom as the origin
-    for c,mindist2 in enumerate(closest2list):
-        for j,u0 in enumerate(crys.basis[c]):
-            for n in supervect:
-                #skip checking against the atom in the destination site
-                if np.allclose(R1,n,atol=crys.threshold) and j==i1:
-                    continue
-                if np.allclose(R2,n,atol=crys.threshold) and j==i2:
-                    continue
-                x = crys.unit2cart(n,u0) - (crys.unit2cart(R1,crys.basis[chem][i1]) + (c1/2.)*o1)
-                #Get the location of the atom with respect to the original position of the jumping atom
-                x2 = np.dot(x,x)
-                x_dx = np.dot(x,dx)
-                if 0<=x_dx<=dx2:
-                    d2 = (x2*dx2 - x_dx**2) / dx2
-                    if np.allclose(n,0,atol=crys.threshold) and j==1:
-                        print(d2)
-                    #find the distance of approach of the transport vector to the atom in consideration
-                    if np.isclose(d2,mindist2) or d2 < mindist2:
-                        print(n,u0)
-                        #This print statement is only for seeing outputs in the testing phase.
-                        return True
-    return False #if no collision occur.
+    for c,mindist2 in enumerate(closest2list)
