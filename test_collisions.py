@@ -12,7 +12,7 @@ class collision_tests(unittest.TestCase):
         # with simple cubic structure
         db1 = dumbbell(0,or2,np.array([0,0,0]))
         db2 = dumbbell(0,or2,np.array([1,0,0]))
-        jmp = jump(db1,db2,1,1)
+        jmp = jump(db1,db2,-1,1)
         check = collision_self(cube,0,jmp,0.01)
         self.assertTrue(check)
 
@@ -38,16 +38,7 @@ class collision_tests(unittest.TestCase):
                          for n2 in range(-nmax[2], nmax[2] + 1)]
 
         #CONTROVERSIAL TEST
-        # or1 = np.array([1.2,1.2,0.])/np.linalg.norm(np.array([1.2,1.2,0.]))*0.14
-        # db1 = dumbbell(2,or1,np.array([0,0,0]))
-        # db2 = dumbbell(2,or1,np.array([1,-1,0]))
-        # jmp = jump(db1,db2,1,-1)
-        # check1 = collision_self(tet2,0,jmp,0.01,0.01)
-        # check2 = collision_others(tet2,0,jmp,supervect,0.01)
-        # self.assertFalse(check1)
-        # self.assertTrue(check2)
-        #TEST WHERE COLLISION IS SURE TO BE DETECTED
-        or1 = np.array([1.2,-1.2,0.])/np.linalg.norm(np.array([1.2,-1.2,0.]))*0.14
+        or1 = np.array([1.,1.,0.])/np.linalg.norm(np.array([1.,1.,0.]))*0.14
         db1 = dumbbell(2,or1,np.array([0,0,0]))
         db2 = dumbbell(2,or1,np.array([1,-1,0]))
         jmp = jump(db1,db2,1,-1)
@@ -55,13 +46,33 @@ class collision_tests(unittest.TestCase):
         check2 = collision_others(tet2,0,jmp,supervect,0.01)
         self.assertFalse(check1)
         self.assertTrue(check2)
-
-        #TEST WHERE COLLISION IS SURE TO BE NOT DETECTED
-        or1 = np.array([1.2,-1.2,0.])/np.linalg.norm(np.array([1.2,-1.2,0.]))*0.14
+        #TEST WHERE COLLISION IS SURE TO BE DETECTED
+        or1 = np.array([1.,-1.,0.])/np.linalg.norm(np.array([1.,-1.,0.]))*0.14
         db1 = dumbbell(2,or1,np.array([0,0,0]))
-        db2 = dumbbell(1,or1,np.array([0,0,0]))
+        db2 = dumbbell(2,or1,np.array([1,-1,0]))
         jmp = jump(db1,db2,1,-1)
         check1 = collision_self(tet2,0,jmp,0.01,0.01)
         check2 = collision_others(tet2,0,jmp,supervect,0.01)
         self.assertFalse(check1)
-        self.assertFalse(check2)
+        self.assertTrue(check2)
+        #
+        # #TEST WHERE COLLISION IS SURE TO BE NOT DETECTED
+        # or1 = np.array([1.2,-1.2,0.])/np.linalg.norm(np.array([1.2,-1.2,0.]))*0.14
+        # db1 = dumbbell(2,or1,np.array([0,0,0]))
+        # db2 = dumbbell(1,or1,np.array([0,0,0]))
+        # jmp = jump(db1,db2,1,-1)
+        # check1 = collision_self(tet2,0,jmp,0.01,0.01)
+        # check2 = collision_others(tet2,0,jmp,supervect,0.01)
+        # self.assertFalse(check1)
+        # self.assertFalse(check2)
+        #
+        # #SURE TEST WITH THE ATOM IN A DIFFERENT SUBLATTICE
+        # #TEST WHERE COLLISION IS SURE TO BE DETECTED
+        # or1 = np.array([1.2,-1.2,0.])/np.linalg.norm(np.array([1.2,-1.2,0.]))*0.14
+        # db1 = dumbbell(1,or1,np.array([0,0,0]))
+        # db2 = dumbbell(1,or1,np.array([1,-1,0]))
+        # jmp = jump(db1,db2,1,-1)
+        # check1 = collision_self(tet3,0,jmp,0.01,0.01)
+        # check2 = collision_others(tet3,0,jmp,supervect,0.01)
+        # self.assertFalse(check1)
+        # self.assertTrue(check2)

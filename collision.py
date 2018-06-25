@@ -96,12 +96,17 @@ def collision_others(crys,chem,jmp,supervect,closestdistance):
     (i1,i2) = (jmp.state1.i,jmp.state2.i) if isinstance(jmp.state1,dumbbell) else (jmp.state1.db.i,jmp.state2.db.i)
     (R1,R2) = (jmp.state1.R,jmp.state2.R) if isinstance(jmp.state1,dumbbell) else (jmp.state1.db.R,jmp.state2.db.R)
     (o1,o2) = (jmp.state1.o,jmp.state2.o) if isinstance(jmp.state1,dumbbell) else (jmp.state1.db.o,jmp.state2.db.o)
-    c1,c2 =jmp.c2,jmp.c2
+    c1,c2 =jmp.c1,jmp.c2
     # print(i1,R1,i2,R2)
     #Now construct the transport vector
+    # print(c1,c2,o1,o2)
     dvec = (c2/2.)*o2 - (c1/2.)*o1
+    # print (dvec)
     dR = crys.unit2cart(R2,crys.basis[chem][i2]) - crys.unit2cart(R1,crys.basis[chem][i1])
+    # print(dR)
     dx = dR+dvec
+    print(dx)
+    print()
     dx2 = np.dot(dx,dx)
     #now test against other atoms, treating the initial atom as the origin
     for c,mindist2 in enumerate(closest2list):
@@ -118,11 +123,8 @@ def collision_others(crys,chem,jmp,supervect,closestdistance):
                 x_dx = np.dot(x,dx)
                 if 0<=x_dx<=dx2:
                     d2 = (x2*dx2 - x_dx**2) / dx2
-                    if np.allclose(n,0,atol=crys.threshold) and j==1:
-                        print(d2)
-                    #find the distance of approach of the transport vector to the atom in consideration
                     if np.isclose(d2,mindist2) or d2 < mindist2:
-                        print(n,u0)
+                        # print(c,n,u0)
                         #This print statement is only for seeing outputs in the testing phase.
                         return True
     return False #if no collision occur.
