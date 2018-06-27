@@ -33,3 +33,32 @@ def genpuresets(crys,chem,family):
                             o_new = -o_new
                         pairlist.append((i_new,o_new))
     return pairlist
+
+def genmixedsets(crys,chem,family):
+
+    if not isinstance(family,list):
+        raise TypeError("Enter the families as a list of lists")
+    for i in family:
+        if not isinstance(i,list):
+            raise TypeError("Enter the families for each site as a list of numpy arrays")
+        for j in i:
+            if not isinstance(j,np.ndarray):
+                raise TypeError("Enter individual orientation families as numpy arrays")
+
+    def inlist(tup,lis):
+        return any(tup[0]==x[0] and np.allclose(tup[1],x[1],atol=1e-8) for x in lis)
+
+    sitelist = crys.sitelist(chem)
+    #Get the Wyckoff sets
+    pairlist=[]
+    for i,wycksites in enumerate(sitelist):
+        orlist = family[i]
+        site=wycksites[0]
+        newlist=[]
+        for o in orlist:
+            for g in crys.G:
+                R, (ch,i_new) = crys.g_pos(g,np.zeros(3),(chem,site))
+                o_new = crys.g_direc(g,o)
+                if not (inlist((i_new,o_new),pairlist):
+                    pairlist.append((i_new,o_new))
+    return pairlist
