@@ -62,3 +62,18 @@ def genmixedsets(crys,chem,family):
                 if not inlist((i_new,o_new),pairlist):
                     pairlist.append((i_new,o_new))
     return pairlist
+
+gen pairsets(crys,chem,iorlist,nmax)
+
+
+
+
+
+
+
+
+
+
+
+
+)
