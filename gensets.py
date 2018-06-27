@@ -53,12 +53,12 @@ def genmixedsets(crys,chem,family):
     pairlist=[]
     for i,wycksites in enumerate(sitelist):
         orlist = family[i]
-        site=wycksites[0]
+        site = wycksites[0]
         newlist=[]
         for o in orlist:
             for g in crys.G:
                 R, (ch,i_new) = crys.g_pos(g,np.zeros(3),(chem,site))
                 o_new = crys.g_direc(g,o)
-                if not (inlist((i_new,o_new),pairlist):
+                if not inlist((i_new,o_new),pairlist):
                     pairlist.append((i_new,o_new))
     return pairlist
