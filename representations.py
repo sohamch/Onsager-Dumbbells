@@ -52,6 +52,10 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
     def __ne__(self,other):
         return not self.__eq__(other)
 
+    def __neg__(self):
+        #negation is used to flip the orientation vector
+        return self.__class__(self.i_s,self.R_s,-self.db)
+
     def gop(self,crys,chem,g):#apply group operation
         zero = np.zeros(len(self.db.o))
         R_s_new, (ch,i_s_new) = crys.g_pos(g,self.R_s,(chem,self.i_s))
