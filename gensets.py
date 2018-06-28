@@ -66,14 +66,15 @@ def genmixedsets(crys,chem,family):
 def genPairSets(crys,chem,iorlist,thrange):
 
     def inlist(pair,lis):
-        return any(pair==pair1 for pair1 in lis)
+        return any(pair1==pair or -pair1==pair for pair1 in lis)
     #first create all the pairs within the thermodynamic range
-    Rvects = [[x,y,z] for x in range(-thrange,thrange+1)
-                      for x in range(-thrange,thrange+1)
-                      for x in range(-thrange,thrange+1)]
+    Rvects = [np.array([x,y,z]) for x in range(-thrange,thrange+1)
+                      for y in range(-thrange,thrange+1)
+                      for z in range(-thrange,thrange+1)]
+    print(Rvects)
     pairlist=[]
-    z=np.zeros(3)
-    for i_s in crys.basis[chem]:
+    z=np.zeros(3).astype(int)
+    for i_s in range(len(crys.basis[chem])):
         for i,o in iorlist:
             for R in Rvects:
                 if i==i_s and np.allclose(R,z,atol=crys.threshold):
@@ -86,6 +87,8 @@ def genPairSets(crys,chem,iorlist,thrange):
                 pairlist.append(pair)
                 for g in crys.G:
                     newpair = pair.gop(crys,chem,g)
+                    print(newpair)
                     if not inlist(newpair,pairlist):
                         pairlist.append(newpair)
+                print()
     return pairlist
