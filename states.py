@@ -116,11 +116,7 @@ class mStates(object):
         Takes as an argument a dumbbell and return the result of a group operation on that dumbbell
         param: g - group operation
                mdb - dumbbell object to operate upon
-        returns - (db_new,p) - the dumbbell produced by the symmetry operation and the parity value depending on existence
-                  within symorlist.
-                  Example - 1. If the new orientation produced is [-100] but the one present in symorlist is [100], then returns
-                    ("db object with orientation [100]", -1)
-                            2. If the new orientation is [100] instead, returns ("db object with orientation [100]", 1)
+        returns - mdb_new -> the result of the group operation
         """
         #Type check to see if a mixed dumbbell is passed
         if not isinstance(mdb,SdPair):
@@ -180,3 +176,12 @@ class mStates(object):
                     newlist.append((inew,onew))
             symlist.append(newlist)
         return symlist
+
+class Pairstates(object):
+    """
+    Class to generate all possible solute-dumbbell pair configurations for given basis sites
+
+    Functionalities - 1. take in a list of SdPairs created using gensets and convert it
+    to symmetry grouped pairs.
+                      2. Given an SdPair, check which pair in the set a group operation maps it onto.
+    """
