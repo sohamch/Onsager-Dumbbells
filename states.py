@@ -185,3 +185,35 @@ class Pairstates(object):
     to symmetry grouped pairs.
                       2. Given an SdPair, check which pair in the set a group operation maps it onto.
     """
+    def __init__(self,crys,chem,pairlist):
+        if not isinstance(pairlist,list):
+            raise TypeError("Enter the solute-dumbbell pairs as a list")
+        for i in pairlist:
+            if not isinstance(i,SdPair):
+                raise TypeError("The list must contain solute-dumbbell pair objects")
+
+        self.crys = crys
+        self.chem = chem
+        self.pairlist = pairlist
+        self.sympairlist = self.__class__.gensympairs(crys,chem,pairlist)
+
+    def gensympairs(crys,chem,pairlist):
+
+        def inset(pair,lis):
+            return any(pair==pair1 for x in lis for pair1 in x)
+
+        def inlist(pair,lis):
+            return any(pair==pair1 for pair1 in lis)
+
+        symlist=[]
+
+        for pair in pairlist:
+            if inset(pair,symlist):
+                continue
+            newlist=[]
+            for g in crys.G:
+                pair_new = pair.gop(crys,chem,g)
+                if not inlist(pair_new,newlist):
+                    newlist.append(pair_new)
+            symlist.append(newlist)
+        return symlist
