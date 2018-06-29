@@ -230,9 +230,9 @@ class Pairstates(object):
             checks if a dumbbell orientation is within the input pairlist.
             If it is reversed with respected to one that is there, return the correct one.
             """
-            if any(np.allclose(-db.o,pair.db.o,atol=crys.threshold) for pair in pairlist):
-                return pair.db
-            if any(db==pair.db for pair in pairlist):
+            if any(db.i==pair.db.i and np.allclose(-db.o,pair.db.o,atol=crys.threshold) for pair in pairlist):
+                return -db
+            elif any(db.i==pair.db.i and np.allclose(db.o,pair.db.o,atol=crys.threshold) for pair in pairlist):
                 return db
 
         def inset(pair,lis):
@@ -247,10 +247,10 @@ class Pairstates(object):
             if inset(pair,symlist):
                 continue
             newlist=[]
+            newlist.append(pair)
             for g in crys.G:
-                pair_new = pair.gop(crys,chem,g)
-                # db = withinlist(pair_new.db)
-                pair_new=SdPair(pair_new.i_s,pair_new.R_s,withinlist(pair_new.db))
+                pair_new1 = pair.gop(crys,chem,g)
+                pair_new = SdPair(pair_new1.i_s,pair_new1.R_s,withinlist(pair_new1.db))
                 if not inlist(pair_new,newlist):
                     newlist.append(pair_new)
             symlist.append(newlist)
