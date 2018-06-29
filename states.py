@@ -52,6 +52,15 @@ class dbStates(object):
         return tup
 
     def gensymset(crys,chem,iorlist):
+        """
+        Takes in a flat list of (i,or) pairs and groups them according to symmetry
+        params:
+            crys - the working crystal object
+            chem - the sublattice under consideration
+            iorlist - flat list of (i,or) pairs
+        Returns:
+            symorlist - a list of lists which contain symmetry related (i,or) pairs
+        """
         def matchvec(vec1,vec2):
             return np.allclose(vec1,vec2,atol=crys.threshold) or np.allclose(vec1+vec2,0,atol=crys.threshold)
 
@@ -137,6 +146,15 @@ class mStates(object):
         return mdb_new
 
     def gensymset(crys,chem,iorlist):
+        """
+        Takes in a flat list of (i,or) pairs and groups them according to symmetry
+        params:
+            crys - the working crystal object
+            chem - the sublattice under consideration
+            iorlist - flat list of (i,or) pairs
+        Returns:
+            symorlist - a list of lists which contain symmetry related (i,or) pairs
+        """
         def matchvec(vec1,vec2):
             return np.allclose(vec1,vec2,atol=crys.threshold)
 
@@ -195,9 +213,27 @@ class Pairstates(object):
         self.crys = crys
         self.chem = chem
         self.pairlist = pairlist
-        self.sympairlist = self.__class__.gensympairs(crys,chem,pairlist)
+        self.sympairlist = self.__class__.gensympairs(crys,chem,self.pairlist)
 
     def gensympairs(crys,chem,pairlist):
+        """
+        Takes in a flat list of SdPair objects and groups them according to symmetry
+        params:
+            crys - the working crystal object
+            chem - the sublattice under consideration
+            pairlist - flat list of (i,or) SdPair objects.
+        Returns:
+            symorlist - a list of lists which contain symmetry related (i,or) pairs
+        """
+        def withinlist(db):
+            """
+            checks if a dumbbell orientation is within the input pairlist.
+            If it is reversed with respected to one that is there, return the correct one.
+            """
+            if any(np.allclose(-db.o,pair.db.o,atol=crys.threshold) for pair in pairlist):
+                return pair.db
+            if any(db==pair.db for pair in pairlist):
+                return db
 
         def inset(pair,lis):
             return any(pair==pair1 for x in lis for pair1 in x)
@@ -213,6 +249,8 @@ class Pairstates(object):
             newlist=[]
             for g in crys.G:
                 pair_new = pair.gop(crys,chem,g)
+                # db = withinlist(pair_new.db)
+                pair_new=SdPair(pair_new.i_s,pair_new.R_s,withinlist(pair_new.db))
                 if not inlist(pair_new,newlist):
                     newlist.append(pair_new)
             symlist.append(newlist)
