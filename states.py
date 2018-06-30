@@ -32,6 +32,7 @@ class dbStates(object):
                     ("db object with orientation [100]", -1)
                             2. If the new orientation is [100] instead, returns ("db object with orientation [100]", 1)
         """
+        
         def inlist(tup):
             return any(tup[0]==x[0] and np.allclose(tup[1],x[1],atol=self.threshold) for lis in self.symorlist for x in lis)
 
