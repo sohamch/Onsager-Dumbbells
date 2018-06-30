@@ -40,10 +40,10 @@ class dbStates(object):
         o = db_new.o
         tup = None
         if inlist((i,o)):
-            tup = tuple([db_new,1])
+            tup = (db_new,1)
         elif inlist((i,-o)):
             db_new = dumbbell(db_new.i,-db_new.o,db_new.R)
-            tup = tuple([db_new,-1])
+            tup = (db_new,-1)
         if tup == None:
             #This will be used only during the testing phase, can remove it later when not needed.
             #Ideally, if the production of symorlist is correct, then it should catch either of the
@@ -124,7 +124,7 @@ class mStates(object):
         """
         Takes as an argument a dumbbell and return the result of a group operation on that dumbbell
         param: g - group operation
-               mdb - dumbbell object to operate upon
+               mdb - pair object to operate upon
         returns - mdb_new -> the result of the group operation
         """
         #Type check to see if a mixed dumbbell is passed
@@ -214,6 +214,22 @@ class Pairstates(object):
         self.chem = chem
         self.pairlist = pairlist
         self.sympairlist = self.__class__.gensympairs(crys,chem,self.pairlist)
+
+    def gpair(self,g,pair):
+        """
+        Takes as an argument a pair and returns the result of a group operation on that dumbbell
+        param: g - group operation
+               pair - pair object to operate upon
+        returns - (pair_new,parity) -> the result of the group operation and the parity value associated.
+        """
+        pair_new = pair.gop(self.crys,self.chem,g)
+        if inlist(pair_new):
+            return (pair_new,1)
+        elif inlist(-pair_new):
+            return (pair_new,-1)
+        else:
+            return None
+
 
     def gensympairs(crys,chem,pairlist):
         """
