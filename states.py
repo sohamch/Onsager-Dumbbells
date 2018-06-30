@@ -42,8 +42,8 @@ class dbStates(object):
         if inlist((i,o)):
             tup = (db_new,1)
         elif inlist((i,-o)):
-            db_new = dumbbell(db_new.i,-db_new.o,db_new.R)
-            tup = (db_new,-1)
+            # db_new = dumbbell(db_new.i,-db_new.o,db_new.R)
+            tup = (-db,-1)
         if tup == None:
             #This will be used only during the testing phase, can remove it later when not needed.
             #Ideally, if the production of symorlist is correct, then it should catch either of the
@@ -226,7 +226,7 @@ class Pairstates(object):
         if inlist(pair_new):
             return (pair_new,1)
         elif inlist(-pair_new):
-            return (pair_new,-1)
+            return (-pair_new,-1)
         else:
             return None
 
