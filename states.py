@@ -32,7 +32,7 @@ class dbStates(object):
                     ("db object with orientation [100]", -1)
                             2. If the new orientation is [100] instead, returns ("db object with orientation [100]", 1)
         """
-        
+
         def inlist(tup):
             return any(tup[0]==x[0] and np.allclose(tup[1],x[1],atol=self.threshold) for lis in self.symorlist for x in lis)
 
@@ -44,7 +44,7 @@ class dbStates(object):
             tup = (db_new,1)
         elif inlist((i,-o)):
             # db_new = dumbbell(db_new.i,-db_new.o,db_new.R)
-            tup = (-db,-1)
+            tup = (-db_new,-1)
         if tup == None:
             #This will be used only during the testing phase, can remove it later when not needed.
             #Ideally, if the production of symorlist is correct, then it should catch either of the
@@ -223,6 +223,9 @@ class Pairstates(object):
                pair - pair object to operate upon
         returns - (pair_new,parity) -> the result of the group operation and the parity value associated.
         """
+        def inlist(pair):
+            return any(pair==pair1 for lis in self.sympairlist for pair1 in lis)
+
         pair_new = pair.gop(self.crys,self.chem,g)
         if inlist(pair_new):
             return (pair_new,1)

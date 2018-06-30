@@ -19,7 +19,6 @@ class test_sets(unittest.TestCase):
         #check that symmetry analysis is correct
         dbstates=dbStates(self.crys,0,self.pairs_pure)
         self.assertEqual(len(dbstates.symorlist),4)
-
         #check that every (i,or) set is accounted for
         sm=0
         for i in dbstates.symorlist:
@@ -33,11 +32,16 @@ class test_sets(unittest.TestCase):
         g = Glist[x] #select random groupop
         newdb_test = db.gop(self.crys,0,g)
         newdb, p = dbstates.gdumb(g,db)
-
+        count=0
+        print(newdb_test)
+        print(newdb,p)
         if(newdb_test==newdb):
             self.assertEqual(p,1)
+            count=1
         elif(newdb_test==-newdb):
             self.assertEqual(p,-1)
+            count=1
+        self.assertEqual(count,1)
 
     def test_mStates(self):
         dbstates=dbStates(self.crys,0,self.pairs_pure)
@@ -72,24 +76,50 @@ class test_sets(unittest.TestCase):
         self.assertTrue(newmdb.i_s==newmdb.db.i and np.allclose(newmdb.R_s,newmdb.db.R,atol=self.crys.threshold))
         self.assertTrue(any(newmdb.db.i==tup[0] and np.allclose(newmdb.db.o,tup[1],atol=self.crys.threshold) for lis in mstates.symorlist for tup in lis))
 
-    # def test_pairstates(self):
-    #     famp0 = [np.array([1.,0.,0.])]
-    #     famp12 = [np.array([1.,1.,0.])]
-    #     family = [famp0,famp12]
-    #     pairs_pure = genpuresets(tet2,0,family)
-    #     pairset = genPairSets(tet2,0,pairs_pure,1)
-    #     pset = Pairstates(tet2,0,pairset)
-    #     count=0
-    #     for plis in pset.sympairlist:
-    #         for pair in plis:
-    #             if pair.db.i==0 and np.allclose(pair.db.R,np.array([1,1,0]),atol=1e-8):
-    #                 count=1
-    #                 lis=plis.copy()
-    #                 break
-    #         if count == 1:
-    #             break
-    #     self.assertEqual(len(lis),8)
-    #     sm=0
-    #     for i in pset.sympairlist:
-    #         sm += len(i)
-    #     self.assertEqual(len(pairset),sm)
+    def test_pairstates(self):
+        famp0 = [np.array([1.,0.,0.])]
+        famp12 = [np.array([1.,1.,0.])]
+        family = [famp0,famp12]
+        pairs_pure = genpuresets(tet2,0,family)
+        pairset = genPairSets(tet2,0,pairs_pure,1)
+        pset = Pairstates(tet2,0,pairset)
+        count=0
+
+        #first extract the test set
+        for plis in pset.sympairlist:
+            for pair in plis:
+                if pair.db.i==0 and np.allclose(pair.db.R,np.array([1,1,0]),atol=1e-8):
+                    count=1
+                    lis=plis.copy()
+                    break
+            if count == 1:
+                break
+        #check that symmetry grouping is correct
+        #check members of the test set manually once this passes
+        self.assertEqual(len(lis),8)
+
+        #check that all of the pairs are accounted for
+        sm=0
+        for i in pset.sympairlist:
+            sm += len(i)
+        self.assertEqual(len(pairset),sm)
+
+        #test group operations
+        Glist = list(self.crys.G)
+        x = np.random.randint(0,len(Glist))
+        g = Glist[x] #select random groupop
+
+        db = dumbbell(0,np.array([1.,0.,0.]),np.array([1,1,0]))
+        pair = SdPair(0,np.array([0,0,0]),db)
+        pairnewtest = pair.gop(self.crys,0,g)
+        pairnew,p = pset.gpair(g,pair)
+        count=0
+        print(pairnewtest)
+        print(pairnew,p)
+        if pairnewtest==pairnew:
+            self.assertEqual(p,1)
+            count=1
+        elif pairnewtest==-pairnew:
+            self.assertEqual(p,-1)
+            count=1
+        self.assertEqual(count,1)
