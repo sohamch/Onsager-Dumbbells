@@ -67,7 +67,7 @@ def genPairSets(crys,chem,iorlist,thrange):
 
     def withinlist(db):
         "returns a dumbbell that is within the iorlist by negating a vector if it has been reversed."
-        
+
         if any(db.i==j and np.allclose(db.o,o1,atol=crys.threshold) for j,o1 in iorlist):
             return db
         if any(db.i==j and np.allclose(db.o+o1,0,atol=crys.threshold) for j,o1 in iorlist):
@@ -76,16 +76,24 @@ def genPairSets(crys,chem,iorlist,thrange):
     def inlist(pair,lis):
         return any(pair==pair1 for pair1 in lis)
 
+    a0 = np.linalg.norm(crys.lattice[:,0]) #get length of the shortest lattice vector
+    nmax = int(np.round(thrange/a0)) + 1
+    # print(nmax)
     #first create all the pairs within the thermodynamic range
-    Rvects = [np.array([x,y,z]) for x in range(-thrange,thrange+1)
-                      for y in range(-thrange,thrange+1)
-                      for z in range(-thrange,thrange+1)]
+    Rvects = [np.array([x,y,z]) for x in range(-nmax,nmax+1)
+                      for y in range(-nmax,nmax+1)
+                      for z in range(-nmax,nmax+1)]
     # print(Rvects)
     pairlist=[]
     z=np.zeros(3).astype(int)
     for i_s in range(len(crys.basis[chem])):
         for i,o in iorlist:
             for R in Rvects:
+                dx = crys.unit2cart(R,crys.basis[chem][i]) - crys.unit2cart(np.zeros(3),crys.basis[chem][i_s])
+                # print (np.dot(dx,dx))
+                # print (thrange**2)
+                if np.dot(dx,dx) > thrange**2:
+                    continue
                 if i==i_s and np.allclose(R,z,atol=crys.threshold):
                     continue
                 db = dumbbell(i,o,R)

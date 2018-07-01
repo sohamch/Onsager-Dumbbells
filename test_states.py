@@ -81,14 +81,16 @@ class test_sets(unittest.TestCase):
         famp12 = [np.array([1.,1.,0.])]
         family = [famp0,famp12]
         pairs_pure = genpuresets(tet2,0,family)
-        pairset = genPairSets(tet2,0,pairs_pure,1)
+        pairset = genPairSets(tet2,0,pairs_pure,0.6)
+        print("flat pair list done")
         pset = Pairstates(tet2,0,pairset)
+        print("Pairstates object done")
         count=0
 
         #first extract the test set
         for plis in pset.sympairlist:
             for pair in plis:
-                if pair.db.i==0 and np.allclose(pair.db.R,np.array([1,1,0]),atol=1e-8):
+                if pair.db.i==0 and pair.i_s == 0 and np.allclose(abs(pair.db.R),np.array([1,1,0]),atol=1e-8):
                     count=1
                     lis=plis.copy()
                     break
@@ -106,20 +108,37 @@ class test_sets(unittest.TestCase):
 
         #test group operations
         Glist = list(self.crys.G)
-        x = np.random.randint(0,len(Glist))
-        g = Glist[x] #select random groupop
-
-        db = dumbbell(0,np.array([1.,0.,0.]),np.array([1,1,0]))
-        pair = SdPair(0,np.array([0,0,0]),db)
-        pairnewtest = pair.gop(self.crys,0,g)
-        pairnew,p = pset.gpair(g,pair)
-        count=0
-        print(pairnewtest)
-        print(pairnew,p)
-        if pairnewtest==pairnew:
-            self.assertEqual(p,1)
-            count=1
-        elif pairnewtest==-pairnew:
-            self.assertEqual(p,-1)
-            count=1
-        self.assertEqual(count,1)
+        for t in range(5):
+            x = np.random.randint(0,len(Glist))
+            g = Glist[x] #select random groupop
+            db = dumbbell(0,np.array([1.,0.,0.]),np.array([1,1,1]))
+            pair = SdPair(0,np.array([0,0,0]),db)
+            pairnewtest = pair.gop(self.crys,0,g)
+            pairnew,p = pset.gpair(g,pair)
+            count=0
+            print(pairnewtest)
+            print(pairnew,p)
+            print()
+            if pairnewtest==pairnew:
+                self.assertEqual(p,1)
+                count=1
+            elif pairnewtest==-pairnew:
+                self.assertEqual(p,-1)
+                count=1
+            self.assertEqual(count,1)
+            #check that pairnew exists in the state
+            check = False
+            for lis in pset.sympairlist:
+                for p in lis:
+                    if (p==pairnew):
+                        check = True
+                        break
+            self.assertTrue(check)
+            check = False
+            for lis in pset.sympairlist:
+                for p in lis:
+                    dx = self.crys.unit2cart(p.db.R,self.crys.basis[0][p.db.i]) - self.crys.unit2cart(p.R_s,self.crys.basis[0][p.i_s])
+                    if (np.dot(dx,dx) > 0.6**2):
+                        check = True
+                        break
+            self.assertFalse(check)
