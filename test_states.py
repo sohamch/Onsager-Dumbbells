@@ -83,7 +83,7 @@ class test_sets(unittest.TestCase):
         pairs_pure = genpuresets(tet2,0,family)
         pairset = genPairSets(tet2,0,pairs_pure,0.6)
         print("flat pair list done")
-        pset = Pairstates(tet2,0,pairset)
+        pset = Pairstates(tet2,0,pairs_pure,0.6)
         print("Pairstates object done")
         count=0
 
@@ -126,7 +126,7 @@ class test_sets(unittest.TestCase):
                 self.assertEqual(p,-1)
                 count=1
             self.assertEqual(count,1)
-            #check that pairnew exists in the state
+            #check that pairnew exists in the states list
             check = False
             for lis in pset.sympairlist:
                 for p in lis:
@@ -134,11 +134,13 @@ class test_sets(unittest.TestCase):
                         check = True
                         break
             self.assertTrue(check)
-            check = False
-            for lis in pset.sympairlist:
-                for p in lis:
-                    dx = self.crys.unit2cart(p.db.R,self.crys.basis[0][p.db.i]) - self.crys.unit2cart(p.R_s,self.crys.basis[0][p.i_s])
-                    if (np.dot(dx,dx) > 0.6**2):
-                        check = True
-                        break
-            self.assertFalse(check)
+
+        #check that all of the pairs are within cutoff distance
+        check = False
+        for lis in pset.sympairlist:
+            for p in lis:
+                dx = self.crys.unit2cart(p.db.R,self.crys.basis[0][p.db.i]) - self.crys.unit2cart(p.R_s,self.crys.basis[0][p.i_s])
+                if (np.dot(dx,dx) > 0.6**2):
+                    check = True
+                    break
+        self.assertFalse(check)
