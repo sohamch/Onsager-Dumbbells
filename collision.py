@@ -121,8 +121,10 @@ def collision_others(crys,chem,jmp,supervect,closestdistance):
                 #Get the location of the atom with respect to the original position of the jumping atom
                 x2 = np.dot(x,x)
                 x_dx = np.dot(x,dx)
+                d2 = (x2*dx2 - x_dx**2) / dx2
+                # if j==1 and np.allclose(n,0,atol=1e-8):
+                #     print(d2)
                 if 0<=x_dx<=dx2:
-                    d2 = (x2*dx2 - x_dx**2) / dx2
                     if np.isclose(d2,mindist2) or d2 < mindist2:
                         # print(c,n,u0)
                         #This print statement is only for seeing outputs in the testing phase.
