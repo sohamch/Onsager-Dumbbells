@@ -214,7 +214,7 @@ class Pairstates(object):
         self.crys = crys
         self.chem = chem
         self.pairlist = pairlist
-        self.sympairlist = self.__class__.gensympairs(crys,chem,self.pairlist)
+        self.sympairlist = self.__class__.gensympairs(crys,chem,iorlist,thrange)
 
     def gpair(self,g,pair):
         """
@@ -235,7 +235,7 @@ class Pairstates(object):
             return None
 
 
-    def gensympairs(crys,chem,pairlist):
+    def gensympairs(crys,chem,iorlist,thrange):
         """
         Takes in a flat list of SdPair objects and groups them according to symmetry
         params:
@@ -246,14 +246,12 @@ class Pairstates(object):
             symorlist - a list of lists which contain symmetry related (i,or) pairs
         """
         def withinlist(db):
-            """
-            checks if a dumbbell orientation is within the input pairlist.
-            If it is reversed with respected to one that is there, return the correct one.
-            """
-            if any(db.i==pair.db.i and np.allclose(-db.o,pair.db.o,atol=crys.threshold) for pair in pairlist):
-                return -db
-            elif any(db.i==pair.db.i and np.allclose(db.o,pair.db.o,atol=crys.threshold) for pair in pairlist):
+            "returns a dumbbell that is within the iorlist by negating a vector if it has been reversed."
+
+            if any(db.i==j and np.allclose(db.o,o1,atol=crys.threshold) for j,o1 in iorlist):
                 return db
+            if any(db.i==j and np.allclose(db.o+o1,0,atol=crys.threshold) for j,o1 in iorlist):
+                return -db
 
         def inset(pair,lis):
             return any(pair==pair1 for x in lis for pair1 in x)
@@ -261,17 +259,30 @@ class Pairstates(object):
         def inlist(pair,lis):
             return any(pair==pair1 for pair1 in lis)
 
-        symlist=[]
-
-        for pair in pairlist:
-            if inset(pair,symlist):
-                continue
-            newlist=[]
-            newlist.append(pair)
-            for g in crys.G:
-                pair_new1 = pair.gop(crys,chem,g)
-                pair_new = SdPair(pair_new1.i_s,pair_new1.R_s,withinlist(pair_new1.db))
-                if not inlist(pair_new,newlist):
-                    newlist.append(pair_new)
-            symlist.append(newlist)
-        return symlist
+        sympairlist=[]
+            z=np.zeros(3).astype(int)
+            for i_s in range(len(crys.basis[chem])):
+                for i,o in iorlist:
+                    for R in Rvects:
+                        dx = crys.unit2cart(R,crys.basis[chem][i]) - crys.unit2cart(np.zeros(3),crys.basis[chem][i_s])
+                        # print (np.dot(dx,dx))
+                        # print (thrange**2)
+                        if np.dot(dx,dx) > thrange**2:
+                            continue
+                        if i==i_s and np.allclose(R,z,atol=crys.threshold):
+                            continue
+                        db = dumbbell(i,o,R)
+                        pair = SdPair(i_s,z,db)
+                        if inset(pair,sympairlist):
+                            continue
+                        newlist=[]
+                        newlist.append(pair)
+                        # print(pair)
+                        for g in crys.G:
+                            newpair = pair.gop(crys,chem,g)
+                            db = withinlist(newpair.db)
+                            newpair=SdPair(newpair.i_s,newpair.R_s,db)
+                            if not inlist(newpair,newlist):
+                                newlist.append(newpair)
+                        sympairlist.append(newlist)
+            return sympairlist
