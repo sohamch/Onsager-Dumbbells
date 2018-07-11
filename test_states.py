@@ -33,8 +33,6 @@ class test_sets(unittest.TestCase):
         newdb_test = db.gop(self.crys,0,g)
         newdb, p = dbstates.gdumb(g,db)
         count=0
-        print(newdb_test)
-        print(newdb,p)
         if(newdb_test==newdb):
             self.assertEqual(p,1)
             count=1
@@ -52,7 +50,7 @@ class test_sets(unittest.TestCase):
 
         #check that negative orientations are accounted for
         for i in range(4):
-            self.assertEqual(len(dbstates.symorlist[i])/len(mstates1.symorlist[i]),0.5)
+            self.assertEqual(len(mstates1.symorlist[i])/len(dbstates.symorlist[i]),2)
 
         #check that every (i,or) set is accounted for
         sm=0
@@ -77,48 +75,38 @@ class test_sets(unittest.TestCase):
         self.assertTrue(any(newmdb.db.i==tup[0] and np.allclose(newmdb.db.o,tup[1],atol=self.crys.threshold) for lis in mstates.symorlist for tup in lis))
 
     def test_pairstates(self):
-        famp0 = [np.array([1.,0.,0.])]
+        famp0 = [np.array([1.,1.,0.])]
         famp12 = [np.array([1.,1.,0.])]
         family = [famp0,famp12]
-        pairs_pure = genpuresets(tet2,0,family)
-        pairset = genPairSets(tet2,0,pairs_pure,0.6)
-        print("flat pair list done")
-        pset = Pairstates(tet2,0,pairs_pure,0.6)
+        iorlist = genpuresets(tet2,0,family)
+        pset = Pairstates(tet2,0,iorlist,(4,1))
         print("Pairstates object done")
         count=0
 
         #first extract the test set
+        count=0
         for plis in pset.sympairlist:
             for pair in plis:
-                if pair.db.i==0 and pair.i_s == 0 and np.allclose(abs(pair.db.R),np.array([1,1,0]),atol=1e-8):
-                    count=1
+                if pair.db.i==0 and pair.i_s == 0 and np.allclose(abs(pair.db.R),np.array([1,0,0]),atol=1e-8):
                     lis=plis.copy()
+                    count=1
                     break
-            if count == 1:
+            if count==1:
                 break
         #check that symmetry grouping is correct
-        #check members of the test set manually once this passes
         self.assertEqual(len(lis),8)
-
-        #check that all of the pairs are accounted for
-        sm=0
-        for i in pset.sympairlist:
-            sm += len(i)
-        self.assertEqual(len(pairset),sm)
 
         #test group operations
         Glist = list(self.crys.G)
+        db = dumbbell(0,np.array([1.,1.,0.]),np.array([1,0,0]))
+        pair = SdPair(0,np.array([0,0,0]),db)
         for t in range(5):
             x = np.random.randint(0,len(Glist))
             g = Glist[x] #select random groupop
-            db = dumbbell(0,np.array([1.,0.,0.]),np.array([1,1,1]))
-            pair = SdPair(0,np.array([0,0,0]),db)
             pairnewtest = pair.gop(self.crys,0,g)
             pairnew,p = pset.gpair(g,pair)
             count=0
-            print(pairnewtest)
-            print(pairnew,p)
-            print()
+            #check that proper parity is returned
             if pairnewtest==pairnew:
                 self.assertEqual(p,1)
                 count=1
@@ -134,13 +122,3 @@ class test_sets(unittest.TestCase):
                         check = True
                         break
             self.assertTrue(check)
-
-        #check that all of the pairs are within cutoff distance
-        check = False
-        for lis in pset.sympairlist:
-            for p in lis:
-                dx = self.crys.unit2cart(p.db.R,self.crys.basis[0][p.db.i]) - self.crys.unit2cart(p.R_s,self.crys.basis[0][p.i_s])
-                if (np.dot(dx,dx) > 0.6**2):
-                    check = True
-                    break
-        self.assertFalse(check)
