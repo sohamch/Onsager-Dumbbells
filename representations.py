@@ -28,7 +28,7 @@ class dumbbell(namedtuple('dumbbell','i o R')):
         return self.__class__(self.i,-self.o,self.R)
 
     def __hash__(self):
-        return hash((self.db.i, self.db.o[0],self.db.o[1],self.db.o[2],self.db.R[0], self.db.R[1], self.db.R[2]))
+        return hash((self.i, self.o[0],self.o[1],self.o[2],self.R[0], self.R[1], self.R[2]))
 
     def gop(self,crys,chem,g):
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
@@ -60,7 +60,7 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
         return self.__class__(self.i_s,self.R_s,-self.db)
 
     def __hash__(self):
-        return hash((self.i_s, self.R_s[0], self.R_s[1], self.R_s[2], self.db.i, self.db.o[0],self.db.o[1],self.db.o[2],self.db.R[0], self.db.R[1], self.db.R[2]))
+        return hash((self.i_s, self.R_s[0], self.R_s[1], self.R_s[2], hash(self.db)))
 
     def gop(self,crys,chem,g):#apply group operation
         zero = np.zeros(len(self.db.o))
@@ -103,6 +103,9 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
 
     def __ne__(self,other):
         return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((hash(self.state1),hash(self.state2),self.c1,self.c2))
 
     def __add__(self,other):
           #Do type checking of input operands and jump states
@@ -152,11 +155,13 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
             strrep += "Final state:\n\t"
             strrep += "Solute loctation :basis index = {}, lattice vector = {}\n\t".format(self.state2.i_s,self.state2.R_s)
             strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state2.db.i,self.state2.db.R,self.state2.db.o)
+            strrep += "\nJumping from c = {} to c= {}".format(self.c1,self.c2)
         if isinstance(self.state1,dumbbell):
             strrep = "Jump object:\nInitial state:\n\t"
             strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state1.i,self.state1.R,self.state1.o)
             strrep += "Final state:\n\t"
             strrep += "dumbbell :basis index = {}, lattice vector = {}, orientation = {}\n".format(self.state2.i,self.state2.R,self.state2.o)
+            strrep += "Jumping from c = {} to c= {}\n".format(self.c1,self.c2)
         return(strrep)
 
     def gop(self,crys,chem,g): #Find symmetry equivalent jumps - required when making composite jumps.
