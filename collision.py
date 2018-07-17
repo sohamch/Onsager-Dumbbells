@@ -76,7 +76,7 @@ def collision_self(crys,chem,jump,cutoff12,cutoff13=None):
     return (c12 or c13)
 
 
-def collision_others(crys,chem,jmp,supervect,closestdistance):
+def collision_others(crys,chem,jmp,closestdistance):
     """
     Takes a jump and sees if the moving atom of the dumbbell collides with any other atom.
     params:
@@ -97,22 +97,24 @@ def collision_others(crys,chem,jmp,supervect,closestdistance):
     (R1,R2) = (jmp.state1.R,jmp.state2.R) if isinstance(jmp.state1,dumbbell) else (jmp.state1.db.R,jmp.state2.db.R)
     (o1,o2) = (jmp.state1.o,jmp.state2.o) if isinstance(jmp.state1,dumbbell) else (jmp.state1.db.o,jmp.state2.db.o)
     c1,c2 =jmp.c1,jmp.c2
-    # print(i1,R1,i2,R2)
-    #Now construct the transport vector
-    # print(c1,c2,o1,o2)
     dvec = (c2/2.)*o2 - (c1/2.)*o1
-    # print (dvec)
     dR = crys.unit2cart(R2,crys.basis[chem][i2]) - crys.unit2cart(R1,crys.basis[chem][i1])
-    # print(dR)
     dx = dR+dvec
-    print(dx)
-    print()
     dx2 = np.dot(dx,dx)
+    # Do not consider on-site rotations
+    dR2 = np.dot(dR,dR)
+    if np.allclose(dR,0,atol=crys.threshold):
+        return False
+    nmax = [int(np.round(np.sqrt(dx2/crys.metric[i,i]))) + 1 for i in range(3)]
+    # print(nmax)
+    supervect = [np.array([n0,n1,n2]) for n0 in range(-nmax[0],nmax[0]+1) for n1 in range(-nmax[1],nmax[1]+1) for n2 in range(-nmax[2],nmax[2]+1)]
+    # print(supervect)
+    # print()
     #now test against other atoms, treating the initial atom as the origin
     for c,mindist2 in enumerate(closest2list):
         for j,u0 in enumerate(crys.basis[c]):
             for n in supervect:
-                #skip checking against the atom in the destination site
+                #skip checking against the atom in the initial and destination site
                 if np.allclose(R1,n,atol=crys.threshold) and j==i1:
                     continue
                 if np.allclose(R2,n,atol=crys.threshold) and j==i2:
