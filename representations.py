@@ -27,6 +27,9 @@ class dumbbell(namedtuple('dumbbell','i o R')):
         #negation is used to flip the orientation vector
         return self.__class__(self.i,-self.o,self.R)
 
+    def __hash__(self):
+        return hash((self.db.i, self.db.o[0],self.db.o[1],self.db.o[2],self.db.R[0], self.db.R[1], self.db.R[2]))
+
     def gop(self,crys,chem,g):
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
         o1 = np.dot(g.cartrot,self.o)
@@ -56,11 +59,20 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
         #negation is used to flip the orientation vector
         return self.__class__(self.i_s,self.R_s,-self.db)
 
+    def __hash__(self):
+        return hash((self.i_s, self.R_s[0], self.R_s[1], self.R_s[2], self.db.i, self.db.o[0],self.db.o[1],self.db.o[2],self.db.R[0], self.db.R[1], self.db.R[2]))
+
     def gop(self,crys,chem,g):#apply group operation
         zero = np.zeros(len(self.db.o))
         R_s_new, (ch,i_s_new) = crys.g_pos(g,self.R_s,(chem,self.i_s))
         dbnew = self.db.gop(crys,chem,g)
         return self.__class__(i_s_new,R_s_new,dbnew)
+
+    def is_zero(self):
+        """
+        To check if solute and dumbbell are at the same site
+        """
+        return self.i_s==self.db.i and np.allclose(self.R_s,self.db.R)
 
 # Jump obects are rather simple, contain just initial and final orientations
 # Also adding a jump to a dumbbell is now done here.
