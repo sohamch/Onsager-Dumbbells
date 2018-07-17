@@ -10,16 +10,14 @@ u2=np.array([1./3., 2./3., 1./2.])
 u3=np.array([2./3., 1./3., 1./2.])
 omega_Ti = crystal.Crystal(alatt,[[u1,u2,u3]],["Ti"])
 #simple tetragonal crystal structure
-<<<<<<< HEAD
-tet = crystal.Crystal(np.array([[1.2,0.,0.],[0.,1.2,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
-tet2 = crystal.Crystal(np.array([[0.32,0.,0.],[0.,0.32,0.],[0.,0.,0.45]]),[[np.zeros(3),np.array([0.5,0.,0.]),np.array([0.,0.5,0.])]])
-tet3 = crystal.Crystal(np.array([[0.32,0.,0.],[0.,0.32,0.],[0.,0.,0.45]]),[[np.zeros(3),np.array([0.0,0.5,0.])],[np.array([0.5,0.,0.])]],["A","B"])
+# tet = crystal.Crystal(np.array([[1.2,0.,0.],[0.,1.2,0.],[0.,0.,1.5]]),[[np.zeros(3)]])
+# tet2 = crystal.Crystal(np.array([[0.32,0.,0.],[0.,0.32,0.],[0.,0.,0.45]]),[[np.zeros(3),np.array([0.5,0.,0.]),np.array([0.,0.5,0.])]])
+# tet3 = crystal.Crystal(np.array([[0.32,0.,0.],[0.,0.32,0.],[0.,0.,0.45]]),[[np.zeros(3),np.array([0.0,0.5,0.])],[np.array([0.5,0.,0.])]],["A","B"])
 # print (tet3)
-=======
 tet = crystal.Crystal(np.array([[0.28,0.,0.],[0.,0.28,0.],[0.,0.,0.32]]),[[np.zeros(3)]])
 tet2 = crystal.Crystal(np.array([[0.28,0.,0.],[0.,0.28,0.],[0.,0.,0.32]]),[[np.zeros(3),np.array([0.5,0.,0.]),np.array([0.,0.5,0.])]])
-tet3 = crystal.Crystal(np.array([[0.28,0.,0.],[0.,0.28,0.],[0.,0.,0.32]]),[[np.zeros(3),np.array([0.5,0.,0.]),np.array([0.5,0.5,0.])]])
->>>>>>> states-dev
+tet3 = crystal.Crystal(np.array([[0.32,0.,0.],[0.,0.32,0.],[0.,0.,0.45]]),[[np.zeros(3),np.array([0.0,0.5,0.])],[np.array([0.5,0.,0.])]],["A","B"])
+tet4 = crystal.Crystal(np.array([[0.28,0.,0.],[0.,0.28,0.],[0.,0.,0.32]]),[[np.zeros(3),np.array([0.5,0.,0.]),np.array([0.5,0.5,0.])]])
 #simple cubic
 cube = crystal.Crystal(np.array([[0.28,0.,0.],[0.,0.28,0.],[0.,0.,0.28]]),[[np.zeros(3)]])
 #BCC Fe
