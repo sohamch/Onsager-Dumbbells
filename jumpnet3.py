@@ -4,6 +4,25 @@ from representations import *
 from states import *
 from collision import *
 import time
+
+
+def flat(lis):
+    a=[x for l in lis for x in l]
+    return a
+
+def inset(j,s):
+    return hash(j) in s
+
+def inlist(j,l):
+    return any(hash(j)==hash(j1) for j1 in l)
+
+def dx_excess(crys,chem,obj1,obj2,cutoff):
+    (i1,i2) = (obj1.i,obj2.i) if isinstance(obj1,dumbbell) else (obj1.db.i,obj2.db.i)
+    (R1,R2) = (obj1.R,obj2.R) if isinstance(obj1,dumbbell) else (obj1.db.R,obj2.db.R)
+    dR = crys.unit2cart(R2,crys.basis[chem][i2]) - crys.unit2cart(R1,crys.basis[chem][i1])
+    if np.dot(dR,dR) > cutoff**2:
+        return True
+
 def purejumps(crys,chem,iorset,cutoff,solv_solv_cut,closestdistance):
     """
     Makes a jumpnetwork of pure dumbbells within a given distance to be used for omega_0
@@ -16,18 +35,6 @@ def purejumps(crys,chem,iorset,cutoff,solv_solv_cut,closestdistance):
         closestdistance - minimum allowable distance to check for collisions with other atoms. Can be a single
         number or a list (corresponding to each sublattice)
     """
-    def inset(j,s):
-        return hash(j) in s
-
-    def inlist(j,l):
-        return any(hash(j)==hash(j1) for j1 in l)
-
-    def dx_excess(db1,db2):
-        (i1,i2) = (db1.i,db2.i)
-        (R1,R2) = (db1.R,db2.R)
-        dR = crys.unit2cart(R2,crys.basis[chem][i2]) - crys.unit2cart(R1,crys.basis[chem][i1])
-        if np.dot(dR,dR) > cutoff**2:
-            return True
 
     nmax = [int(np.round(np.sqrt(cutoff**2/crys.metric[i,i]))) + 1 for i in range(3)]
     Rvects = [np.array([n0,n1,n2]) for n0 in range(-nmax[0],nmax[0]+1)
@@ -38,16 +45,16 @@ def purejumps(crys,chem,iorset,cutoff,solv_solv_cut,closestdistance):
     tcheck=[]
     tlen = []
     dbstates = dbStates(crys,chem,iorset)
-    print("Entering main loop")
+    pset = flat(dbstates.symorlist)
     count=0
     for R in Rvects:
-        for i in iorset:
-            for f in iorset:
+        for i in pset:
+            for f in pset:
                 db1 = dumbbell(i[0],i[1],np.array([0,0,0]))
                 db2 = dumbbell(f[0],f[1],R)
                 if db1==db2:#catch the diagonal case
                     continue
-                if dx_excess(db1,db2):
+                if dx_excess(crys,chem,db1,db2,cutoff):
                     continue
                 for c1 in[-1,1]:
                     rotcheck = i[0]==f[0] and np.allclose(R,0,atol=crys.threshold)
@@ -115,20 +122,38 @@ def mixedjumps(crys,chem,iorset,cutoff,solt_solv_cut,closestdistance):
                                  for n1 in range(-nmax[1],nmax[1]+1)
                                  for n2 in range(-nmax[2],nmax[2]+1)]
     jumplist=[]
+    hashset=set([])
+    tcheck=[]
+    tlen = []
     mstates = mStates(crys,chem,iorset)
-    for i in iorset:
-        for f in iorset:
-            for R in Rvects:
+    mset = flat(mstates.symorlist)
+    for R in Rvects:
+        for i in mset:
+            for f in mset:
                 db1 = dumbbell(i[0],i[1],np.array([0,0,0]))
-                p1 = Sdpair(i[0],np.array([0,0,0]),db1)
+                p1 = SdPair(i[0],np.array([0,0,0]),db1)
                 db2=dumbbell(f[0],f[1],R)
-                p2 = Sdpair(f[0],R,db2)
+                p2 = SdPair(f[0],R,db2)
+                if p1 == p2:
+                    continue
+                if dx_excess(crys,chem,p1,p2,cutoff):
+                    continue
                 j = jump(p1,p2,1,1)#since only solute moves, both indicators are +1
-                if not inset(jump,jumplist):
-                    newlist=[]
+                start = time.time()
+                cond=inset(j,hashset)
+                tcheck.append(time.time()-start)
+                tlen.append(len(hashset))
+                if cond:
+                    continue
+                if not (collision_self(crys,chem,j,solt_solv_cut,solt_solv_cut) or collision_others(crys,chem,j,closestdistance)):
+                    jlist=[]
                     for g in crys.G:
-                        jnew=j.gop(crys,chem,g)
-                        if not inlist(jnew,newlist):
-                            newlist.append(jnew)
-                            newlist.append(-jnew)
-                    jumplist.append(newlist)
+                        # jnew = j.gop(crys,chem,g)
+                        jnew = j.gop(crys,chem,g)
+                        if not inset(jnew,hashset):
+                            jlist.append(jnew)
+                            # jlist.append(-jnew)
+                            hashset.add(hash(jnew))
+                            # hashset.add(hash(-jnew))
+                    jumplist.append(jlist)
+    return jumplist,tcheck,tlen
