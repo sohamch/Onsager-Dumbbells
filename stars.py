@@ -75,7 +75,7 @@ class StarSet(object):
                 newstar=set([])
                 for g in self.crys.G:
                     newstate = state.gop(self.crys,self.chem,g)
-                    if not newstate in newstar and newstate in self.stateset:
+                    if not newstate in hashset:
                         newstar.add(newstate)
                         hashset.add(newstate)
                 self.starset.append(list(newstar))
