@@ -79,6 +79,7 @@ class StarSet(object):
                         newstar.add(newstate)
                         hashset.add(newstate)
                 self.starset.append(list(newstar))
+        self.mixedstartindex = len(self.starset)
         #Now add in the mixed states
         self.mstates = mStates(self.crys,self.chem,self.iormixed)
         self.mixedstateset=set([])
@@ -104,7 +105,7 @@ class StarSet(object):
                 #     continue
                 if not pairnew in self.stateset:
                     continue
-                if not j in jumpset: #see if the jump is already considered
+                if not j in jumpset: #see if the jump has not already been considered
                     j = jump(pair,pairnew,j.c1,j.c2)
                     newlist=set([])
                     for g in self.crys.G:
@@ -116,7 +117,9 @@ class StarSet(object):
                         jnew = jump(state1new,state2new,jnew.c1*db1new[1],jnew.c2*db2new[1])
                         if not jnew in newlist:
                             newlist.add(jnew)
+                            newlist.add(-jnew)
                             jumpset.add(jnew)
+                            jumpset.add(-jnew)
                     jumpnetwork.append(list(newlist))
         return jumpnetwork
 
