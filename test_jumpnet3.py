@@ -29,7 +29,7 @@ class test_jumpnetwork(unittest.TestCase):
 
     def test_mixedjumps(self):
         #check for the correct number of states
-        jset = mixedjumps(cube,0,self.pairs_pure,0.3,0.01,0.01)[0]
+        jset = mixedjumps(cube,0,self.pairs_pure,0.3,0.01,0.01)
         test_dbi = dumbbell(0, np.array([0.126,0.,0.]),np.array([0,0,0]))
         test_dbf = dumbbell(0, np.array([0.126,0.,0.]),np.array([0,1,0]))
         count=0

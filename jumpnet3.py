@@ -60,10 +60,10 @@ def purejumps(crys,chem,iorset,cutoff,solv_solv_cut,closestdistance):
                     rotcheck = i[0]==f[0] and np.allclose(R,0,atol=crys.threshold)
                     if rotcheck:
                         j = jump(db1,db2,c1,1)
-                        start = time.time()
+                        # start = time.time()
                         cond=inset(j,hashset)
-                        tcheck.append(time.time()-start)
-                        tlen.append(len(hashset))
+                        # tcheck.append(time.time()-start)
+                        # tlen.append(len(hashset))
                         if cond: #no point doing anything else if the jump has already been considered
                             continue
                         if not (collision_self(crys,chem,j,solv_solv_cut,solv_solv_cut) or collision_others(crys,chem,j,closestdistance)):
@@ -75,18 +75,24 @@ def purejumps(crys,chem,iorset,cutoff,solv_solv_cut,closestdistance):
                                 db2new = dbstates.gdumb(g,db2)
                                 jnew = jump(db1new[0],db2new[0],c1*db1new[1],1*db2new[1])
                                 if not inset(jnew,hashset):
+                                    #create the negative jump
+                                    #not exactly the __neg__ in jump because the initial state must be at the origin.
+                                    db1newneg = dumbbell(db2new[0].i,db2new[0].o,np.array([0,0,0]))
+                                    db2newneg = dumbbell(db1new[0].i,db1new[0].o,-db2new[0].R)
+                                    jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
+                                    #add both the jump and it's negative
                                     jlist.append(jnew)
-                                    # jlist.append(-jnew)
+                                    jlist.append(jnewneg)
                                     hashset.add(hash(jnew))
-                                    # hashset.add(hash(-jnew))
+                                    hashset.add(hash(jnewneg))
                             jumplist.append(jlist)
                             continue
                     for c2 in [-1,1]:
                         j = jump(db1,db2,c1,c2)
                         start = time.time()
                         cond=inset(j,hashset)
-                        tcheck.append(time.time()-start)
-                        tlen.append(len(hashset))
+                        # tcheck.append(time.time()-start)
+                        # tlen.append(len(hashset))
                         if cond: #no point doing anything else if the jump has already been considered
                             continue
                         if not (collision_self(crys,chem,j,solv_solv_cut,solv_solv_cut) or collision_others(crys,chem,j,closestdistance)):
@@ -98,20 +104,26 @@ def purejumps(crys,chem,iorset,cutoff,solv_solv_cut,closestdistance):
                                 db2new = dbstates.gdumb(g,db2)
                                 jnew = jump(db1new[0],db2new[0],c1*db1new[1],c2*db2new[1])
                                 if not inset(jnew,hashset):
+                                    #create the negative jump
+                                    #not exactly the __neg__ in jump because the initial state must be at the origin.
+                                    db1newneg = dumbbell(db2new[0].i,db2new[0].o,np.array([0,0,0]))
+                                    db2newneg = dumbbell(db1new[0].i,db1new[0].o,-db2new[0].R)
+                                    jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
+                                    #add both the jump and it's negative
                                     jlist.append(jnew)
-                                    # jlist.append(-jnew)
+                                    jlist.append(jnewneg)
                                     hashset.add(hash(jnew))
-                                    # hashset.add(hash(-jnew))
+                                    hashset.add(hash(jnewneg))
                             jumplist.append(jlist)
-    return jumplist,tcheck,tlen
+    return jumplist,dbstates
 
-def mixedjumps(crys,chem,iorset,cutoff,solt_solv_cut,closestdistance):
+def mixedjumps(crys,chem,mset,cutoff,solt_solv_cut,closestdistance):
     """
     Makes a jumpnetwork of pure dumbbells within a given distance to be used for omega_0
     and to create the solute-dumbbell stars.
     Parameters:
         crys,chem - working crystal object and sublattice respectively.
-        iorset - allowed orientations in the given sublattice for mixed dumbbells
+        iorset - allowed (site,orientation) pairs in the given sublattice for mixed dumbbells - must be complete
         cutoff - maximum jump distance
         solt_solv_cut - minimum allowable distance between solute and solvent atoms - to check for collisions
         closestdistance - minimum allowable distance to check for collisions with other atoms. Can be a single
@@ -125,8 +137,8 @@ def mixedjumps(crys,chem,iorset,cutoff,solt_solv_cut,closestdistance):
     hashset=set([])
     tcheck=[]
     tlen = []
-    mstates = mStates(crys,chem,iorset)
-    mset = flat(mstates.symorlist)
+    # mstates = mStates(crys,chem,iorset)
+    # mset = flat(mstates.symorlist)
     for R in Rvects:
         for i in mset:
             for f in mset:
@@ -141,19 +153,25 @@ def mixedjumps(crys,chem,iorset,cutoff,solt_solv_cut,closestdistance):
                 j = jump(p1,p2,1,1)#since only solute moves, both indicators are +1
                 start = time.time()
                 cond=inset(j,hashset)
-                tcheck.append(time.time()-start)
-                tlen.append(len(hashset))
+                # tcheck.append(time.time()-start)
+                # tlen.append(len(hashset))
                 if cond:
                     continue
                 if not (collision_self(crys,chem,j,solt_solv_cut,solt_solv_cut) or collision_others(crys,chem,j,closestdistance)):
                     jlist=[]
                     for g in crys.G:
-                        # jnew = j.gop(crys,chem,g)
                         jnew = j.gop(crys,chem,g)
                         if not inset(jnew,hashset):
+                            #create the negative jump
+                            p11 = jnew.state1
+                            p21 = jnew.state2
+                            p1neg = SdPair(p21.i_s,np.array([0,0,0]),dumbbell(p21.db.i,p21.db.o,np.array([0,0,0])))
+                            p2neg = SdPair(p11.i_s,-p21.db.R,dumbbell(p11.db.i,p11.db.o,-p21.db.R))
+                            jnewneg = jump(p1neg,p2neg,1,1)
+                            #add both the jump and its negative
                             jlist.append(jnew)
-                            # jlist.append(-jnew)
+                            jlist.append(jnewneg)
                             hashset.add(hash(jnew))
-                            # hashset.add(hash(-jnew))
+                            hashset.add(hash(jnewneg))
                     jumplist.append(jlist)
-    return jumplist,tcheck,tlen
+    return jumplist
