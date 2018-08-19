@@ -29,4 +29,14 @@ for l in crys_stars.starset[crys_stars.mixedstartindex:]:
         print(state)
     print()
 
-#How to get the omega_1
+#Getting the omega_1 jumps
+omega1_network = crys_stars.jumpnetwork_omega1()
+len(omega1_network)#there are this many symmetric jump lists
+tot=0
+for l in omega1_network:
+    tot += len(l)
+tot #there are this many total number of omega_1 jumps
+
+# verify that we have the correct symmetric orientations of the jumps
+print(len(omega1_network[0]))
+print(omega1_network[0][0])
