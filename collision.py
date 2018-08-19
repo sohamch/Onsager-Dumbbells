@@ -2,7 +2,7 @@ import numpy as np
 import onsager.crystal as crystal
 from representations import *
 from test_structs import *
-
+##
 def collision_self(crys,chem,jump,cutoff12,cutoff13=None):
     """
     Check if the three atoms involved in a dumbbell jumping from one site to the next
