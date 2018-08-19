@@ -38,7 +38,7 @@ class DB_Tests(unittest.TestCase):
             dbnew = db1.gop(crys,0,g)
             if not any(db2==dbnew for db2 in dblist):
                 dblist.append(dbnew)
-        self.assertEqual(len(dblist),8)
+        self.assertEqual(len(dblist),16) #negatives are not inherently removed in the object itself. See states.py
 
 # Test For solute-dumbbell pairs
 # 1. Equality testing - Test whether the \__eq__ function performs as expected.
@@ -139,14 +139,14 @@ class jump_Tests(unittest.TestCase):
         db1 = dumbbell(0,or_1,np.array([-1,0,0]))
         db2 = dumbbell(0,or_2,np.array([-1,-1,0]))
         pair1 = SdPair(0,np.array([0,0,0]),db1)
-        db1shift = dumbbell(db1.i,db1.o,db1.R + np.array([0,1,0]))
+        db1shift = dumbbell(0,or_1,db1.R + np.array([0,1,0]))
+        db2shift = dumbbell(0,or_2,db2.R + np.array([0,1,0]))
         pair1_shift = SdPair(0,np.array([0,1,0]),db1shift)
-        pair2 = SdPair(0,np.array([0,0,0]),db2)
-        j = jump(pair1,pair2,1,1)
-        pair3 = pair1_shift + j
-        db3 = dumbbell(db2.i,db2.o,np.array([-1,0,0]))
-        pair3true = SdPair(0,np.array([0,1,0]),db3)
-        self.assertEqual(pair3,pair3true)
+        j = jump(db1,db2,1,1)
+        pair2 = pair1_shift.addjump(j)
+        pair2true = SdPair(0,np.array([0,1,0]),db2shift)
+        self.assertEqual(pair2,pair2true)
+
 
         #Test addition for mixed dumbbell - translation of jumps
         or_1 = np.array([-1,0,0])
@@ -158,7 +158,7 @@ class jump_Tests(unittest.TestCase):
         db1shift = dumbbell(db1.i,db1.o,db1.R + np.array([0,1,0]))
         pair1_shift = SdPair(0,np.array([0,1,0]),db1shift)
         j = jump(pair1,pair2,1,1)
-        pair3 = pair1_shift + j
+        pair3 = pair1_shift.addjump(j,mixed=True)
         db3 = dumbbell(db2.i,db2.o,np.array([0,0,0]))
         pair3true = SdPair(0,np.array([0,0,0]),db3)
         self.assertEqual(pair3,pair3true)
