@@ -28,7 +28,7 @@ class dumbbell(namedtuple('dumbbell','i o R')):
         return self.__class__(self.i,-self.o,self.R)
 
     def __hash__(self):
-        return hash((self.i, self.o[0],self.o[1],self.o[2],self.R[0], self.R[1], self.R[2]))
+        return hash((self.i*5,self.o[0]*5,self.o[1]*5,self.o[2]*5,self.R[0]*5,self.R[1]*5,self.R[2]*5))
 
     def gop(self,crys,chem,g):
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
@@ -60,7 +60,8 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
         return self.__class__(self.i_s,self.R_s,-self.db)
 
     def __hash__(self):
-        return hash((self.i_s, self.R_s[0], self.R_s[1], self.R_s[2], hash(self.db)))
+        return hash((self.i_s, self.R_s[0],hash(self.db)))
+        # return id(self)
 
     def gop(self,crys,chem,g):#apply group operation
         zero = np.zeros(len(self.db.o))
@@ -88,7 +89,7 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
 
         if mixed==True:
             if not self.is_zero():
-                raise TypeError("You indicated that a complex is a mixed dumbbell.")
+                raise TypeError("Was indicated that the complex is a mixed dumbbell.")
             if not (self.db.i==j.state1.db.i and np.allclose(self.db.o,j.state1.db.o)):
                 raise ArithmeticError("Incompatible starting dumbbell configurations")
             #see if solute atom must move
@@ -109,15 +110,18 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
                 if not (self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
                     raise ArithmeticError("Solute atom cannot jump unless part of mixed dumbell")
             #If a mixed dumbbell, then initial and final states must indicate the position of the same atom.
-            else:
+            # elif not np.allclose(self.state1.db.R,self.state2.db.R):
+                #Rotations can involve pure as well as mixed dumbbells.
+                #For now, in mixed dumbbell rotations, c1=1->c2=1 will have to be verified in star generation manually.
                 # if not self.c1==self.c2:
                 #     raise ArithmeticError("The same active atom must transition between state1 and state2 (must have same c values) for a mixed dumbbell")
-                if self.c1==1:
-                    if not (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R) and self.c2==1):
-                        raise ArithmeticError("Solute atom jumping from mixed dumbbell must lead to another mixed dumbbell")
-                if self.c1==-1:
-                    if not (self.state2.i_s==self.state1.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
-                        raise ArithmeticError("Solvent atom jumping from mixed dumbbell means solute must remain fixed.")
+                # if self.c1==1:
+                #     if not (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R) and self.c2==1):
+                #         print(self)
+                #         raise ArithmeticError("Solute atom jumping from mixed dumbbell must lead to another mixed dumbbell")
+                # if self.c1==-1:
+                #     if not (self.state2.i_s==self.state1.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
+                #         raise ArithmeticError("Solvent atom jumping from mixed dumbbell means solute must remain fixed.")
 
     def __eq__(self,other):
         return(self.state1==other.state1 and self.state2==other.state2 and self.c1==other.c1 and self.c2==other.c2)
@@ -126,8 +130,9 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
         return not self.__eq__(other)
 
     def __hash__(self):
+        # return hash((self.state1,self.state2,self.c1,self.c2))
         return hash((hash(self.state1),hash(self.state2),self.c1,self.c2))
-
+        # return id(self)
     def __add__(self,other):
           #Do type checking of input operands and jump states
           if not isinstance(other,dumbbell):
