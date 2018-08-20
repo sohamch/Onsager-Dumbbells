@@ -42,11 +42,10 @@ def purejumps(crys,chem,iorset,cutoff,solv_solv_cut,closestdistance):
                                  for n2 in range(-nmax[2],nmax[2]+1)]
     jumplist=[]
     hashset=set([])
-    tcheck=[]
-    tlen = []
     dbstates = dbStates(crys,chem,iorset)
     pset = flat(dbstates.symorlist)
     count=0
+    z=np.zeros(3).astype(int)
     for R in Rvects:
         for i in pset:
             for f in pset:
@@ -57,7 +56,7 @@ def purejumps(crys,chem,iorset,cutoff,solv_solv_cut,closestdistance):
                 if dx_excess(crys,chem,db1,db2,cutoff):
                     continue
                 for c1 in[-1,1]:
-                    rotcheck = i[0]==f[0] and np.allclose(R,0,atol=crys.threshold)
+                    rotcheck = i[0]==f[0] and np.allclose(R,z,atol=crys.threshold)
                     if rotcheck:
                         j = jump(db1,db2,c1,1)
                         # start = time.time()
