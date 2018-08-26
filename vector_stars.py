@@ -4,7 +4,7 @@ from jumpnet3 import *
 from states import *
 from representations import *
 from stars import *
-
+from functools import reduce
 class vectorStars(object):
     def __init__(self,crys_star=None):
         self.starset = None
@@ -33,7 +33,7 @@ class vectorStars(object):
                 if pairnew == pair0 or pairnew==-pair0:
                     glist.append(g)
             #Find the intersected vector basis for these group operations
-            vb=reduce(CombineVectorBasis,[VectorBasis(*g.eigen()) for g in glist])
+            vb=reduce(starset.crys.CombineVectorBasis,[starset.crys.VectorBasis(*g.eigen()) for g in glist])
             #Get orthonormal vectors
             vlist = starset.crys.vectlist(vb)
             for v in vlist:
