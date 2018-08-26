@@ -25,6 +25,7 @@ class StarSet(object):
         self.jumplist = [j for l in jumpnetwork[0] for j in l]
         self.jumpset = set(self.jumplist)
         self.jumpindices = []
+        self.Nshells = Nshells
         count=0
         for l in jumpnetwork[0]:
             self.jumpindices.append([])
