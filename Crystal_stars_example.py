@@ -29,13 +29,12 @@ for l in crys_stars.starset[crys_stars.mixedstartindex:]:
     print()
 
 #Getting the omega_1 jumps
-omega1_network_cube = crys_stars.jumpnetwork_omega1()
+omega1_network_cube = crys_stars.jumpnetwork_omega1()[0]
 len(omega1_network_cube)#there are this many symmetric jump lists
 tot=0
 omega1_1 = omega1_network_cube[1]
 print(omega1_1[4])
 len(omega1_1)
-
 #test that this number is correct
 #Without using hash so as to make sure that hashing is working correctly
 db1 = dumbbell(0,o,np.array([-1,1,-1]))
