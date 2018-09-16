@@ -26,4 +26,4 @@ class test_StarSet(unittest.TestCase):
         self.assertEqual(len(test_list),6)
 
     def test_jumpnetworks(self):
-        pass
+        #See the example file. Provides much clearer understanding.
