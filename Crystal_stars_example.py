@@ -84,7 +84,7 @@ len(omega1_3)
 #See that the above two lengths are the same. This means that our jumps are being generated correctly.
 
 #Now to test jumpnetwork_omega34
-omega3_network_cube, omega4_network_cube = crys_stars.jumpnetwork_omega34(0.3,0.01,0.01,0.01)
+omega34_cube_all,omega3_network_cube,omega4_network_cube = crys_stars.jumpnetwork_omega34(0.3,0.01,0.01,0.01)
 
 #First test omega_3
 omega3_1 = omega3_network_cube[1]

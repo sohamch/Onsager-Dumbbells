@@ -36,6 +36,8 @@ class vectorStars(object):
             vb=reduce(starset.crys.CombineVectorBasis,[starset.crys.VectorBasis(*g.eigen()) for g in glist])
             #Get orthonormal vectors
             vlist = starset.crys.vectlist(vb)
+            scale = 1./np.sqrt(len(s))
+            vlist = [v * scale for v in vlist] # see equation 80 in the paper - (there is a typo, this is correct).
             Nvect=len(vlist)
             if Nvect > 0:
                 for v in vlist:
@@ -147,3 +149,5 @@ class vectorStars(object):
                         geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
                         bias3expansion[i, k] += geom_bias
         return bias0expansion,bias1expansion,bias2expansion,bias3expansion,bias4expansion
+
+    def rateexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega4,jumpnetwork_omega3)

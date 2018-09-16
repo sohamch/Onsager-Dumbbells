@@ -152,8 +152,10 @@ class StarSet(object):
         symjumplist_omega4=[]
         alljumpset_omega3=set([])
         symjumplist_omega3=[]
+        symjumplist_omega34_all=[]
+        alljumpset_omega43_all=set([])
         for p_pure in self.stateset:
-            if p_pure.is_zero():
+            if p_pure.is_zero(): #Specator rotating into mixed does not make sense.
                 continue
             for p_mixed in self.mixedstateset:
                 for c1 in [-1,1]:
@@ -164,6 +166,8 @@ class StarSet(object):
                         if not collision_self(self.crys,self.chem,j,solv_solv_cut,solt_solv_cut):
                             if not collision_others(self.crys,self.chem,j,closestdistance):
                                 newset=set([])
+                                newnegset=set([])
+                                new_allset=set([])
                                 for g in self.crys.G:
                                     jnew = j.gop(self.crys,self.chem,g)
                                     db1new = self.dbstates.gdumb(g,j.state1.db)
@@ -171,17 +175,23 @@ class StarSet(object):
                                     jnew = jump(state1new,jnew.state2,jnew.c1*db1new[1],-1)
                                     if not jnew in newset:
                                         newset.add(jnew)
+                                        newnegset.add(-jnew)
+                                        new_allset.add(jnew)
+                                        new_allset.add(-jnew)
                                         alljumpset_omega4.add(jnew)
                                 symjumplist_omega4.append(list(newset))
-                                newnegset=set([])
-                                jneg=-j
-                                for g in self.crys.G:
-                                    jnew = jneg.gop(self.crys,self.chem,g)
-                                    db2new = self.dbstates.gdumb(g,jneg.state2.db)
-                                    state2new = SdPair(jnew.state2.i_s,jnew.state2.R_s,db2new[0])
-                                    jnew = jump(jnew.state1,state2new,-1,jnew.c2*db2new[1])
-                                    if not jnew in newnegset:
-                                        newnegset.add(jnew)
-                                        alljumpset_omega3.add(jnew)
                                 symjumplist_omega3.append(list(newnegset))
-        return symjumplist_omega3,symjumplist_omega4
+                                symjumplist_omega43_all.append(list(new_allset))
+                                # newnegset=set([])
+                                # jneg=-j
+                                # for g in self.crys.G:
+                                #     jnew = jneg.gop(self.crys,self.chem,g)
+                                #     db2new = self.dbstates.gdumb(g,jneg.state2.db)
+                                #     state2new = SdPair(jnew.state2.i_s,jnew.state2.R_s,db2new[0])
+                                #     jnew = jump(jnew.state1,state2new,-1,jnew.c2*db2new[1])
+                                #     if not jnew in newnegset:
+                                #         newnegset.add(jnew)
+                                #         alljumpset_omega3.add(jnew)
+                                # symjumplist_omega3.append(list(newnegset))
+
+        return symjumplist_omega43_all,symjumplist_omega3,symjumplist_omega4
