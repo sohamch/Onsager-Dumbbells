@@ -85,6 +85,8 @@ len(omega1_3)
 
 #Now to test jumpnetwork_omega34
 omega34_cube_all,omega3_network_cube,omega4_network_cube = crys_stars.jumpnetwork_omega34(0.3,0.01,0.01,0.01)
+#omega_34_all has the usual organization of jumps and their negatives in the same list
+#For convenience, when necessary, they have been seperated too.
 
 #First test omega_3
 omega3_1 = omega3_network_cube[1]
