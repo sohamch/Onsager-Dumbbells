@@ -203,3 +203,13 @@ class vectorStars(object):
                                     if chi_j.i_s==jmp.state2.i_s and np.allclose(chi_j.R_s,jmp.state2.R_s) and chi_j.db.i==jmp.state2.db.i and np.allclose(chi_j.db.o,jmp.state2.db.o):
                                         rate2expansion[i,j,k] += np.dot(vi,vj)
         return rate0expansion,rate1expansion,rate4expansion,rate3expansion,rate2expansion
+
+    def bareexpansion(self,jumpnetwork_omega1,jumptype):
+        D0expansion = np.zeros((3,3,len(self.starset.jumpindices)))
+        D1expansion = np.zeros((3,3,len(jumpnetwork_omega1)))
+        #The next part should be exactly the same as for the vacancy case
+        for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork):
+            d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
+            D0expansion[:, :, jt] += d0
+            D1expansion[:, :, k] += d0
+        return D0expansion, D1expansion
