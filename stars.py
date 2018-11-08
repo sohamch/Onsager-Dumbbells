@@ -182,16 +182,5 @@ class StarSet(object):
                                 symjumplist_omega4.append(list(newset))
                                 symjumplist_omega3.append(list(newnegset))
                                 symjumplist_omega43_all.append(list(new_allset))
-                                # newnegset=set([])
-                                # jneg=-j
-                                # for g in self.crys.G:
-                                #     jnew = jneg.gop(self.crys,self.chem,g)
-                                #     db2new = self.dbstates.gdumb(g,jneg.state2.db)
-                                #     state2new = SdPair(jnew.state2.i_s,jnew.state2.R_s,db2new[0])
-                                #     jnew = jump(jnew.state1,state2new,-1,jnew.c2*db2new[1])
-                                #     if not jnew in newnegset:
-                                #         newnegset.add(jnew)
-                                #         alljumpset_omega3.add(jnew)
-                                # symjumplist_omega3.append(list(newnegset))
-
+                                
         return symjumplist_omega43_all,symjumplist_omega3,symjumplist_omega4
