@@ -3,12 +3,6 @@ import onsager.crystal as crystal
 from representations import *
 from states import *
 from collision import *
-import time
-
-
-def flat(lis):
-    a=[x for l in lis for x in l]
-    return a
 
 def inset(j,s):
     return hash(j) in s
