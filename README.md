@@ -1,2 +1,2 @@
-# dumbbell_functions_initial
-All modules related to developing dumbbell states including site and orientations
+# Defining jump networks
+Modules related to constructing jumpnetworks.
