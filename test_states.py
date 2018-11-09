@@ -58,19 +58,3 @@ class test_sets(unittest.TestCase):
         for i in mstates1.symorlist:
             sm += len(i)
         self.assertEqual(sm,len(mstates1.iorlist))
-        #No longer necessary - requirement internally fulfilled
-        #check without supplying negative orientations
-        # mstates = mStates(self.crys,0,self.family)
-        # self.assertEqual(len(mstates.symorlist),4)
-        # for i in range(4):
-        #     self.assertEqual(len(dbstates.symorlist[i])/len(mstates.symorlist[i]),0.5)
-        #
-        # #check validity of group operations
-        # Glist = list(self.crys.G)
-        # x = np.random.randint(0,len(Glist))
-        # g = Glist[x] #select random groupop
-        # db=dumbbell(1, np.array([1.,1.,0.]), np.array([1,1,0]))
-        # mdb = SdPair(db.i,db.R,db)
-        # newmdb = mstates.gdumb(g,mdb)
-        # self.assertTrue(newmdb.i_s==newmdb.db.i and np.allclose(newmdb.R_s,newmdb.db.R,atol=self.crys.threshold))
-        # self.assertTrue(any(newmdb.db.i==tup[0] and np.allclose(newmdb.db.o,tup[1],atol=self.crys.threshold) for lis in mstates.symorlist for tup in lis))
