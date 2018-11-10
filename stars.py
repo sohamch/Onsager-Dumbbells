@@ -10,33 +10,56 @@ class StarSet(object):
     Almost exactly similar to CrystalStars.StarSet except now includes orientations.
     The minimum shell (Nshells=0) is composed of dumbbells situated atleast one jump away.
     """
-    def __init__(self,crys,chem,jumpnetwork,iormixed,Nshells,originstates=False):
+    def __init__(self,pdbcontainer,mdbcontainer,jumpnetwork_omega0,jumpnetwork_omega2,Nshells=None):#,originstates=False):
         """
         Parameters:
-        crys and chem - Respectively, the crystal and sublattice we are working on
-        jumpnetwork - pure dumbbell jumpnetwork with which the star set is to be made.
-        Nshells - the number of shells to be constructed. minimum is zero.
-        fam_mixed = flat list of (i,or) tuples for mixed dumbbells
+        pdbcontainer,mdbcontainer:
+            -containers containing the pure and mixed dumbbell information respectively
+        jumpnetwork_omega0,jumpnetwork_omega2 - jumpnetworks in pure and mixed dumbbell spaces respectively.
+            Note - must send in both as pair states and indexed.
+        Nshells - number of thermodynamic shells. Minimum - one jump away - corresponds to Nshells=0
         """
-        self.crys = crys
-        self.chem = chem
-        self.iormixed = iormixed
-        self.dbstates = jumpnetwork[1]
-        self.jumpnetwork = jumpnetwork
-        self.jumplist = [j for l in jumpnetwork[0] for j in l]
+        #check that we have the same crystal structures for pdbcontainer and mdbcontainer
+        if not np.allclose(pdbcontainer.crys.lattice,mdbcontainer.crys.lattice):
+            raise TypeError("pdbcontainer and mdbcontainer have different crystals")
+
+        if not len(pdbcontainer.crys.basis)==len(mdbcontainer.crys.basis):
+            raise TypeError("pdbcontainer and mdbcontainer have different basis")
+
+        for atom1,atom2 in zip(pdbcontainer.crys.chemistry,mdbcontainer.crys.chemistry):
+            if not atom1==atom2:
+                raise TypeError("pdbcontainer and mdbcontainer basis atom types don't match")
+        for l1,l2 in zip(pdbcontainer.crys.basis,mdbcontainer.crys.basis):
+            if not l1==l2:
+                raise TypeError("basis atom types have different numbers in pdbcontainer and mdbcontainer")
+
+        if not pdbcontainer.chem==mdbcontainer.chem:
+            raise TypeError("pdbcontainer and mdbcontainer have states on different sublattices")
+
+
+        self.crys = pdbcontainer.crys
+        self.chem = pdbcontainer.chem
+        self.dbstates = pdbcontainer
+        self.mdbstates = mdbcontainer
+        self.mixedset = mdbcontainer.iorlist
+        self.jumpnetwork = jumpnetwork_omega0[0]
+        self.jumpnetwork_indexed = jumpnetwork_omega0[1]
+        self.jumpnetwork_omega2 = jumpnetwork_omega2[0]
+        self.jumpnetwork_omega2_indexed = jumpnetwork_omega2[1]
+        self.jumplist = [j for l in self.jumpnetwork for j in l]
         self.jumpset = set(self.jumplist)
         self.jumpindices = []
         self.Nshells = Nshells
         count=0
-        for l in jumpnetwork[0]:
+        for l in self.jumpnetwork:
             self.jumpindices.append([])
             for j in l:
                 self.jumpindices[-1].append(count)
                 count+=1
-        self.generate(Nshells,originstates)
-        self.mixedset = [x for l in self.mstates.symorlist for x in l]
+        if not Nshells==None:
+            self.generate(Nshells,originstates)
 
-    def generate(self,Nshells,originstates):
+    def generate(self,Nshells):
         z=np.zeros(3).astype(int)
         if Nshells<1:
             Nshells = 0
@@ -46,10 +69,6 @@ class StarSet(object):
         for j in self.jumplist:
             #Build the first shell from the jumpnetwork- The initial dumbbell is in the origin, so assign it as the solute location.
             pair = SdPair(j.state1.i,j.state1.R,j.state2)
-            # NEED ORIGIN STATES FOR GF-EXPANSION - LOOK AT DALLAS'S NOTES
-            # redundant rotation jumps are taken care of in jumpnet3
-            # if not originstates and pair.is_zero():
-            #     continue
             startshell.add(pair)
             stateset.add(pair)
         lastshell=startshell
@@ -62,9 +81,6 @@ class StarSet(object):
                         pairnew = pair.addjump(j)
                     except:
                         continue
-                    # if not originstates:
-                    #     if pairnew.is_zero():
-                    #         continue
                     nextshell.add(pairnew)
                     stateset.add(pairnew)
             lastshell = nextshell
@@ -86,7 +102,7 @@ class StarSet(object):
         #Now add in the mixed states
         self.mstates = mStates(self.crys,self.chem,self.iormixed)
         self.mixedstateset=set([])
-        for l in self.mstates.symorlist:
+        for l in self.mdbcontainer.symorlist:
             newlist=[]
             for tup in l:
                 db=dumbbell(tup[0],tup[1],z)
@@ -96,7 +112,6 @@ class StarSet(object):
             self.starset.append(newlist)
 
     def jumpnetwork_omega1(self):
-
         jumpnetwork=[]
         jumptype=[]
         starpair=[]
@@ -141,10 +156,6 @@ class StarSet(object):
                         jumptype.append(jt)
         return jumpnetwork, jumptype
 
-    def jumpnetwork_omega2(self,cutoff,solt_solv_cut,closestdistance):
-        jumpnetwork = mixedjumps(self.crys,self.chem,self.mixedset,cutoff,solt_solv_cut,closestdistance)
-        return jumpnetwork
-
     def jumpnetwork_omega34(self,cutoff,solv_solv_cut,solt_solv_cut,closestdistance):
         #building omega_4 -> association - c2=-1 -> since solute movement is tracked
         #cutoff required is solute-solvent as well as solvent solvent
@@ -182,5 +193,5 @@ class StarSet(object):
                                 symjumplist_omega4.append(list(newset))
                                 symjumplist_omega3.append(list(newnegset))
                                 symjumplist_omega43_all.append(list(new_allset))
-                                
+
         return symjumplist_omega43_all,symjumplist_omega3,symjumplist_omega4
