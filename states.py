@@ -35,6 +35,20 @@ class dbStates(object):
         self.symorlist = self.gensymset()
         #Store both iorlist and symorlist so that we can compare them later if needed.
         self.threshold = crys.threshold
+        self.invmap = self.invmap(self.iorlist,self.symorlist).copy()
+
+    @staticmethod
+    def invmap(iorlist,symorlist):
+        for l in symorlist:
+            for tup in l:
+                if not any(t[0]==tup[0] and np.allclose(t[1],tup[1]) for t in iorlist):
+                    raise TypeError("iorlist and symorlist have different states")
+        invmap = np.zeros(len(iorlist))
+        for ind,l in enumerate(symorlist):
+            for i,tup in enumerate(iorlist):
+                if any(tup[0]==t[0] and np.allclose(tup[1],t[1]) for t in l):
+                    invmap[i]=ind
+        return invmap
 
     def gdumb(self,g,db):
         """
