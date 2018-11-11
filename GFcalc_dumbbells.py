@@ -1,11 +1,12 @@
 import numpy as np
 from onsager import PowerExpansion as PE
+from onsager.GFcalc import GFCrystalcalc
 import itertools
 from copy import deepcopy
 from numpy import linalg as LA
 from scipy.special import hyp1f1, gamma, expi #, gammainc
 
-class GFCrystalcalc(object):
+class GFcalc_dumbbells(GFCrystalcalc):
     """
     Class calculator for the Green function, designed to work with the Crystal class.
 
@@ -69,7 +70,7 @@ class GFCrystalcalc(object):
         # TODO:jumppairs are used in SymmRates function - need to figure out inverse mapping
         self.D, self.eta = 0, 0  # we don't yet know the diffusivity
 
-        def FourierTransformJumps(self, jumpnetwork, N, kpts):
+    def FourierTransformJumps(self, jumpnetwork, N, kpts):
         """
         Generate the Fourier transform coefficients for each jump - almost entirely same as vacancies
 
@@ -149,3 +150,8 @@ class GFCrystalcalc(object):
         symmrates = np.array([pt*np.exp(0.5*betaene[sym0]+0.5*betaene[sym1]-beT)/np.sqrt(pre[sym0]*pre[sym1])
                                 for (sym0,sym1),pt,beT in zip(self.jumppairs,preT,betaeneT)])
         return symmrates
+
+    def SetRates(self, pre, betaene, preT, betaeneT, pmaxerror=1.e-8):
+        self.symmrate = self.SymmRates(pre, betaene, preT, betaeneT)
+        self.maxrate = self.symmrate.max()
+        self.symmrate /= self.maxrate #make all rates relative to maxrate
