@@ -88,7 +88,7 @@ class GFcalc_dumbbells(GFCrystalcalc):
         FTjumps = np.zeros((len(jumpnetwork), self.Nkpt, N, N), dtype=complex)
         SEjumps = np.zeros((N, len(jumpnetwork)), dtype=int)
         for J, jumplist in enumerate(jumpnetwork):
-            for (i, j), dx, c1, c2 in jumplist:
+            for (i, j, dx, c1, c2) in jumplist:
                 FTjumps[J, :, i, j] += np.exp(1.j * np.dot(kpts, dx)) #this is an array of exponentials
                 SEjumps[i, J] += 1
                 #How many jumps of each type come out of site j
@@ -114,44 +114,10 @@ class GFcalc_dumbbells(GFCrystalcalc):
         for jumplist in jumpnetwork:
             # coefficients; we use tuples because we'll be successively adding to the coefficients in place
             c = [(n, n, np.zeros((Taylor.powlrange[n], N, N), dtype=complex)) for n in range(Taylor.Lmax + 1)]
-            for (i, j), dx in jumplist:
+            for (i, j, dx,c1,c2) in jumplist:
                 pexp = Taylor.powexp(dx, normalize=False) #make the powerexpansion for the components of dx
                 for n in range(Taylor.Lmax + 1):
                     (c[n][2])[:, i, j] += pre[n] * (Taylor.powercoeff[n] * pexp)[:Taylor.powlrange[n]]
                     #look at the symoblic python notebook for each of these
             Taylorjumps.append(Taylor(c))
         return Taylorjumps
-
-    def BreakdownGroups(self):
-        """
-        Same as that for the case of vacancies.
-        Takes in a crystal, and a chemistry, and constructs the indexing breakdown for each
-        (i,j) pair.
-        :return grouparray: array[NG][3][3] of the NG group operations
-        :return indexpair: array[N][N][NG][2] of the index pair for each group operation
-        """
-        #Soham - no changes required to this
-        grouparray = np.zeros((self.NG, 3, 3))
-        indexpair = np.zeros((self.N, self.N, self.NG, 2), dtype=int)
-        for ng, g in enumerate(self.crys.G):
-            grouparray[ng, :, :] = g.cartrot[:, :]
-            indexmap = g.indexmap[self.chem]
-            for i in range(self.N):
-                for j in range(self.N):
-                    indexpair[i, j, ng, 0], indexpair[i, j, ng, 1] = indexmap[i], indexmap[j]
-        return grouparray, indexpair
-
-    def SymmRates(self, pre, betaene, preT, betaeneT):
-        """
-        Constructs a set of symmetric jump rates for each type of unique jump in the jumplist
-        Functions the same as the case for vacancies
-        """
-        #Note to self - refer to the Gfcalc module notes if you forget
-        symmrates = np.array([pt*np.exp(0.5*betaene[sym0]+0.5*betaene[sym1]-beT)/np.sqrt(pre[sym0]*pre[sym1])
-                                for (sym0,sym1),pt,beT in zip(self.jumppairs,preT,betaeneT)])
-        return symmrates
-
-    def SetRates(self, pre, betaene, preT, betaeneT, pmaxerror=1.e-8):
-        self.symmrate = self.SymmRates(pre, betaene, preT, betaeneT)
-        self.maxrate = self.symmrate.max()
-        self.symmrate /= self.maxrate #make all rates relative to maxrate
