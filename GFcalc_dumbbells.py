@@ -121,7 +121,7 @@ class GFCrystalcalc(object):
             Taylorjumps.append(Taylor(c))
         return Taylorjumps
 
-        def BreakdownGroups(self):
+    def BreakdownGroups(self):
         """
         Same as that for the case of vacancies.
         Takes in a crystal, and a chemistry, and constructs the indexing breakdown for each
@@ -139,3 +139,13 @@ class GFCrystalcalc(object):
                 for j in range(self.N):
                     indexpair[i, j, ng, 0], indexpair[i, j, ng, 1] = indexmap[i], indexmap[j]
         return grouparray, indexpair
+
+    def SymmRates(self, pre, betaene, preT, betaeneT):
+        """
+        Constructs a set of symmetric jump rates for each type of unique jump in the jumplist
+        Functions the same as the case for vacancies
+        """
+        #Note to self - refer to the Gfcalc module notes if you forget
+        symmrates = np.array([pt*np.exp(0.5*betaene[sym0]+0.5*betaene[sym1]-beT)/np.sqrt(pre[sym0]*pre[sym1])
+                                for (sym0,sym1),pt,beT in zip(self.jumppairs,preT,betaeneT)])
+        return symmrates
