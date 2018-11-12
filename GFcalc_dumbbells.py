@@ -49,11 +49,7 @@ class GF_dumbbells(GFCrystalcalc):
         self.NG = len(self.crys.G)  # number of group operations
         self.indexmap = container.indexmap
         self.grouparray, self.indexpair = self.BreakdownGroups()
-        # note: currently, we don't store jumpnetwork. If we want to rewrite the class
-        # to allow a new kpoint mesh to be generated "on the fly", we'd need to store
-        # a copy for regeneration
-        # self.jumpnetwork = jumpnetwork
-        # generate a kptmesh: now we try to make the mesh more "uniform" ??
+        #modified BreakdownGroups using new indexmap for dumbbells
         bmagn = np.array([np.sqrt(np.dot(self.crys.reciplatt[:, i], self.crys.reciplatt[:, i]))
                           for i in range(3)])
         bmagn /= np.power(np.product(bmagn), 1 / 3)
@@ -66,6 +62,7 @@ class GF_dumbbells(GFCrystalcalc):
         self.Nkpt = self.kpts.shape[0]
         # generate the Fourier transformation for each jump
         # also includes the multiplicity for the onsite terms (site expansion)
+        # The latter is used to calculate escape rates
         self.FTjumps, self.SEjumps = self.FourierTransformJumps(jumpnetwork, self.N, self.kpts)
         # generate the Taylor expansion coefficients for each jump
         #generate the jumppairs
@@ -93,7 +90,6 @@ class GF_dumbbells(GFCrystalcalc):
         connectivity = 0
         disconnected = {i for i in range(N)}#this is a set.
         while len(disconnected)>0:
-            # take the "first" element out, and find everything it's connected to:
             i = min(disconnected)
             cset = {i}
             disconnected.remove(i)
@@ -107,7 +103,7 @@ class GF_dumbbells(GFCrystalcalc):
                 # check if we've stopped adding new members:
                 if clen == len(cset): break
             connectivity += 1
-            # connectivity.append(cset)  # if we want to keep lists of connectivity sets
+
         return connectivity
 
     def FourierTransformJumps(self, jumpnetwork, N, kpts):
@@ -144,10 +140,9 @@ class GF_dumbbells(GFCrystalcalc):
         :param N: number of states
         :return T3Djumps: list of Taylor3D expansions of the jump network
         """
-        #Soham - any change required? -> see the Fourier equation in my case
         Taylor = T3D
-        Taylor()  # need to do just to initialize the class; if already initialized, won't do anything
-        # Taylor expansion coefficients for exp(1j*x) = (1j)^n/n!
+        Taylor()
+        # Taylor expansion coefficient prefactors for exp(1j*x) : (1j)^n/n!
         pre = np.array([(1j) ** n / factorial(n, True) for n in range(Taylor.Lmax + 1)])
         #The prefactors for the jumps in the Taylor expansion of e^(-iq.dx)
         Taylorjumps = []
