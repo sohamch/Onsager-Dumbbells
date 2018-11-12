@@ -138,26 +138,9 @@ class dbStates(object):
         def inset(ior,set):
             return any(ior[0]==x[0] and matchvec(ior[1],x[1]) for x in set)
 
-        #first make a set of the unique pairs supplied - each taken only once
-        #That way we won't need to do redundant group operations
-        orset = []
-        for ior in self.iorlist:
-            if not inset(ior,orset):
-                orset.append(ior)
-
-        #Now check for valid group transitions within orset.
-        #If the result of a group operation (j,o1) or it's negative (j,-o1) is not there is orset, append it to orset.
-        ior = orset[0]
         newlist=[]
         symlist=[]
-        newlist.append(ior)
-        for g in self.crys.G:
-            R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
-            onew  = np.dot(g.cartrot,ior[1])
-            if not inset((inew,onew),newlist):
-                newlist.append((inew,onew))
-        symlist.append(newlist)
-        for ior in orset[1:]:
+        for ior in self.iorlist:
             if insymlist(ior,symlist):
                 continue
             newlist=[]
@@ -165,6 +148,8 @@ class dbStates(object):
             for g in self.crys.G:
                 R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
                 onew  = np.dot(g.cartrot,ior[1])
+                if any(np.allclose(onew+t[1],0,atol=1.e-8) for t in self.iorlist):
+                    onew = -onew
                 if not inset((inew,onew),newlist):
                     newlist.append((inew,onew))
             symlist.append(newlist)
