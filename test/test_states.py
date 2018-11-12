@@ -28,7 +28,7 @@ class test_statemaking(unittest.TestCase):
 
         #test group operations
         db=dumbbell(1, np.array([1.,1.,0.]), np.array([1,1,0]))
-        Glist = list(self.crys.G)
+        Glist = list(dbstates.crys.G)
         x = np.random.randint(0,len(Glist))
         g = Glist[x] #select random groupop
         newdb_test = db.gop(self.crys,0,g)
@@ -42,7 +42,21 @@ class test_statemaking(unittest.TestCase):
             count=1
         self.assertEqual(count,1)
 
-        #Test jumpnetwork
+        #test indexmapping
+        for stateind,tup in enumerate(dbstates.iorlist):
+            i,o = tup[0],tup[1]
+            R, (ch,inew) = dbstates.crys.g_pos(g,np.array([0,0,0]),(dbstates.chem,i))
+            onew  = np.dot(g.cartrot,o)
+            if any(np.allclose(onew+t[1],0,atol=1.e-8) for t in dbstates.iorlist):
+                onew = -onew
+            count=0
+            for j,t in enumerate(dbstates.iorlist):
+                if(t[0]==inew and np.allclose(t[1],onew)):
+                    foundindex=j
+                    count+=1
+            self.assertEqual(count,1)
+            self.assertEqual(foundindex,dbstates.indexmap[x][stateind])
+    #Test jumpnetwork
     def test_purejumps(self):
         famp0 = [np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126]
         family = [famp0]
@@ -91,6 +105,23 @@ class test_statemaking(unittest.TestCase):
         for i in mstates1.symorlist:
             sm += len(i)
         self.assertEqual(sm,len(mstates1.iorlist))
+
+        #check indexmapping
+        Glist = list(mstates1.crys.G)
+        x = np.random.randint(0,len(Glist))
+        g = Glist[x] #select random groupop
+        i,o = mstates1.iorlist[0]
+        for stateind,tup in enumerate(mstates1.iorlist):
+            i,o = tup[0],tup[1]
+            R, (ch,inew) = mstates1.crys.g_pos(g,np.array([0,0,0]),(mstates1.chem,i))
+            onew  = np.dot(g.cartrot,o)
+            count=0
+            for j,t in enumerate(mstates1.iorlist):
+                if(t[0]==inew and np.allclose(t[1],onew)):
+                    foundindex=j
+                    count+=1
+            self.assertEqual(count,1)
+            self.assertEqual(foundindex,mstates1.indexmap[x][stateind])
 
     def test_mixedjumps(self):
         famp0 = [np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126]

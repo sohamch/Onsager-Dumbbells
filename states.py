@@ -35,7 +35,8 @@ class dbStates(object):
         self.symorlist = self.gensymset()
         #Store both iorlist and symorlist so that we can compare them later if needed.
         self.threshold = crys.threshold
-        self.invmap = self.invmap(self.iorlist,self.symorlist).copy()
+        self.invmap = self.invmap(self.iorlist,self.symorlist)
+        self.indexmap = self.indexmapping()
 
     @staticmethod
     def invmap(iorlist,symorlist):
@@ -154,6 +155,20 @@ class dbStates(object):
                     newlist.append((inew,onew))
             symlist.append(newlist)
         return symlist
+
+    def indexmapping(self):
+        ng = len(self.crys.G)
+        indexmap = np.zeros((ng,len(self.iorlist)))
+        for i,g in enumerate(self.crys.G):
+            for st,ior in enumerate(self.iorlist):
+                R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
+                onew  = np.dot(g.cartrot,ior[1])
+                if any(np.allclose(onew+t[1],0,atol=1.e-8) for t in self.iorlist):
+                    onew = -onew
+                for j,t in enumerate(self.iorlist):
+                    if(t[0]==inew and np.allclose(t[1],onew)):
+                        indexmap[i][st]=j
+        return indexmap
 
     def jumpnetwork(self,cutoff,solv_solv_cut,closestdistance):
         """
@@ -296,6 +311,8 @@ class mStates(object):
         self.symorlist = self.gensymset()
         #Store both iorlist and symorlist so that we can compare them later if needed.
         self.threshold = crys.threshold
+        self.invmap = self.invmap(self.iorlist,self.symorlist)
+        self.indexmap = self.indexmapping()
 
     #Is this function really necessary for dumbbells? This is not a static method so it does occupy space every time mdb is instatiated
 
@@ -397,6 +414,31 @@ class mStates(object):
                     newlist.append((inew,onew))
             symlist.append(newlist)
         return symlist
+
+    @staticmethod
+    def invmap(iorlist,symorlist):
+        for l in symorlist:
+            for tup in l:
+                if not any(t[0]==tup[0] and np.allclose(t[1],tup[1]) for t in iorlist):
+                    raise TypeError("iorlist and symorlist have different states")
+        invmap = np.zeros(len(iorlist))
+        for ind,l in enumerate(symorlist):
+            for i,tup in enumerate(iorlist):
+                if any(tup[0]==t[0] and np.allclose(tup[1],t[1]) for t in l):
+                    invmap[i]=ind
+        return invmap
+
+    def indexmapping(self):
+        ng = len(self.crys.G)
+        indexmap = np.zeros((ng,len(self.iorlist)))
+        for i,g in enumerate(self.crys.G):
+            for st,ior in enumerate(self.iorlist):
+                R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
+                onew  = np.dot(g.cartrot,ior[1])
+                for j,t in enumerate(self.iorlist):
+                    if(t[0]==inew and np.allclose(t[1],onew)):
+                        indexmap[i][st]=j
+        return indexmap
 
     def jumpnetwork(self,cutoff,solt_solv_cut,closestdistance):
         """
