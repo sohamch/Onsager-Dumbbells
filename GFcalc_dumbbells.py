@@ -1,12 +1,18 @@
 import numpy as np
 from onsager import PowerExpansion as PE
 from onsager.GFcalc import GFCrystalcalc
+from onsager import GFcalc
 import itertools
-from copy import deepcopy
-from numpy import linalg as LA
-from scipy.special import hyp1f1, gamma, expi #, gammainc
-
-class GFcalc_dumbbells(GFCrystalcalc):
+from scipy.special import hyp1f1, gamma, expi, factorial
+# from copy import deepcopy
+# from numpy import linalg as LA
+# from scipy.special import hyp1f1, gamma, expi #, gammainc
+"""
+GFcalc module for dumbbell interstitials
+Inherits most aspects from the original GFcalc module written by Prof. Trinkle.
+"""
+T3D = PE.Taylor3D
+class GF_dumbbells(GFCrystalcalc):
     """
     Class calculator for the Green function, designed to work with the Crystal class.
 
@@ -18,11 +24,10 @@ class GFcalc_dumbbells(GFCrystalcalc):
         Initializes our calculator with the appropriate topology / connectivity. Doesn't
         require, at this point, the site probabilities or transition rates to be known.
 
-        :param crys: Crystal object
-        :param chem: index identifying the diffusing species
-        :param iorlist: flat list of (basis_index,orientation) tuples -> analog of basis[chem] for dumbbells
-        :param symorlist: (basis_index,orientation) pairs grouped into symmetrically unique lists
-        :param jumpnetwork: list of unique transitions as lists of ((i,j), dx, c1, c2)
+        :param container: Object containing all dumbbell state information.
+        :param iorlist: flat list of (basis_index,orientation) tuples -> analog of basis[chem]
+        :param symorlist: (basis_index,orientation) pairs grouped into symmetrically unique lists-> analog of sitelist
+        :param jumpnetwork: list of unique transitions as lists of (i,j, dx, c1, c2)
                             "Note here i and j are indices into iorlist"
                             "Needs to be ensured that the jumpnetwork belongs to the container"
         :param Nmax: maximum range as estimator for kpt mesh generation
@@ -34,14 +39,15 @@ class GFcalc_dumbbells(GFCrystalcalc):
             raise TypeError("Enter the jumpnetwork of the form (i,j,dx,c1,c2)")
         self.crys = container.crys
         self.chem = container.chem
-        self.iorlist = container.iorlist
+        self.iorlist = container.iorlist.copy()
         self.symorlist = container.symorlist.copy()
-        self.N = len(iorlist)#N - no. of dumbbell states
+        self.N = len(self.iorlist)#N - no. of dumbbell states
         self.Ndiff = self.networkcount(jumpnetwork, self.N)
         #Create invmap - which symmety-grouped (i,or) pair list in symorlist
         # does a given (i,or) pair in iorlist belong to
-        self.invmap = container.invmap #internalized in the container definition itself
+        self.invmap = container.invmap.copy() #internalized in the container definition itself
         self.NG = len(self.crys.G)  # number of group operations
+        self.indexmap = container.indexmap
         self.grouparray, self.indexpair = self.BreakdownGroups()
         # note: currently, we don't store jumpnetwork. If we want to rewrite the class
         # to allow a new kpoint mesh to be generated "on the fly", we'd need to store
@@ -55,7 +61,7 @@ class GFcalc_dumbbells(GFCrystalcalc):
         # Don't need to change the k-mesh generation.
         self.kptgrid = np.array([2 * np.int(np.ceil(2 * Nmax * b)) for b in bmagn], dtype=int) \
             if kptwt is None else np.zeros(3, dtype=int)
-        self.kpts, self.wts = crys.reducekptmesh(crys.fullkptmesh(self.kptgrid)) \
+        self.kpts, self.wts = self.crys.reducekptmesh(self.crys.fullkptmesh(self.kptgrid)) \
             if kptwt is None else deepcopy(kptwt)
         self.Nkpt = self.kpts.shape[0]
         # generate the Fourier transformation for each jump
@@ -67,14 +73,48 @@ class GFcalc_dumbbells(GFCrystalcalc):
                                for jumplist in jumpnetwork)
         self.Taylorjumps = self.TaylorExpandJumps(jumpnetwork, self.N)
 
-        # TODO:jumppairs are used in SymmRates function - need to figure out inverse mapping
-        self.D, self.eta = 0, 0  # we don't yet know the diffusivity
+        self.D, self.eta = 0, 0
+
+    @staticmethod
+    def networkcount(jumpnetwork, N):
+
+        """Follows exactly the one for vacancies.
+        Note - doesn't matter what c1, c2 are. If there is a jump (i, j, dx, c1, c2),
+        then this means the two dumbbell states are connected.
+        Return a count of how many separate connected networks there are
+        that is, how many states are connected by jumps.
+        say we have three states {0,1,2} in the iorlist.
+        If 0 is connected to 1 and 1 to 2, then the connectivity is 1, because 0 and 2 are connected via 1
+        even if not directly - see jupyter notebook in Practice Files folder."""
+        jngraph = np.zeros((N, N), dtype=bool)
+        for jlist in jumpnetwork:
+            for (i, j, dx, c1, c2) in jlist:
+                jngraph[i,j] = True
+        connectivity = 0
+        disconnected = {i for i in range(N)}#this is a set.
+        while len(disconnected)>0:
+            # take the "first" element out, and find everything it's connected to:
+            i = min(disconnected)
+            cset = {i}
+            disconnected.remove(i)
+            while True:
+                clen = len(cset)
+                for n in cset.copy():
+                    for m in disconnected.copy():
+                        if jngraph[n,m]:
+                            cset.add(m)
+                            disconnected.remove(m)
+                # check if we've stopped adding new members:
+                if clen == len(cset): break
+            connectivity += 1
+            # connectivity.append(cset)  # if we want to keep lists of connectivity sets
+        return connectivity
 
     def FourierTransformJumps(self, jumpnetwork, N, kpts):
         """
         Generate the Fourier transform coefficients for each jump - almost entirely same as vacancies
 
-        :param jumpnetwork: list of unique transitions, as lists of ((i,j), dx, c1, c2)
+        :param jumpnetwork: list of unique transitions, as lists of (i, j, dx, c1, c2)
                             i,j correspond to pair indices in iorlist
         :param N: number of sites
         :param kpts: array[Nkpt][3], in Cartesian (same coord. as dx) - the kpoints that are considered
@@ -99,9 +139,9 @@ class GFcalc_dumbbells(GFCrystalcalc):
         """
         Generate the Taylor expansion coefficients for each jump
 
-        :param jumpnetwork: list of unique transitions, as lists of ((i,j), dx, c1, c2)
+        :param jumpnetwork: list of unique transitions, as lists of (i, j, dx, c1, c2)
                             i,j correspond to pair indices in iorlist
-        :param N: number of sites
+        :param N: number of states
         :return T3Djumps: list of Taylor3D expansions of the jump network
         """
         #Soham - any change required? -> see the Fourier equation in my case
@@ -121,3 +161,22 @@ class GFcalc_dumbbells(GFCrystalcalc):
                     #look at the symoblic python notebook for each of these
             Taylorjumps.append(Taylor(c))
         return Taylorjumps
+
+    def BreakdownGroups(self):
+        """
+        indexing breakdown for each (i,j) pair.
+        :return grouparray: array[NG][3][3] of the NG group operations
+                            Only the cartesian rotation matrix
+        :return indexpair: array[N][N][NG][2] of the index pair for each group operation
+        """
+        #Soham - change required in index mapping
+        grouparray = np.zeros((self.NG, self.crys.dim, self.crys.dim))
+        indexpair = np.zeros((self.N, self.N, self.NG, 2), dtype=int)
+        for ng, g in enumerate(self.crys.G):
+            grouparray[ng, :, :] = g.cartrot[:, :]
+            #first construct the indexmap of the group operations for dumbbells
+            indexmap = self.indexmap[ng]
+            for i in range(self.N):
+                for j in range(self.N):
+                    indexpair[i, j, ng, 0], indexpair[i, j, ng, 1] = indexmap[i], indexmap[j]
+        return grouparray, indexpair
