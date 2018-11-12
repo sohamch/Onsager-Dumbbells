@@ -327,32 +327,38 @@ class GFCrystalcalc(object):
         self.omega_qij[:] += self.escape  # adds it to every point
         #lines 325-327 implement equation 37 in the 2017 paper, wihtout the eigenvector terms.
         #NxN self.escape matrix  is added to each NxN matrix in omega_qij.
-        
+
         self.omega_Taylor = sum(symmrate * expansion
                                 for symmrate, expansion in zip(self.symmrate, self.Taylorjumps))
+        #here, "expansion" is a Taylor3D object, symmrate is a number. see __rmul__ in Taylor3D.
+        #Multiplies all the matrix elements in the Cs corresponding to each jump with the rate.
+        #Then does an element-wise addition of the matrix elements in c[2]s for each jumptype.
+        #The final result is the Taylor expansion terms of omega_q stored in matrix form.
         self.omega_Taylor += self.escape
-        #write the exponential in equation (37) in a Taylor series and then try to understand
-        #what this is doing abstractly - Remember, self.Taylorjumps[j] contains all the information
-        #regarding the terms that arise from the Taylor series expansions of all the jumps that
-        #belong to a given symmetry-unique jump list, which is jumpnetwork[j].
+        #Add in the rates of the diagonal rates.
         Taylor = T3D if self.crys.dim == 3 else T2D
 
         # 1. Diagonalize gamma point value; use to rotate to diffusive / relaxive, and reduce
-        self.r, self.vr = self.DiagGamma()
+        self.r, self.vr = self.DiagGamma()#eigenvalues and vectors at q=0.
         if not np.allclose(self.r[:self.Ndiff], 0):
+            #Why should there be as many zeros as there are disconnected pieces of the jumpnetwork?
+            #Work this out
             raise ArithmeticError("Did not find {} equilibrium solution to rates?".format(self.Ndiff))
         self.omega_Taylor_rotate = (self.omega_Taylor.ldot(self.vr.T)).rdot(self.vr)
         oT_dd, oT_dr, oT_rd, oT_rr, oT_D, etav = self.BlockRotateOmegaTaylor(self.omega_Taylor_rotate)
+        #dd(q),dr(q),rd(q),rr(q),D(p or q?)
         # 2. Calculate D and eta
         self.D = self.Diffusivity(oT_D)
+        #Recall before looking into the function that oT_D = q.D.q + O(q^4)
         self.eta = self.biascorrection(etav)
         # 3. Spatially rotate the Taylor expansion
         self.d, self.e = LA.eigh(self.D / self.maxrate)
+        #eigenvalues and vectors of the diffusivity matrix, with which we must scale and change basis
         # had been 1e-11; changed to 1e-7 to reflect likely integration accuracy of k-point grids
         self.pmax = np.sqrt(min([np.dot(G, np.dot(G, self.D / self.maxrate)) for G in self.crys.BZG]) / -np.log(pmaxerror))
-        self.qptrans = self.e.copy()
-        self.pqtrans = self.e.T.copy()
-        self.uxtrans = self.e.T.copy()
+        self.qptrans = self.e.copy() #coefficients of q in terms of p (eq 54a)
+        self.pqtrans = self.e.T.copy() #coefficients of p in terms of q (eq 53a)
+        self.uxtrans = self.e.T.copy() #coefficients of u in terms of x (eq 53b)
         for i in range(self.crys.dim):
             self.qptrans[:, i] /= np.sqrt(self.d[i])
             self.pqtrans[i, :] *= np.sqrt(self.d[i])
@@ -408,7 +414,7 @@ class GFCrystalcalc(object):
 
         :param i: site index
         :param j: site index
-        :param dx: vector pointing from i to j (can include lattice contributions)
+        :param dx: vector pointing from i to j (can include lattice contributions?)
         :return G: Green function value
         """
         if self.D is 0: raise ValueError("Need to SetRates first")
@@ -440,12 +446,17 @@ class GFCrystalcalc(object):
             if n == 0:
                 if l != 0: raise ValueError("n=0 term has angular dependence? l != 0")
                 gammacoeff = -coeff[0]
+                #Work through the math by referring to the diagram of coeff in the GFcalc module notes.
+                #Note that in omega_Taylor, for a given (i,j), the elements are the sums -> sum over R(omega(0i,Rj)*Taylor terms
+                #This is nothing but omega_q at q=0, i.e, the Gamma point.
                 break
         if gammacoeff is None:
             # missing onsite term--indicates that it's been reduced to 0
             # should ONLY happen if we have a Bravais lattice, e.g.
             gammacoeff = np.zeros((self.N, self.N), dtype=complex)
         r, vr = LA.eigh(gammacoeff)
+        #eigh assumes that the matrix is symmetric (works on the LT part, assuming UT is given by symmetry)
+        #It also returns the eigenvalues in sorted order.
         return -r, vr
 
     def Diffusivity(self, omega_Taylor_D=None):
