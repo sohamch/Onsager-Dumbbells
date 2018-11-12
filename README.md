@@ -1,1 +1,1 @@
-# Green's function development.
+# Green's function calculation for dumbbells.
