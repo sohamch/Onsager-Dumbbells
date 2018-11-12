@@ -44,7 +44,7 @@ class dbStates(object):
             for tup in l:
                 if not any(t[0]==tup[0] and np.allclose(t[1],tup[1]) for t in iorlist):
                     raise TypeError("iorlist and symorlist have different states")
-        invmap = np.zeros(len(iorlist))
+        invmap = np.zeros(len(iorlist),dtype=int)
         for ind,l in enumerate(symorlist):
             for i,tup in enumerate(iorlist):
                 if any(tup[0]==t[0] and np.allclose(tup[1],t[1]) for t in l):
@@ -158,7 +158,7 @@ class dbStates(object):
 
     def indexmapping(self):
         ng = len(self.crys.G)
-        indexmap = np.zeros((ng,len(self.iorlist)))
+        indexmap = np.zeros((ng,len(self.iorlist)),dtype=int)
         for i,g in enumerate(self.crys.G):
             for st,ior in enumerate(self.iorlist):
                 R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
@@ -421,7 +421,7 @@ class mStates(object):
             for tup in l:
                 if not any(t[0]==tup[0] and np.allclose(t[1],tup[1]) for t in iorlist):
                     raise TypeError("iorlist and symorlist have different states")
-        invmap = np.zeros(len(iorlist))
+        invmap = np.zeros(len(iorlist),dtype=int)
         for ind,l in enumerate(symorlist):
             for i,tup in enumerate(iorlist):
                 if any(tup[0]==t[0] and np.allclose(tup[1],t[1]) for t in l):
@@ -430,7 +430,7 @@ class mStates(object):
 
     def indexmapping(self):
         ng = len(self.crys.G)
-        indexmap = np.zeros((ng,len(self.iorlist)))
+        indexmap = np.zeros((ng,len(self.iorlist)),dtype=int)
         for i,g in enumerate(self.crys.G):
             for st,ior in enumerate(self.iorlist):
                 R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
