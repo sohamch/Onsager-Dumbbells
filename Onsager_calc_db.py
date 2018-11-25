@@ -4,8 +4,9 @@ from representations import *
 import GFcalc
 from functools import reduce
 import scipy.linalg as la
+from onsager.OnsagerCalc import Interstitial
 
-class BareDumbbell(object):
+class BareDumbbell(Interstitial):
     """
     class to compute Green's function for a bare interstitial dumbbell
     diffusing through as crystal.
@@ -17,6 +18,7 @@ class BareDumbbell(object):
         """
         self.container = container
         self.jumpnetwork = jumpnetwork
+        self.N = sum(1 for w in container.symorlist for i in w)
         self.VB,self.VV = self.FullVectorBasis()
         self.NV = len(self.VB)
 
@@ -74,3 +76,56 @@ class BareDumbbell(object):
                                 lis.append(g)
             glist.append(lis)
         return glist
+
+    def stateprob(self, pre, betaene):
+        """Returns our (i,or) probabilities, normalized, as a vector.
+           Straightforward extension from vacancy case.
+        """
+        # be careful to make sure that we don't under-/over-flow on beta*ene
+        minbetaene = min(betaene)
+        rho = np.array([pre[w] * np.exp(minbetaene - betaene[w]) for w in self.container.invmap])
+        return rho / sum(rho)
+
+    def ratelist(self, pre, betaene, preT, betaeneT):
+        """Returns a list of lists of rates, matched to jumpnetwork"""
+        stateene = np.array([betaene[w] for w in self.container.invmap])
+        statepre = np.array([pre[w] for w in self.container.invmap])
+        return [[pT * np.exp(stateene[i] - beT) / statepre[i]
+                 for i, j, dx, c1, c2 in t]
+                for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
+
+    def symmratelist(self, pre, betaene, preT, betaeneT):
+        """Returns a list of lists of symmetrized rates, matched to jumpnetwork"""
+        stateene = np.array([betaene[w] for w in self.container.invmap])
+        statepre = np.array([pre[w] for w in self.container.invmap])
+        return [[pT * np.exp(0.5 * stateene[i] + 0.5 * stateene[j] - beT) / np.sqrt(statepre[i] * statepre[j])
+                 for i, j, dx, c1, c2 in t]
+                for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
+
+    def diffusivity(self, pre, betaene, preT, betaeneT):
+        """
+        Computes bare dumbbell diffusivity - works for mixed as well pure.
+        """
+        if len(pre) != len(self.container.symorlist):
+            raise IndexError("length of prefactor {} doesn't match symorlist".format(pre))
+        if len(betaene) != len(self.container.symorlist):
+            raise IndexError("length of energies {} doesn't match symorlist".format(betaene))
+        if len(preT) != len(self.jumpnetwork):
+            raise IndexError("length of prefactor {} doesn't match jump network".format(preT))
+        if len(betaeneT) != len(self.jumpnetwork):
+            raise IndexError("length of energies {} doesn't match jump network".format(betaeneT))
+
+        rho = self.siteprob(pre, betaene)
+        sqrtrho = np.sqrt(rho)
+        ratelist = self.ratelist(pre, betaene, preT, betaeneT)
+        symmratelist = self.symmratelist(pre, betaene, preT, betaeneT)
+        omega_ij = np.zeros((self.N, self.N))
+        domega_ij = np.zeros((self.N, self.N))
+        bias_i = np.zeros((self.N, 3))
+        dbias_i = np.zeros((self.N, 3))
+        D0 = np.zeros((3, 3))
+        Dcorrection = np.zeros((3, 3))
+        Db = np.zeros((3, 3))
+        stateene = np.array([betaene[w] for w in self.container.invmap])
+        #Boltmann averaged energies of all states
+        Eave = np.dot(rho, siteene)
