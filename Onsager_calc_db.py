@@ -65,4 +65,12 @@ class BareDumbbell(object):
         glist=[]
         for jlist in jumpnetwork:
             tup=jlist[0]
-            for gind,g in self.container.crys.G:
+            lis=[]
+            for j in jlist:
+                for gind,g in self.container.crys.G:
+                    if self.container.indexmap[gind][tup[0]]==j[0]:
+                        if self.container.indexmap[gind][tup[1]]==j[1]:
+                            if np.allclose(tup[2],self.container.crys.g_direc(g,j[2])):
+                                lis.append(g)
+            glist.append(lis)
+        return glist
