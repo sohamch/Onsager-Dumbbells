@@ -11,7 +11,7 @@ class BareDumbbell(Interstitial):
     class to compute Green's function for a bare interstitial dumbbell
     diffusing through as crystal.
     """
-    def __init__(self,container,jumpnetwork):
+    def __init__(self,container,jumpnetwork, mixed=False):
         """
         param: container - container object for dumbbell states
         param: jumpnetwork - jumpnetwork (either omega_0 or omega_2)
@@ -19,7 +19,7 @@ class BareDumbbell(Interstitial):
         self.container = container
         self.jumpnetwork = jumpnetwork
         self.N = sum(1 for w in container.symorlist for i in w)
-        self.VB,self.VV = self.FullVectorBasis()
+        self.VB,self.VV = self.FullVectorBasis(mixed)
         self.NV = len(self.VB)
 
         self.omega_invertible = True
@@ -35,22 +35,51 @@ class BareDumbbell(Interstitial):
         self.sitegroupops = self.generateStateGroupOps()
         self.jumpgroupops = self.generateJumpGroupOps()
 
+
+    def FullVectorBasis(self,mixed):
+        crys = self.container.crys
+        chem = self.container.chem
+        z = np.zeros(3,dtype=int)
+
+        def makeglist(tup):
+            glist = []
+            for g in self.container.crys.G:
+                r1, (ch,i1) = crys.g_pos(g,z,(chem,tup[0]))
+                onew = np.dot(g.cartrot,tup[1])
+                if mixed==False:
+                    if np.allclose(onew+tup[1],z):
+                        onew=-onew
+                if tup[0]==i1 and np.allclose(r1,z) and np.allclose(onew,tup[1]): #the state remains unchanged
+                    glist.append(g)
+            return glist
+        lis=[]
+        for statelistind,statelist in enumerate(self.container.symorlist):
+            N = len(self.container.iorlist)
+            glist=makeglist(statelist[0])
+            vbasis=reduce(starset.crys.CombineVectorBasis,[starset.crys.VectorBasis(*g.eigen()) for g in glist])
+            for v in crys.vectlist(vbasis):
+                v /= np.sqrt(len(statelist))
+                vb = np.zeros((N,3))
+                for gind,g in enumerate(crys.G):
+                    vb[self.container.indexmap[gind][self.container.indsymlist[statelistind][0]]] = self.g_direc(g,v)
+                lis.append(vb)
+            VV = np.zeros((3, 3, len(lis), len(lis)))
+            for i, vb_i in enumerate(lis):
+                for j, vb_j in enumerate(lis):
+                    VV[:, :, i, j] = np.dot(vb_i.T, vb_j)
+
+        return np.array(lis),VV
+
+
     def generateStateGroupOps(self):
         """
         Returns a list of lists of groupOps that map the first element of each list in symorlist
         to the corresponding elements in the same list.
         """
         glist=[]
-        for l in self.container.symorlist:
-            stind = None
+        for lind,l in enumerate(self.container.symorlist):
+            stind = self.container.indsymlist[lind][0]
             tup0 = l[0]
-            # TODO: The part below needs to be done with dicts. How to make np array hashable?
-            for ind,tup in enumerate(self.container.iorlist):
-                if tup[0]==tup0[0] and np.allclose(tup[1],tup0[1]):
-                    stind=ind
-                    break
-            if stind==None:
-                raise RuntimeError("state not found in iorlist")
             lis=[]
             for ind,tup in enumerate(l):
                 for gind,g in enumerate(self.container.crys.G):
@@ -129,3 +158,16 @@ class BareDumbbell(Interstitial):
         stateene = np.array([betaene[w] for w in self.container.invmap])
         #Boltmann averaged energies of all states
         Eave = np.dot(rho, siteene)
+
+        for jlist, rates, symmrates, beT in zip(self.jumpnetwork,ratelist,symmratelist,betaeneT):
+            for (i,j,dx,c1,c2),rate,symmrate in zip(jlist,rates,symmrates):
+                omega_ij[i,j] += symmrate
+                omega_ij[i,i] -= rate
+                domega_ij[i,j] += symmrate * (bET - 0.5 * (stateene[i] + stateene[j]))
+                bias_i[i] += sqrtrho[i] * rate * dx
+                dbias_i[i] += sqrtrho[i] * rate * dx * (bET - 0.5 * (siteene[i] + Eave))
+                #for domega and dbias - read up section 2.2 in the paper.
+                #These are to evaluate the derivative of D wrt to beta. Read later.
+                D0 += 0.5 * np.outer(dx, dx) * rho[i] * rate
+                Db += 0.5 * np.outer(dx, dx) * rho[i] * rate * (bET - Eave)
+                #Db - derivative with respect to beta
