@@ -37,6 +37,7 @@ class dbStates(object):
         self.threshold = crys.threshold
         self.invmap = self.invmap(self.iorlist,self.symorlist)
         self.indexmap = self.indexmapping()
+        self.indsymlist = self.indexedsymlist()
 
     @staticmethod
     def invmap(iorlist,symorlist):
@@ -50,6 +51,21 @@ class dbStates(object):
                 if any(tup[0]==t[0] and np.allclose(tup[1],t[1]) for t in l):
                     invmap[i]=ind
         return invmap
+
+    def indexedsymlist(self):
+        """
+        return a version of symorlist indexed to iorlist
+        """
+        stind = []
+        for l in self.symorlist:
+            lis=[]
+            for tup1 in l:
+                for ind,tup in enumerate(self.iorlist):
+                    if tup[0]==tup1[0] and np.allclose(tup[1],tup1[1]):
+                        lis.append(ind)
+                        break
+            stind.append(lis)
+        return stind
 
     def gdumb(self,g,db):
         """
@@ -334,6 +350,20 @@ class mStates(object):
         #Place a check for test purposes
         return any(i==x[0] and np.allclose(o,x[1],atol=self.threshold) for x in self.iorlist)
 
+    def indexedsymlist(self):
+        """
+        return a version of symorlist indexed to iorlist
+        """
+        stind = []
+        for l in self.symorlist:
+            lis=[]
+            for tup1 in l:
+                for ind,tup in enumerate(self.iorlist):
+                    if tup[0]==tup1[0] and np.allclose(tup[1],tup1[1]):
+                        lis.append(ind)
+                        break
+            stind.append(lis)
+        return stind
 
     def genmixedsets(self):
         crys,chem,family = self.crys,self.chem,self.family

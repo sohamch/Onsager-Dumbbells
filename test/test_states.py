@@ -56,6 +56,15 @@ class test_statemaking(unittest.TestCase):
                     count+=1
             self.assertEqual(count,1)
             self.assertEqual(foundindex,dbstates.indexmap[x][stateind])
+
+        #test_indexedsymlist
+        i1=np.random.randint(0,len(dbstates.indsymlist))
+        l = dbstates.indsymlist[i1]
+        i2=np.random.randint(0,len(l))
+        tupFromSymor = dbstates.symorlist[i1][i2]
+        tupFromIorlist = dbstates.iorlist[dbstates.indsymlist[i1][i2]]
+        self.assertTrue(tupFromSymor[0]==tupFromIorlist[0] and np.allclose(tupFromSymor[1],tupFromIorlist[1]))
+
     #Test jumpnetwork
     def test_purejumps(self):
         famp0 = [np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126]
@@ -122,6 +131,14 @@ class test_statemaking(unittest.TestCase):
                     count+=1
             self.assertEqual(count,1)
             self.assertEqual(foundindex,mstates1.indexmap[x][stateind])
+
+        #Check indexing of symlist
+        i1=np.random.randint(0,len(dbstates.indsymlist))
+        l = dbstates.indsymlist[i1]
+        i2=np.random.randint(0,len(l))
+        tupFromSymor = dbstates.symorlist[i1][i2]
+        tupFromIorlist = dbstates.iorlist[dbstates.indsymlist[i1][i2]]
+        self.assertTrue(tupFromSymor[0]==tupFromIorlist[0] and np.allclose(tupFromSymor[1],tupFromIorlist[1]))
 
     def test_mixedjumps(self):
         famp0 = [np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126]
