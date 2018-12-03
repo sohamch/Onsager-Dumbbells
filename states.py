@@ -334,10 +334,8 @@ class mStates(object):
 
     def checkinlist(self,mdb):
         """
-        Takes as an argument a dumbbell and return the result of a group operation on that dumbbell
-        param: g - group operation
-               mdb - pair object to operate upon
-        returns - mdb_new -> the result of the group operation
+        Takes as an argument a dumbbell and returns if it is the iorlist
+               
         """
         #Type check to see if a mixed dumbbell is passed
         if not isinstance(mdb,SdPair):
@@ -529,7 +527,7 @@ class mStates(object):
                     if np.dot(dx,dx)>cutoff**2:
                         continue
                     j = jump(p1,p2,1,1)#since only solute moves, both indicators are +1
-                    if inset(j,hashset):
+                    if j in hashset:
                         continue
                     if not (collision_self(crys,chem,j,solt_solv_cut,solt_solv_cut) or collision_others(crys,chem,j,closestdistance)):
                         jlist=[]
@@ -538,7 +536,7 @@ class mStates(object):
                             jnew = j.gop(crys,chem,g)
                             if not self.checkinlist(jnew.state1) or not self.checkinlist(jnew.state2):
                                 raise RuntimeError("Unexpected mixed dumbbell with (i,o) not in given set")
-                            if not inset(jnew,hashset):
+                            if not jnew in hashset:
                                 #create the negative jump
                                 p11 = jnew.state1
                                 p21 = jnew.state2
@@ -550,8 +548,8 @@ class mStates(object):
                                 jlist.append(jnewneg)
                                 jindlist.append(indexed(jnew))
                                 jindlist.append(indexed(jnewneg))
-                                hashset.add(hash(jnew))
-                                hashset.add(hash(jnewneg))
+                                hashset.add(jnew)
+                                hashset.add(jnewneg)
                         jumplist.append(jlist)
                         jumpindices.append(jindlist)
 
