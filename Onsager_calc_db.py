@@ -42,15 +42,19 @@ class BareDumbbell(Interstitial):
         z = np.zeros(3,dtype=int)
 
         def makeglist(tup):
-            glist = []
+            """
+            Returns a set of gops that leave a state unchanged
+            At the least there will be the identity
+            """
+            glist = set([])
             for g in self.container.crys.G:
                 r1, (ch,i1) = crys.g_pos(g,z,(chem,tup[0]))
                 onew = np.dot(g.cartrot,tup[1])
-                if mixed==False:
+                if not mixed:
                     if np.allclose(onew+tup[1],z):
                         onew=-onew
                 if tup[0]==i1 and np.allclose(r1,z) and np.allclose(onew,tup[1]): #the state remains unchanged
-                    glist.append(g)
+                    glist.add(g - crys.g_pos(g, z, (chem, tup[0]))[0])
             return glist
         lis=[]
         for statelistind,statelist in enumerate(self.container.symorlist):
@@ -62,6 +66,8 @@ class BareDumbbell(Interstitial):
                 vb = np.zeros((N,3))
                 for gind,g in enumerate(crys.G):
                     vb[self.container.indexmap[gind][self.container.indsymlist[statelistind][0]]] = self.g_direc(g,v)
+                    #What if this changes the vector basis for the state itself?
+                    #There are several groupos that leave a state unchanged.
                 lis.append(vb)
             VV = np.zeros((3, 3, len(lis), len(lis)))
             for i, vb_i in enumerate(lis):
@@ -69,7 +75,6 @@ class BareDumbbell(Interstitial):
                     VV[:, :, i, j] = np.dot(vb_i.T, vb_j)
 
         return np.array(lis),VV
-
 
     def generateStateGroupOps(self):
         """
@@ -171,3 +176,24 @@ class BareDumbbell(Interstitial):
                 D0 += 0.5 * np.outer(dx, dx) * rho[i] * rate
                 Db += 0.5 * np.outer(dx, dx) * rho[i] * rate * (bET - Eave)
                 #Db - derivative with respect to beta
+        gamma_i = np.zeros((self.N, 3))
+        for i in range(self.N):
+            gamma_i[i] = self.bias_solver(omega_ij, bias_i)
+        Dcorr = np.zeros((3,3))
+        for i in range(self.N):
+            Dcorr += np.outer(bias_i[i],gamma_i[i])
+
+        return D0 + Dcorr
+
+        # if self.NV > 0:
+        #     omega_v = np.zeros((self.NV, self.NV))
+        #     bias_v = np.zeros(self.NV)
+        #     for a, va in enumerate(self.VB):
+        #         bias_v[a] = np.trace(np.dot(bias_i.T, va))
+        #         # dbias_v[a] = np.trace(np.dot(dbias_i.T, va))
+        #         for b, vb in enumerate(self.VectorBasis):
+        #             omega_v[a, b] = np.trace(np.dot(va.T, np.dot(omega_ij, vb)))
+        #         #    domega_v[a, b] = np.trace(np.dot(va.T, np.dot(domega_ij, vb)))
+        #     gamma_v = self.bias_solver(omega_v, bias_v)
+        #     # dgamma_v = np.dot(domega_v, gamma_v)
+        #     Dcorrection = np.dot(np.dot(self.VV, bias_v), gamma_v)
