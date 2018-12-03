@@ -4,13 +4,19 @@ from representations import *
 from collision import *
 
 #Helper functions for jumpnetworks
-def inset(j,s):
-    return j in s
+# def inset(j,s):
+#     return j in s
 
 # def inlist(j,l):
 #     return any(hash(j)==hash(j1) for j1 in l)
 
 def disp(crys,chem,obj1,obj2):
+    """
+    Computes the transport vector for the initial and final states of a jump
+    param:
+        crys,chem - crystal and sublattice under consideration.
+        obj1,obj2 - the initial and final state objects of a jump
+    """
     (i1,i2) = (obj1.i,obj2.i) if isinstance(obj1,dumbbell) else (obj1.db.i,obj2.db.i)
     (R1,R2) = (obj1.R,obj2.R) if isinstance(obj1,dumbbell) else (obj1.db.R,obj2.db.R)
     return crys.unit2cart(R2,crys.basis[chem][i2]) - crys.unit2cart(R1,crys.basis[chem][i1])
@@ -335,7 +341,7 @@ class mStates(object):
     def checkinlist(self,mdb):
         """
         Takes as an argument a dumbbell and returns if it is the iorlist
-               
+
         """
         #Type check to see if a mixed dumbbell is passed
         if not isinstance(mdb,SdPair):
