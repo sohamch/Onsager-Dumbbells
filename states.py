@@ -273,14 +273,14 @@ class dbStates(object):
                                         jlist.append(jnewneg)
                                         jindlist.append(indexed(jnew))
                                         jindlist.append(indexed(jnewneg))
-                                        hashset.add(hash(jnew))
-                                        hashset.add(hash(jnewneg))
+                                        hashset.add(jnew)
+                                        hashset.add(jnewneg)
                                 jumplist.append(jlist)
                                 jumpindices.append(jindlist)
                                 continue
                         for c2 in [-1,1]:
                             j = jump(db1,db2,c1,c2)
-                            if inset(j,hashset): #no point doing anything else if the jump has already been considered
+                            if j in hashset: #no point doing anything else if the jump has already been considered
                                 continue
                             if not (collision_self(crys,chem,j,solv_solv_cut,solv_solv_cut) or collision_others(crys,chem,j,closestdistance)):
                                 #If the jump has not already been considered, check if it leads to collisions.
@@ -291,7 +291,7 @@ class dbStates(object):
                                     db1new = self.gdumb(g,db1)
                                     db2new = self.gdumb(g,db2)
                                     jnew = jump(db1new[0],db2new[0],c1*db1new[1],c2*db2new[1])
-                                    if not inset(jnew,hashset):
+                                    if jnew in hashset:
                                         #create the negative jump
                                         #not exactly the __neg__ in jump because the initial state must be at the origin.
                                         db1newneg = dumbbell(db2new[0].i,db2new[0].o,np.array([0,0,0]))
@@ -302,8 +302,8 @@ class dbStates(object):
                                         jlist.append(jnewneg)
                                         jindlist.append(indexed(jnew))
                                         jindlist.append(indexed(jnewneg))
-                                        hashset.add(hash(jnew))
-                                        hashset.add(hash(jnewneg))
+                                        hashset.add(jnew)
+                                        hashset.add(jnewneg)
                                 jumplist.append(jlist)
                                 jumpindices.append(jindlist)
         return jumplist,jumpindices
