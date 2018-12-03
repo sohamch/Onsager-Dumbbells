@@ -5,10 +5,10 @@ from collision import *
 
 #Helper functions for jumpnetworks
 def inset(j,s):
-    return hash(j) in s
+    return j in s
 
-def inlist(j,l):
-    return any(hash(j)==hash(j1) for j1 in l)
+# def inlist(j,l):
+#     return any(hash(j)==hash(j1) for j1 in l)
 
 def disp(crys,chem,obj1,obj2):
     (i1,i2) = (obj1.i,obj2.i) if isinstance(obj1,dumbbell) else (obj1.db.i,obj2.db.i)
@@ -251,7 +251,7 @@ class dbStates(object):
                         if rotcheck:
                             j = jump(db1,db2,c1,1)
 
-                            if inset(j,hashset): #no point doing anything else if the jump has already been considered
+                            if j in hashset: #no point doing anything else if the jump has already been considered
                                 continue
                             if not (collision_self(crys,chem,j,solv_solv_cut,solv_solv_cut) or collision_others(crys,chem,j,closestdistance)):
                                 #If the jump has not already been considered, check if it leads to collisions.
@@ -262,7 +262,7 @@ class dbStates(object):
                                     db1new = self.gdumb(g,db1)
                                     db2new = self.gdumb(g,db2)
                                     jnew = jump(db1new[0],db2new[0],c1*db1new[1],1*db2new[1])
-                                    if not inset(jnew,hashset):
+                                    if not jnew in hashset:
                                         #create the negative jump
                                         #not the __neg__ in jump because the initial state must be at the origin.
                                         db1newneg = dumbbell(db2new[0].i,db2new[0].o,np.array([0,0,0]))
