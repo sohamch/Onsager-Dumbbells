@@ -35,6 +35,20 @@ class dumbbell(namedtuple('dumbbell','i o R')):
         o1 = np.dot(g.cartrot,self.o)
         return self.__class__(i1,o1,r1)
 
+    def __add__(self,other):
+        if not isinstance(other,np.ndarray):
+            raise TypeError("Can only add a lattice translation to a dumbbell")
+
+        if not len(other)==3:
+            raise TypeError("Can add only a lattice translation (vector) to a dumbbell")
+        for x in other:
+            if not isinstance(x,int):
+                raise TypeError("Can add only a lattice translation vector (integer components) to a dumbbell")
+
+        return self.__class__(self.i,self.o,self.r+other)
+
+    def __sub__(self,other):
+        return self.__add__(-other)
 
 # A Pair obect (that represents a dumbbell-solute state) should have the following attributes:
 # 1. It should have the locations of the solute and dumbbell.
@@ -96,6 +110,27 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
             db2 = dumbbell(j.state2.db.i,j.state2.db.o,j.state2.db.R + self.db.R-j.state1.db.R)
             soluteshift = j.state2.R_s - j.state1.R_s
             return SdPair(j.state2.i_s,soluteshift+self.R_s,db2)
+
+    def __add__(self,other):
+
+        """
+        Adding a translation to a solute-dumbbell pair shifts both the solute and the dumbbell
+        by the same translation vector.
+        """
+        if not isinstance(other,np.ndarray):
+            raise TypeError("Can only add a lattice translation to a dumbbell")
+
+        if not len(other)==3:
+            raise TypeError("Can add only a lattice translation (vector) to a dumbbell")
+        for x in other:
+            if not isinstance(x,int):
+                raise TypeError("Can add only a lattice translation vector (integer components) to a dumbbell")
+
+        return self.__class__(self.i_s,self.R_s+other,self.db+other)
+
+    def __sub__(self,other):
+        return self.__add__(-other)
+
 # Jump obects are rather simple, contain just initial and final orientations
 # Also adding a jump to a dumbbell is now done here.
 # dumbell/pair obects are not aware of jump dbects.
