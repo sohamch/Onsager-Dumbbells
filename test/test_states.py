@@ -27,22 +27,25 @@ class test_statemaking(unittest.TestCase):
         self.assertEqual(sm,len(dbstates.iorlist))
 
         #test group operations
-        db=dumbbell(1, np.array([1.,1.,0.]), np.array([1,1,0]))
+        # db=dumbbell(1, np.array([1.,1.,0.]), np.array([1,1,0]))
+        # Glist = list(dbstates.crys.G)
+        # x = np.random.randint(0,len(Glist))
+        # g = Glist[x] #select random groupop
+        # newdb_test = db.gop(self.crys,0,g)
+        # newdb, p = dbstates.gdumb(g,db)
+        # count=0
+        # if(newdb_test==newdb):
+        #     self.assertEqual(p,1)
+        #     count=1
+        # elif(newdb_test==-newdb):
+        #     self.assertEqual(p,-1)
+        #     count=1
+        # self.assertEqual(count,1)
+
+        #test indexmapping
         Glist = list(dbstates.crys.G)
         x = np.random.randint(0,len(Glist))
         g = Glist[x] #select random groupop
-        newdb_test = db.gop(self.crys,0,g)
-        newdb, p = dbstates.gdumb(g,db)
-        count=0
-        if(newdb_test==newdb):
-            self.assertEqual(p,1)
-            count=1
-        elif(newdb_test==-newdb):
-            self.assertEqual(p,-1)
-            count=1
-        self.assertEqual(count,1)
-
-        #test indexmapping
         for stateind,tup in enumerate(dbstates.iorlist):
             i,o = tup[0],tup[1]
             R, (ch,inew) = dbstates.crys.g_pos(g,np.array([0,0,0]),(dbstates.chem,i))
@@ -83,7 +86,7 @@ class test_statemaking(unittest.TestCase):
                            count += 1
                            indices.append((i,q))
                            jtest = jlist
-        print (indices)
+        # print (indices)
         self.assertEqual(count,1) #see that this jump has been taken only once into account
         self.assertEqual(len(jtest),24)
 
