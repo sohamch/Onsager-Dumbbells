@@ -16,7 +16,7 @@ class dumbbell(namedtuple('dumbbell','i o R')):
         return(np.dot(self.o,other.o)/(la.norm(self.o)*la.norm(other.o)))
 
     def __eq__(self,other):
-        zero=np.zeros(len(self.o))
+        # zero=np.zeros(len(self.o))
         true_class = isinstance(other,self.__class__)
         c1 = true_class and (self.i==other.i and np.allclose(self.o,other.o,atol=1e-8) and np.allclose(self.R,other.R,atol=1e-8))
         return c1
@@ -42,7 +42,7 @@ class dumbbell(namedtuple('dumbbell','i o R')):
         if not len(other)==3:
             raise TypeError("Can add only a lattice translation (vector) to a dumbbell")
         for x in other:
-            if not np.issubdtype(x, int):
+            if not isinstance(x, np.dtype(int).type):
                 raise TypeError("Can add only a lattice translation vector (integer components) to a dumbbell")
 
         return self.__class__(self.i,self.o,self.R+other)
@@ -62,7 +62,7 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
 
     def __eq__(self, other):
         true_class = isinstance(other,self.__class__)
-        true_solute = self.i_s == other.i_s and np.allclose(self.R_s,other.R_s)
+        true_solute = self.i_s == other.i_s and np.allclose(self.R_s,other.R_s,atol=1e-8)
         true_db = self.db == other.db
         return (true_class and true_solute and true_db)
 
@@ -123,7 +123,7 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
         if not len(other)==3:
             raise TypeError("Can add only a lattice translation (vector) to a dumbbell")
         for x in other:
-            if not np.issubdtype(x, int):
+            if not isinstance(x, np.dtype(int).type):
                 raise TypeError("Can add only a lattice translation vector (integer components) to a dumbbell")
 
         return self.__class__(self.i_s,self.R_s+other,self.db+other)
