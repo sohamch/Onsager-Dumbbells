@@ -271,8 +271,8 @@ class dbStates(object):
                                     if not jnew in hashset:
                                         #create the negative jump
                                         #not the __neg__ in jump because the initial state must be at the origin.
-                                        db1newneg = dumbbell(db2new[0].i,db2new[0].o,np.array([0,0,0]))
-                                        db2newneg = dumbbell(db1new[0].i,db1new[0].o,-db2new[0].R)
+                                        db1newneg = dumbbell(db2new[0].i,db2new[0].o,db2new[0].R)
+                                        db2newneg = dumbbell(db1new[0].i,db1new[0].o,db1new[0].R)
                                         jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
                                         #add both the jump and it's negative
                                         jlist.append(jnew)
@@ -300,8 +300,8 @@ class dbStates(object):
                                     if not jnew in hashset:
                                         #create the negative jump
                                         #not exactly the __neg__ in jump because the initial state must be at the origin.
-                                        db1newneg = dumbbell(db2new[0].i,db2new[0].o,np.array([0,0,0]))
-                                        db2newneg = dumbbell(db1new[0].i,db1new[0].o,-db2new[0].R)
+                                        db1newneg = dumbbell(db2new[0].i,db2new[0].o,db2new[0].R)
+                                        db2newneg = dumbbell(db1new[0].i,db1new[0].o,db1new[0].R)
                                         jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
                                         #add both the jump and it's negative
                                         jlist.append(jnew)
@@ -546,8 +546,8 @@ class mStates(object):
                                 #create the negative jump
                                 p11 = jnew.state1
                                 p21 = jnew.state2
-                                p1neg = SdPair(p21.i_s,np.array([0,0,0]),dumbbell(p21.db.i,p21.db.o,np.array([0,0,0])))
-                                p2neg = SdPair(p11.i_s,-p21.db.R,dumbbell(p11.db.i,p11.db.o,-p21.db.R))
+                                p1neg = SdPair(p21.i_s,p21.R_s,dumbbell(p21.db.i,p21.db.o,p21.db.R))
+                                p2neg = SdPair(p11.i_s,p21.R_s,dumbbell(p11.db.i,p11.db.o,p11.db.R))
                                 jnewneg = jump(p1neg,p2neg,1,1)
                                 #add both the jump and its negative
                                 jlist.append(jnew)
