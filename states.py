@@ -255,6 +255,7 @@ class dbStates(object):
                     for c1 in[-1,1]:
                         rotcheck = i[0]==f[0] and np.allclose(R,z,atol=crys.threshold)
                         if rotcheck:
+                            continue
                             j = jump(db1,db2,c1,1)
 
                             if j in hashset: #no point doing anything else if the jump has already been considered
