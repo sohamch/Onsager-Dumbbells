@@ -245,7 +245,7 @@ class dbStates(object):
         for R in Rvects:
             for i in iorset:
                 for f in iorset:
-                    db1 = dumbbell(i[0],i[1],np.array([0,0,0]))
+                    db1 = dumbbell(i[0],i[1],np.array([0,0,0],dtype=int))
                     db2 = dumbbell(f[0],f[1],R)
                     if db1==db2:#catch the diagonal case
                         continue
@@ -297,7 +297,7 @@ class dbStates(object):
                                     db1new = self.gdumb(g,db1)
                                     db2new = self.gdumb(g,db2)
                                     jnew = jump(db1new[0],db2new[0],c1*db1new[1],c2*db2new[1])
-                                    if jnew in hashset:
+                                    if not jnew in hashset:
                                         #create the negative jump
                                         #not exactly the __neg__ in jump because the initial state must be at the origin.
                                         db1newneg = dumbbell(db2new[0].i,db2new[0].o,np.array([0,0,0]))

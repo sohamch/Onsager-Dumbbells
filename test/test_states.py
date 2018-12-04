@@ -84,6 +84,7 @@ class test_statemaking(unittest.TestCase):
         self.assertEqual(count,1) #see that this jump has been taken only once into account
         self.assertEqual(len(jtest),24)
 
+
         #test_indices
         #First check if they have the same number of lists and elements
         self.assertEqual(len(jind),len(jset))
