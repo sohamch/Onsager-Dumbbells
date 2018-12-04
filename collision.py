@@ -29,15 +29,15 @@ def collision_self(crys,chem,jump,cutoff12,cutoff13=None):
 
         num = np.dot((a1i-a1j),(a0i-a0j))
         den = np.dot((a1i-a1j),(a1i-a1j))
-        tmin = -num/den
+        tmin = np.round(-num/den,decimals=6)
         # print(tmin)
-        mindist2 = np.dot(((a0i+a1i*tmin)-(a0j+a1j*tmin)),((a0i+a1i*tmin)-(a0j+a1j*tmin)))
+        mindist2 = np.round(np.dot(((a0i+a1i*tmin)-(a0j+a1j*tmin)),((a0i+a1i*tmin)-(a0j+a1j*tmin))),decimals=4)
         # print ("mindist^2 = ",mindist2)
         # print ("cutoff^2 = ",np.round(cutoff**2,decimals=6))
         # print()
         if tmin <= 0 or tmin >= 1:
             return False #no atoms collide within transition time.
-        elif (mindist2 >= cutoff**2):
+        elif (mindist2>=np.round(cutoff**2,decimals=6)):
             return False #no atoms collide
         else:
             return True #atoms collide
