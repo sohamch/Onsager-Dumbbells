@@ -74,13 +74,16 @@ class test_statemaking(unittest.TestCase):
         test_dbi = dumbbell(0, np.array([0.126,0.,0.]),np.array([0,0,0]))
         test_dbf = dumbbell(0, np.array([0.126,0.,0.]),np.array([0,1,0]))
         count=0
+        indices=[]
         for i,jlist in enumerate(jset):
             for q,j in enumerate(jlist):
                 if j.state1 == test_dbi or j.state1 == -test_dbi:
                     if j.state2 == test_dbf or j.state2 == -test_dbf:
                         if j.c1 == j.c2 == -1:
                            count += 1
+                           indices.append((i,q))
                            jtest = jlist
+        print (indices)
         self.assertEqual(count,1) #see that this jump has been taken only once into account
         self.assertEqual(len(jtest),24)
 
