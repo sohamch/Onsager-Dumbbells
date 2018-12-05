@@ -241,7 +241,7 @@ class dbStates(object):
         jumplist=[]
         jumpindices=[]
         jumpset=set([])
-        count=0
+
         z=np.zeros(3).astype(int)
         for R in Rvects:
             for i in iorset:
@@ -411,6 +411,9 @@ class mStates(object):
         return stind
 
     def genmixedsets(self):
+        """
+        function to generate (i,or) list for mixed dumbbells.
+        """
         crys,chem,family = self.crys,self.chem,self.family
         if not isinstance(family,list):
             raise TypeError("Enter the families as a list of lists")
