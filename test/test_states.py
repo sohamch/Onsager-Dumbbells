@@ -138,11 +138,33 @@ class test_statemaking(unittest.TestCase):
         #See that there 48 jumps. 24 0->0 and 24 1->1.
         self.assertEqual(len(jtest[0]),48)
 
+        #HCP
+        Mg = crystal.Crystal.HCP(0.3294,chemistry=["Mg"])
+        famp0 = [np.array([1.,0.,0.])*0.145]
+        family = [famp0]
+        pdbcontainer_hcp = dbStates(Mg,0,family)
+        jset_hcp,jind_hcp = pdbcontainer_hcp.jumpnetwork(0.45,0.01,0.01)
+        o = np.array([0.145,0.,0.])
+        if any(np.allclose(o,o1)for i,o1 in pdbcontainer_hcp.iorlist):
+            o = -o+0.
+        db1 = dumbbell(0,np.array([0.145,0.,0.]),np.array([0,0,0],dtype=int))
+        db2 = dumbbell(1,np.array([0.145,0.,0.]),np.array([0,0,0],dtype=int))
+        testjump = jump(db1,db2,1,1)
+        count=0
+        testlist=[]
+        for jl in jset_hcp:
+            for j in jl:
+                if j==testjump:
+                    count+=1
+                    testlist=jl
+        self.assertEqual(len(testlist),24)
+        self.assertEqual(count,1)
+
         #test_indices
         #First check if they have the same number of lists and elements
-        jindlist=[jind_cube,jind_fcc,jind_si]
-        jsetlist=[jset_cube,jset_fcc,jset_si]
-        pdbcontainerlist = [pdbcontainer_cube,pdbcontainer_fcc,pdbcontainer_si]
+        jindlist=[jind_cube,jind_fcc,jind_si,jind_hcp]
+        jsetlist=[jset_cube,jset_fcc,jset_si,jset_hcp]
+        pdbcontainerlist = [pdbcontainer_cube,pdbcontainer_fcc,pdbcontainer_si,pdbcontainer_hcp]
         for pdbcontainer,jset,jind in zip(pdbcontainerlist,jsetlist,jindlist):
             self.assertEqual(len(jind),len(jset))
             #now check if all the elements are correctly correspondent
