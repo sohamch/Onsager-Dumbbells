@@ -28,7 +28,8 @@ class dumbbell(namedtuple('dumbbell','i o R')):
         return self.__class__(self.i,-self.o,self.R)
 
     def __hash__(self):
-        return hash((self.i*5,self.o[0]*5,self.o[1]*5,self.o[2]*5,self.R[0]*5,self.R[1]*5,self.R[2]*5))
+        o = np.round(self.o,6)
+        return hash((self.i,o[0],o[1]*5,o[2],self.R[0],self.R[1],self.R[2]))
 
     def gop(self,crys,chem,g):
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
