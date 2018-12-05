@@ -16,6 +16,7 @@ def disp(crys,chem,obj1,obj2):
     param:
         crys,chem - crystal and sublattice under consideration.
         obj1,obj2 - the initial and final state objects of a jump
+        Return - displacement when going from obj1 to obj2
     """
     (i1,i2) = (obj1.i,obj2.i) if isinstance(obj1,dumbbell) else (obj1.db.i,obj2.db.i)
     (R1,R2) = (obj1.R,obj2.R) if isinstance(obj1,dumbbell) else (obj1.db.R,obj2.db.R)
