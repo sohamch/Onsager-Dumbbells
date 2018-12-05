@@ -70,15 +70,16 @@ class test_statemaking(unittest.TestCase):
 
     #Test jumpnetwork
     def test_purejumps(self):
+        #cube
         famp0 = [np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126]
         family = [famp0]
-        pdbcontainer = dbStates(cube,0,family)
-        jset,jind = pdbcontainer.jumpnetwork(0.3,0.01,0.01)
+        pdbcontainer_cube = dbStates(cube,0,family)
+        jset_cube,jind_cube = pdbcontainer_cube.jumpnetwork(0.3,0.01,0.01)
         test_dbi = dumbbell(0, np.array([0.126,0.,0.]),np.array([0,0,0]))
         test_dbf = dumbbell(0, np.array([0.126,0.,0.]),np.array([0,1,0]))
         count=0
         indices=[]
-        for i,jlist in enumerate(jset):
+        for i,jlist in enumerate(jset_cube):
             for q,j in enumerate(jlist):
                 if j.state1 == test_dbi or j.state1 == -test_dbi:
                     if j.state2 == test_dbf or j.state2 == -test_dbf:
@@ -90,20 +91,70 @@ class test_statemaking(unittest.TestCase):
         self.assertEqual(count,1) #see that this jump has been taken only once into account
         self.assertEqual(len(jtest),24)
 
+        #Next FCC
+        #test this out with FCC
+        fcc = crystal.Crystal.FCC(0.55)
+        famp0 = [np.array([1.,1.,0.])/np.sqrt(2)*0.2]
+        family = [famp0]
+        pdbcontainer_fcc = dbStates(fcc,0,family)
+        jset_fcc,jind_fcc = pdbcontainer_fcc.jumpnetwork(0.4,0.01,0.01)
+        o1 = np.array([1.,-1.,0.])*0.2/np.sqrt(2)
+        if any(np.allclose(-o1,o) for i,o in pdbcontainer_fcc.iorlist):
+            o1 = -o1.copy()
+        db1 = dumbbell(0,o1,np.array([0,0,0]))
+        db2 = dumbbell(0,o1,np.array([0,0,1]))
+        jmp = jump(db1,db2,1,1)
+        jtest=[]
+        for jl in jset_fcc:
+            for j in jl:
+                if j==jmp:
+                    jtest.append(jl)
+        #see that the jump has been accounted just once.
+        self.assertEqual(len(jtest),1)
+        #See that there 24 jumps. 24 0->0.
+        self.assertEqual(len(jtest[0]),24)
+
+        #DC_Si - same symmetry as FCC, except twice the number of jumps, since we have two basis
+        #atoms belonging to the same Wyckoff site, in a crystal with the same lattice vectors.
+        latt = np.array([[0.,0.5,0.5],[0.5,0.,0.5],[0.5,0.5,0.]])*0.55
+        DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
+        famp0 = [np.array([1.,1.,0.])/np.sqrt(2)*0.2]
+        family = [famp0]
+        pdbcontainer_si = dbStates(DC_Si,0,family)
+        jset_si,jind_si = pdbcontainer_si.jumpnetwork(0.4,0.01,0.01)
+        o1 = np.array([1.,-1.,0.])*0.2/np.sqrt(2)
+        if any(np.allclose(-o1,o) for i,o in pdbcontainer_si.iorlist):
+            o1 = -o1.copy()
+        db1 = dumbbell(0,o1,np.array([0,0,0]))
+        db2 = dumbbell(0,o1,np.array([0,0,1]))
+        jmp = jump(db1,db2,1,1)
+        jtest=[]
+        for jl in jset_si:
+            for j in jl:
+                if j==jmp:
+                    jtest.append(jl)
+        #see that the jump has been accounted just once.
+        self.assertEqual(len(jtest),1)
+        #See that there 48 jumps. 24 0->0 and 24 1->1.
+        self.assertEqual(len(jtest[0]),48)
 
         #test_indices
         #First check if they have the same number of lists and elements
-        self.assertEqual(len(jind),len(jset))
-        #now check if all the elements are correctly correspondent
-        for lindex in range(len(jind)):
-            self.assertEqual(len(jind[lindex]),len(jset[lindex]))
-            for jindex in range(len(jind[lindex])):
-                (i1,o1) = pdbcontainer.iorlist[jind[lindex][jindex][0]]
-                (i2,o2) = pdbcontainer.iorlist[jind[lindex][jindex][1]]
-                self.assertEqual(jset[lindex][jindex].state1.i,i1)
-                self.assertEqual(jset[lindex][jindex].state2.i,i2)
-                self.assertTrue(np.allclose(jset[lindex][jindex].state1.o,o1))
-                self.assertTrue(np.allclose(jset[lindex][jindex].state2.o,o2))
+        jindlist=[jind_cube,jind_fcc,jind_si]
+        jsetlist=[jset_cube,jset_fcc,jset_si]
+        pdbcontainerlist = [pdbcontainer_cube,pdbcontainer_fcc,pdbcontainer_si]
+        for pdbcontainer,jset,jind in zip(pdbcontainerlist,jsetlist,jindlist):
+            self.assertEqual(len(jind),len(jset))
+            #now check if all the elements are correctly correspondent
+            for lindex in range(len(jind)):
+                self.assertEqual(len(jind[lindex]),len(jset[lindex]))
+                for jindex in range(len(jind[lindex])):
+                    (i1,o1) = pdbcontainer.iorlist[jind[lindex][jindex][0]]
+                    (i2,o2) = pdbcontainer.iorlist[jind[lindex][jindex][1]]
+                    self.assertEqual(jset[lindex][jindex].state1.i,i1)
+                    self.assertEqual(jset[lindex][jindex].state2.i,i2)
+                    self.assertTrue(np.allclose(jset[lindex][jindex].state1.o,o1))
+                    self.assertTrue(np.allclose(jset[lindex][jindex].state2.o,o2))
 
     def test_mStates(self):
         dbstates=dbStates(self.crys,0,self.family)
