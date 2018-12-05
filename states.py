@@ -3,13 +3,6 @@ import onsager.crystal as crystal
 from representations import *
 from collision import *
 
-#Helper functions for jumpnetworks
-# def inset(j,s):
-#     return j in s
-
-# def inlist(j,l):
-#     return any(hash(j)==hash(j1) for j1 in l)
-
 def disp(crys,chem,obj1,obj2):
     """
     Computes the transport vector for the initial and final states of a jump
@@ -74,37 +67,6 @@ class dbStates(object):
             stind.append(lis)
         return stind
 
-    # def gdumb(self,g,db):
-    #     """
-    #     Takes as an argument a dumbbell and return the result of a group operation on that dumbbell
-    #     param: g - group operation
-    #            db - dumbbell object to operate upon
-    #     returns - (db_new,p) - the dumbbell produced by the symmetry operation and the parity value depending on existence
-    #               within symorlist.
-    #               Example - 1. If the new orientation produced is [-100] but the one present in symorlist is [100], then returns
-    #                 ("db object with orientation [100]", -1)
-    #                         2. If the new orientation is [100] instead, returns ("db object with orientation [100]", 1)
-    #     """
-    #
-    #     def inlist(tup):
-    #         return any(tup[0]==x[0] and np.allclose(tup[1],x[1],atol=self.threshold) for x in self.iorlist)
-    #
-    #     db_new = db.gop(self.crys,self.chem,g)
-    #     i = db_new.i
-    #     o = db_new.o
-    #     tup = None
-    #     if inlist((i,o)):
-    #         tup = (db_new,1)
-    #     elif inlist((i,-o)):
-    #         # db_new = dumbbell(db_new.i,-db_new.o,db_new.R)
-    #         tup = (-db_new,-1)
-    #     if tup == None:
-    #         #This will be used only during the testing phase, can remove it later when not needed.
-    #         #Ideally, if the production of symorlist is correct, then it should catch either of the
-    #         #above two cases.
-    #         raise RuntimeError("The group operation does not produce an (i,or) pair in the given (i,or) list")
-    #     return tup
-
     def genpuresets(self):
         """
         generates complete (i,or) set from given family of orientations, neglects negatives, since pure
@@ -137,7 +99,7 @@ class dbStates(object):
                     o_new = self.crys.g_direc(g,o)
                     if not (inlist((i_new,o_new),pairlist) or inlist((i_new,-o_new),pairlist)):
                             if negOrInList(o_new,pairlist):
-                                o_new = -o_new
+                                o_new = -o_new+0.
                             pairlist.append((i_new,o_new))
         return pairlist
 
@@ -173,7 +135,7 @@ class dbStates(object):
                 R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
                 onew  = np.dot(g.cartrot,ior[1])
                 if any(np.allclose(onew+t[1],0,atol=1.e-8) for t in self.iorlist):
-                    onew = -onew
+                    onew = -onew+0.
                 if not inset((inew,onew),newlist):
                     newlist.append((inew,onew))
             symlist.append(newlist)
@@ -187,7 +149,7 @@ class dbStates(object):
                 R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
                 onew  = np.dot(g.cartrot,ior[1])
                 if any(np.allclose(onew+t[1],0,atol=1.e-8) for t in self.iorlist):
-                    onew = -onew
+                    onew = -onew+0.
                 for j,t in enumerate(self.iorlist):
                     if(t[0]==inew and np.allclose(t[1],onew)):
                         indexmap[i][st]=j
@@ -241,7 +203,7 @@ class dbStates(object):
         jumplist=[]
         jumpindices=[]
         jumpset=set([])
-
+        # dxcount=0
         z=np.zeros(3).astype(int)
         for R in Rvects:
             for i in iorset:
@@ -253,14 +215,11 @@ class dbStates(object):
                     dx = disp(crys,chem,db1,db2)
                     if np.dot(dx,dx)>cutoff*cutoff:
                         continue
-                    #This "if" is just if we want to extract or disallow rotations
-                    # if not np.allclose(np.dot(dx,dx),0.,atol=1e-8):
-                    #     continue
                     for c1 in[-1,1]:
                         #Check if the jump is a rotation
-                        if np.allclose(np.dot(dx,dx),0.,atol=crys.threshold):
+                        if np.allclose(np.dot(dx,dx),np.zeros(3),atol=crys.threshold):
                             j = jump(db1,db2,c1,1)
-                            if j in jumpset: #no point doing anything else if the jump has already been considered
+                            if j in jumpset:
                                 continue #no point doing anything else if the jump has already been considered
                             if not (collision_self(crys,chem,j,solv_solv_cut,solv_solv_cut) or collision_others(crys,chem,j,closestdistance)):
                                 #If the jump has not already been considered, check if it leads to collisions.
@@ -268,35 +227,26 @@ class dbStates(object):
                                 jindlist=[]
                                 for g in crys.G:
                                     jnew = j.gop(crys,chem,g)
+
                                     mul1=1
-                                    if any(np.allclose(-jnew.state1.o,o1)for i,o1 in self.iorlist):
-                                        db1new = dumbbell(jnew.state1.i,-jnew.state1.o,jnew.state1.R)
+                                    if any(np.allclose(-jnew.state1.o,o1,atol=self.crys.threshold)for s,o1 in self.iorlist):
+                                        db1new = dumbbell(jnew.state1.i,-jnew.state1.o+0.,np.array([0,0,0]))
                                         mul1=-1
                                     else:
-                                        db1new = dumbbell(jnew.state1.i,jnew.state1.o,jnew.state1.R)
+                                        db1new = dumbbell(jnew.state1.i,jnew.state1.o,np.array([0,0,0]))
+
                                     mul2=1
-                                    if any(np.allclose(-jnew.state2.o,o1)for i,o1 in self.iorlist):
-                                        db2new = dumbbell(jnew.state2.i,-jnew.state2.o,jnew.state2.R)
+                                    if any(np.allclose(-jnew.state2.o,o1,atol=self.crys.threshold)for s,o1 in self.iorlist):
+                                        db2new = dumbbell(jnew.state2.i,-jnew.state2.o+0.,jnew.state2.R-jnew.state1.R)
                                         mul2=-1
                                     else:
-                                        db2new = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state2.R)
-                                    jnew = jump(db1new-db1new.R,db2new-db1new.R,jnew.c1*mul1,jnew.c2*mul2)#Check this part
-                                    db1newneg = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state1.R)
-                                    db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,2*jnew.state1.R-jnew.state2.R)
+                                        db2new = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state2.R-jnew.state1.R)
+
+                                    jnew = jump(db1new,db2new,jnew.c1*mul1,jnew.c2*mul2)#Check this part
+                                    db1newneg = dumbbell(jnew.state2.i,jnew.state2.o,np.array([0,0,0]))
+                                    db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,-jnew.state2.R+0)
                                     jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
-                                    # jnew = j.gop(crys,chem,g)
-                                    # db1new = self.gdumb(g,db1)
-                                    # db2new = self.gdumb(g,db2)
-                                    # #Take back the starting jump at the origin unit cell
-                                    # jnew = jump(db1new[0]-db1new[0].R,db2new[0]-db1new[0].R,c1*db1new[1],1*db2new[1])#Check this part
-                                    # db1newneg = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state1.R)
-                                    # db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,-jnew.state2.R)
-                                    # jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
                                     if not jnew in jumpset:
-                                        if jnewneg in jumpset:
-                                            print(jnewneg)
-                                            raise RuntimeError("Negative jump already considered before")
-                                        #add both the jump and it's negative
                                         jlist.append(jnew)
                                         jlist.append(jnewneg)
                                         jindlist.append(indexed(jnew))
@@ -316,35 +266,29 @@ class dbStates(object):
                                 jindlist=[]
                                 for g in crys.G:
                                     jnew = j.gop(crys,chem,g)
+
                                     mul1=1
                                     if any(np.allclose(-jnew.state1.o,o1)for i,o1 in self.iorlist):
-                                        db1new = dumbbell(jnew.state1.i,-jnew.state1.o,jnew.state1.R)
+                                        db1new = dumbbell(jnew.state1.i,-jnew.state1.o+0.,np.array([0,0,0]))
                                         mul1=-1
                                     else:
-                                        db1new = dumbbell(jnew.state1.i,jnew.state1.o,jnew.state1.R)
+                                        db1new = dumbbell(jnew.state1.i,jnew.state1.o,np.array([0,0,0]))
+
                                     mul2=1
                                     if any(np.allclose(-jnew.state2.o,o1)for i,o1 in self.iorlist):
-                                        db2new = dumbbell(jnew.state2.i,-jnew.state2.o,jnew.state2.R)
+                                        db2new = dumbbell(jnew.state2.i,-jnew.state2.o+0.,jnew.state2.R-jnew.state1.R)
                                         mul2=-1
                                     else:
-                                        db2new = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state2.R)
+                                        db2new = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state2.R-jnew.state1.R)
+
                                     jnew = jump(db1new-db1new.R,db2new-db1new.R,jnew.c1*mul1,jnew.c2*mul2)#Check this part
                                     db1newneg = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state1.R)
-                                    db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,2*jnew.state1.R-jnew.state2.R)
+                                    db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,-jnew.state2.R+0)
                                     jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
-                                    # jnew = j.gop(crys,chem,g)
-                                    # db1new = self.gdumb(g,db1)
-                                    # db2new = self.gdumb(g,db2)
-                                    # #Take back the starting state at the origin unit cell
-                                    # jnew = jump(db1new[0]-db1new[0].R,db2new[0]-db1new[0].R,c1*db1new[1],1*db2new[1])#Check this part
-                                    # db1newneg = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state1.R)
-                                    # db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,-jnew.state2.R)
-                                    # jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
+                                    if not np.allclose(db1newneg.R,np.zeros(3),atol=1e-8):
+                                        raise RuntimeError("Intial state not at origin")
+
                                     if not jnew in jumpset:
-                                        if jnewneg in jumpset:
-                                            print(jnew)
-                                            print(jnewneg)
-                                            raise RuntimeError("Negative jump already considered before")
                                         #add both the jump and it's negative
                                         jlist.append(jnew)
                                         jlist.append(jnewneg)
