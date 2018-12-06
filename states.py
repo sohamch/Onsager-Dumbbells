@@ -155,6 +155,18 @@ class dbStates(object):
                         indexmap[i][st]=j
         return indexmap
 
+    def gdumb(self,g,db):
+        """
+        Takes in a dumbbell, applies a group operation and reverses orientation if new orientation
+        is not in iorlist. Also returns the multiplicative constant for jump object.
+        """
+        dbnew = db.gop(self.crys,self.chem,g)
+        mult=1
+        if any(np.allclose(dbnew.o,-o1) for s,o1 in self.iorlist):
+            dbnew = -dbnew
+            mult=-1
+        return dbnew,mult
+
     def jumpnetwork(self,cutoff,solv_solv_cut,closestdistance):
         """
         Makes a jumpnetwork of pure dumbbells within a given distance to be used for omega_0
@@ -168,8 +180,38 @@ class dbStates(object):
             jumpnetwork - the symmetrically grouped jumpnetworks (pair1,pair2,c1,c2)
             jumpindices - the jumpnetworks with dbs in pair1 and pair2 indexed to iorset -> (i,j,dx,c1,c2)
         """
-        #pointers to necessary parameters from dbobj
         crys,chem,iorset = self.crys,self.chem,self.iorlist
+
+        def getjumps(j,jumpset):
+            "Does the symmetric list construction for an input jump and an existing jumpset"
+
+                #If the jump has not already been considered, check if it leads to collisions.
+            jlist=[]
+            jindlist=[]
+            for g in crys.G:
+                # jnew = j.gop(crys,chem,g)
+                db1new,mul1 = self.gdumb(g,j.state1)
+                db2new,mul2 = self.gdumb(g,j.state2)
+                db2new = db2new-db1new.R
+                db1new = db1new-db1new.R
+                jnew = jump(db1new,db2new,j.c1*mul1,j.c2*mul2)#Check this part
+                db1newneg = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state1.R)
+                db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,-jnew.state2.R+0)
+                jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
+                if not np.allclose(db1newneg.R,np.zeros(3),atol=1e-8):
+                    raise RuntimeError("Intial state not at origin")
+                if not jnew in jumpset:
+                    #add both the jump and it's negative
+                    jlist.append(jnew)
+                    jlist.append(jnewneg)
+                    jindlist.append(indexed(jnew))
+                    jindlist.append(indexed(jnewneg))
+                    jumpset.add(jnew)
+                    jumpset.add(jnewneg)
+            return jlist,jindlist
+
+        #pointers to necessary parameters from dbobj
+
         def indexed(j):
             """
             Takes in a jump and indexes it to the iorset
@@ -219,86 +261,27 @@ class dbStates(object):
                         #Check if the jump is a rotation
                         if np.allclose(np.dot(dx,dx),np.zeros(3),atol=crys.threshold):
                             j = jump(db1,db2,c1,1)
-                            if j in jumpset:
-                                continue #no point doing anything else if the jump has already been considered
-                            if not (collision_self(crys,chem,j,solv_solv_cut,solv_solv_cut) or collision_others(crys,chem,j,closestdistance)):
-                                #If the jump has not already been considered, check if it leads to collisions.
-                                jlist=[]
-                                jindlist=[]
-                                for g in crys.G:
-                                    jnew = j.gop(crys,chem,g)
-
-                                    mul1=1
-                                    if any(np.allclose(-jnew.state1.o,o1,atol=self.crys.threshold)for s,o1 in self.iorlist):
-                                        db1new = dumbbell(jnew.state1.i,-jnew.state1.o+0.,np.array([0,0,0]))
-                                        mul1=-1
-                                    else:
-                                        db1new = dumbbell(jnew.state1.i,jnew.state1.o,np.array([0,0,0]))
-
-                                    mul2=1
-                                    if any(np.allclose(-jnew.state2.o,o1,atol=self.crys.threshold)for s,o1 in self.iorlist):
-                                        db2new = dumbbell(jnew.state2.i,-jnew.state2.o+0.,jnew.state2.R-jnew.state1.R)
-                                        mul2=-1
-                                    else:
-                                        db2new = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state2.R-jnew.state1.R)
-
-                                    jnew = jump(db1new,db2new,jnew.c1*mul1,jnew.c2*mul2)#Check this part
-                                    db1newneg = dumbbell(jnew.state2.i,jnew.state2.o,np.array([0,0,0]))
-                                    db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,-jnew.state2.R+0)
-                                    jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
-                                    if not jnew in jumpset:
-                                        jlist.append(jnew)
-                                        jlist.append(jnewneg)
-                                        jindlist.append(indexed(jnew))
-                                        jindlist.append(indexed(jnewneg))
-                                        jumpset.add(jnew)
-                                        jumpset.add(jnewneg)
-                                jumplist.append(jlist)
-                                jumpindices.append(jindlist)
+                            if j in jumpset: #no point doing anything else if the jump has already been considered
                                 continue
+                            if collision_self(crys,chem,j,solv_solv_cut,solv_solv_cut) or collision_others(crys,chem,j,closestdistance):
+                                continue
+                            jlist,jindlist = getjumps(j,jumpset)
+                            jumplist.append(jlist)
+                            jumpindices.append(jindlist)
+                            continue
                         for c2 in [-1,1]:
                             j = jump(db1,db2,c1,c2)
                             if j in jumpset: #no point doing anything else if the jump has already been considered
                                 continue
-                            if not (collision_self(crys,chem,j,solv_solv_cut,solv_solv_cut) or collision_others(crys,chem,j,closestdistance)):
-                                #If the jump has not already been considered, check if it leads to collisions.
-                                jlist=[]
-                                jindlist=[]
-                                for g in crys.G:
-                                    jnew = j.gop(crys,chem,g)
-
-                                    mul1=1
-                                    if any(np.allclose(-jnew.state1.o,o1)for i,o1 in self.iorlist):
-                                        db1new = dumbbell(jnew.state1.i,-jnew.state1.o+0.,np.array([0,0,0]))
-                                        mul1=-1
-                                    else:
-                                        db1new = dumbbell(jnew.state1.i,jnew.state1.o,np.array([0,0,0]))
-
-                                    mul2=1
-                                    if any(np.allclose(-jnew.state2.o,o1)for i,o1 in self.iorlist):
-                                        db2new = dumbbell(jnew.state2.i,-jnew.state2.o+0.,jnew.state2.R-jnew.state1.R)
-                                        mul2=-1
-                                    else:
-                                        db2new = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state2.R-jnew.state1.R)
-
-                                    jnew = jump(db1new-db1new.R,db2new-db1new.R,jnew.c1*mul1,jnew.c2*mul2)#Check this part
-                                    db1newneg = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state1.R)
-                                    db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,-jnew.state2.R+0)
-                                    jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
-                                    if not np.allclose(db1newneg.R,np.zeros(3),atol=1e-8):
-                                        raise RuntimeError("Intial state not at origin")
-
-                                    if not jnew in jumpset:
-                                        #add both the jump and it's negative
-                                        jlist.append(jnew)
-                                        jlist.append(jnewneg)
-                                        jindlist.append(indexed(jnew))
-                                        jindlist.append(indexed(jnewneg))
-                                        jumpset.add(jnew)
-                                        jumpset.add(jnewneg)
-                                jumplist.append(jlist)
-                                jumpindices.append(jindlist)
+                            if collision_self(crys,chem,j,solv_solv_cut,solv_solv_cut) or collision_others(crys,chem,j,closestdistance):
+                                continue
+                            jlist,jindlist = getjumps(j,jumpset)
+                            jumplist.append(jlist)
+                            jumpindices.append(jindlist)
         return jumplist,jumpindices
+
+
+
 class mStates(object):
     """
     Class to generate all possible mixed dumbbell configurations for given basis sites
