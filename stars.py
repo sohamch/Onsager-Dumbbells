@@ -155,6 +155,8 @@ class StarSet(object):
                             if not jnew in jumpset:
                                 if not (np.allclose(jnew.state1.R_s,0.,atol=self.crys.threshold) and np.allclose(jnew.state2.R_s,0.,atol=self.crys.threshold)):
                                     raise RuntimeError("Solute shifted from origin")
+                                if not(jnew.state1.i_s==jnew.state1.i_s):
+                                    raise RuntimeError("Solute must remain in exactly the same position before and after the jump")
                                 newlist.append(jnew)
                                 newlist.append(-jnew) #we can add the negative since solute always remain at the origin
                                 jumpset.add(jnew)
@@ -173,7 +175,7 @@ class StarSet(object):
         return jumpnetwork, jumptype
 
     def jumpnetwork_omega34(self,cutoff,solv_solv_cut,solt_solv_cut,closestdistance):
-        #building omega_4 -> association - c2=-1 -> since solute movement is tracked
+        #building omega_4 -> association - c2=-1 -> since solvent movement is tracked
         #cutoff required is solute-solvent as well as solvent solvent
         alljumpset_omega4=set([])
         symjumplist_omega4=[]
@@ -186,7 +188,15 @@ class StarSet(object):
                 continue
             for p_mixed in self.mixedstateset:
                 for c1 in [-1,1]:
-                    j = jump(p_pure,p_mixed,c1,-1)
+                    try:
+                        j = jump(p_pure,p_mixed,c1,-1)
+                    except:
+                        continue
+                    #The next four lines should be commented out when ready
+                    if not (np.allclose(p_pure.R_s,0,atol=self.crys.threshold) and np.allclose(p_mixed.R_s,0,atol=self.crys.threshold)):
+                        raise RuntimeError("Solute shifted from origin - cannot happen")
+                    # if not(p_pure.i_s==p_mixed.i_s): #The solute must remain in exactly the same position before and after the jump
+                    #     raise RuntimeError("Incorrect jump constructed")
                     dx = disp(self.crys,self.chem,j.state1,j.state2)
                     if np.dot(dx,dx)>cutoff**2:continue
                     if not j in alljumpset_omega4:#check if jump already considered
@@ -199,9 +209,11 @@ class StarSet(object):
                                 for g in self.crys.G:
                                     jnew = j.gop(self.crys,self.chem,g)
                                     db1new = self.pdbcontainer.gdumb(g,j.state1.db)
-                                    state1new = SdPair(jnew.state1.i_s,jnew.state1.R_s,db1new[0])
-                                    jnew = jump(state1new,jnew.state2,jnew.c1*db1new[1],-1)
+                                    state1new = SdPair(jnew.state1.i_s,jnew.state1.R_s,db1new[0]) - jnew.state1.R_s
+                                    jnew = jump(state1new,jnew.state2-jnew.state2.R_s,jnew.c1*db1new[1],-1)
                                     if not jnew in newset:
+                                        if jnew.state1.i_s==jnew.state1.db.i and np.allclose(jnew.state1.R_s,jnew.state1.db.R,atol=self.crys.threshold):
+                                            raise RuntimeError("Initial state mixed")
                                         newset.add(jnew)
                                         newnegset.add(-jnew)
                                         new_allset.add(jnew)
