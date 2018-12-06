@@ -61,7 +61,8 @@ class StarSet(object):
 
     def generate(self,Nshells):
         z=np.zeros(3).astype(int)
-        if Nshells<1:
+        if Nshells<=1:
+            #A minimum of one shell will be produced.
             Nshells = 0
         startshell=set([])
         stateset=set([])
@@ -77,8 +78,12 @@ class StarSet(object):
         for step in range(Nshells):
             for j in self.jumplist:
                 for pair in lastshell:
+                    if not np.allclose(pair.R_s,0,atol=self.crys.threshold):
+                        raise RuntimeError("The solute is not at the origin")
                     try:
                         pairnew = pair.addjump(j)
+                        if not pair.i==pairnew.i and np.allclose(pairnew.R_s,pair.R_s,atol=self.crys.threshold):
+                            raise("Solute shifted from a complex!(?)")
                     except:
                         continue
                     nextshell.add(pairnew)
@@ -91,14 +96,21 @@ class StarSet(object):
         hashset=set([])
         for state in self.stateset:
             if not state in hashset:
-                newstar=set([])
+                newstar=[]
                 for g in self.crys.G:
-                    newdb = self.pdbcontainer.gdumb(g,state.db)[0]
-                    newstate = SdPair(state.gop(self.crys,self.chem,g).i_s,state.gop(self.crys,self.chem,g).R_s,newdb)
+                    newstate = state.gop(self.crys,self.chem,g)
+                    newdb = self.pdbcontainer.gdumb(g,state.db)[0] - newstate.R_s
+                    newstate = SdPair(newstate.i_s,np.zeros(3,dtype=int),newdb)
                     if not newstate in hashset and newstate in self.stateset:
-                        newstar.add(newstate)
+                        newstar.append(newstate)
                         hashset.add(newstate)
-                self.starset.append(list(newstar))
+                self.starset.append(newstar)
+
+        for sl in self.starset:
+            for s in sl:
+                if not np.allclose(s.R_s,0,atol=self.crys.threshold):
+                    raise RuntimeError("Solute not at origin")
+
         self.mixedstartindex = len(self.starset)
         #Now add in the mixed states
         self.mixedstateset=set([])
@@ -133,15 +145,18 @@ class StarSet(object):
                     if not jpair in jumpset and not -jpair in jumpset: #see if the jump has not already been considered
                         newlist=[]
                         for g in self.crys.G:
-                            jnew1 = jpair.gop(self.crys,self.chem,g)
+                            jnew = jpair.gop(self.crys,self.chem,g)
                             db1new = self.pdbcontainer.gdumb(g,jpair.state1.db)
                             db2new = self.pdbcontainer.gdumb(g,jpair.state2.db)
-                            state1new = SdPair(jnew1.state1.i_s,jnew1.state1.R_s,db1new[0])
-                            state2new = SdPair(jnew1.state2.i_s,jnew1.state2.R_s,db2new[0])
-                            jnew = jump(state1new,state2new,jnew1.c1*db1new[1],jnew1.c2*db2new[1])
+                            #The solute must be at the origin unit cell - shift it
+                            state1new = SdPair(jnew.state1.i_s,jnew.state1.R_s,db1new[0])-jnew.state1.R_s
+                            state2new = SdPair(jnew.state2.i_s,jnew.state2.R_s,db2new[0])-jnew.state2.R_s
+                            jnew = jump(state1new,state2new,jnew.c1*db1new[1],jnew.c2*db2new[1])
                             if not jnew in jumpset:
+                                if not (np.allclose(jnew.state1.R_s,0.,atol=self.crys.threshold) and np.allclose(jnew.state2.R_s,0.,atol=self.crys.threshold)):
+                                    raise RuntimeError("Solute shifted from origin")
                                 newlist.append(jnew)
-                                newlist.append(-jnew)
+                                newlist.append(-jnew) #we can add the negative since solute always remain at the origin
                                 jumpset.add(jnew)
                                 jumpset.add(-jnew)
                         if (newlist[0].state1.is_zero() and newlist[0].state2.is_zero()):
@@ -154,6 +169,7 @@ class StarSet(object):
                             newlist=list(newnewlist)
                         jumpnetwork.append(newlist)
                         jumptype.append(jt)
+
         return jumpnetwork, jumptype
 
     def jumpnetwork_omega34(self,cutoff,solv_solv_cut,solt_solv_cut,closestdistance):
