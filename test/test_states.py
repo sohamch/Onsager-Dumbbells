@@ -145,10 +145,10 @@ class test_statemaking(unittest.TestCase):
         pdbcontainer_hcp = dbStates(Mg,0,family)
         jset_hcp,jind_hcp = pdbcontainer_hcp.jumpnetwork(0.45,0.01,0.01)
         o = np.array([0.145,0.,0.])
-        if any(np.allclose(o,o1)for i,o1 in pdbcontainer_hcp.iorlist):
+        if any(np.allclose(-o,o1)for i,o1 in pdbcontainer_hcp.iorlist):
             o = -o+0.
-        db1 = dumbbell(0,np.array([0.145,0.,0.]),np.array([0,0,0],dtype=int))
-        db2 = dumbbell(1,np.array([0.145,0.,0.]),np.array([0,0,0],dtype=int))
+        db1 = dumbbell(0,o,np.array([0,0,0],dtype=int))
+        db2 = dumbbell(1,o,np.array([0,0,0],dtype=int))
         testjump = jump(db1,db2,1,1)
         count=0
         testlist=[]
