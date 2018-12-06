@@ -26,22 +26,6 @@ class test_statemaking(unittest.TestCase):
             sm += len(i)
         self.assertEqual(sm,len(dbstates.iorlist))
 
-        #test group operations
-        # db=dumbbell(1, np.array([1.,1.,0.]), np.array([1,1,0]))
-        # Glist = list(dbstates.crys.G)
-        # x = np.random.randint(0,len(Glist))
-        # g = Glist[x] #select random groupop
-        # newdb_test = db.gop(self.crys,0,g)
-        # newdb, p = dbstates.gdumb(g,db)
-        # count=0
-        # if(newdb_test==newdb):
-        #     self.assertEqual(p,1)
-        #     count=1
-        # elif(newdb_test==-newdb):
-        #     self.assertEqual(p,-1)
-        #     count=1
-        # self.assertEqual(count,1)
-
         #test indexmapping
         Glist = list(dbstates.crys.G)
         x = np.random.randint(0,len(Glist))
