@@ -18,22 +18,22 @@ class dumbbell(namedtuple('dumbbell','i o R')):
     def __eq__(self,other):
         # zero=np.zeros(len(self.o))
         true_class = isinstance(other,self.__class__)
-        c1 = true_class and (self.i==other.i and np.allclose(self.o,other.o,atol=1e-8) and np.allclose(self.R,other.R,atol=1e-8))
+        c1 = true_class and (self.i==other.i and np.allclose(self.o,other.o,atol=1e-6) and np.allclose(self.R,other.R,atol=1e-8))
         return c1
     def __ne__(self,other):
         return not self.__eq__(other)
 
     def __neg__(self):
         #negation is used to flip the orientation vector
-        return self.__class__(self.i,-self.o,self.R)
+        return self.__class__(self.i,-self.o+0.,self.R)
 
     def __hash__(self):
-        o = np.round(self.o,6)
+        o = np.round(self.o,3)
         return hash((self.i,o[0],o[1]*5,o[2],self.R[0],self.R[1],self.R[2]))
 
     def gop(self,crys,chem,g):
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
-        o1 = np.dot(g.cartrot,self.o)
+        o1 = crys.g_direc(g,self.o)
         return self.__class__(i1,o1,r1)
 
     def __add__(self,other):
