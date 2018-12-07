@@ -3,7 +3,6 @@ import numpy.linalg as la
 import onsager.crystal as crystal
 from collections import namedtuple
 
-
 # Single dumbbell state representer class.
 # 1. Format - 'i o R c' -> basis index, orientation, lattice vector, active atom indicator
 # 2. Should be able to check if two dumbbell states are identical
@@ -28,8 +27,9 @@ class dumbbell(namedtuple('dumbbell','i o R')):
         return self.__class__(self.i,-self.o+0.,self.R)
 
     def __hash__(self):
-        o = np.round(self.o,3)
-        return hash((self.i,o[0],o[1]*5,o[2],self.R[0],self.R[1],self.R[2]))
+        # o = np.round(self.o,6)
+        # return hash((self.i,o[0],o[1]*5,o[2],self.R[0],self.R[1],self.R[2]))
+        return hash((self.i,self.R[0],self.R[1],self.R[2]))
 
     def gop(self,crys,chem,g):
         r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
