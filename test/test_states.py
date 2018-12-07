@@ -27,22 +27,21 @@ class test_statemaking(unittest.TestCase):
         self.assertEqual(sm,len(dbstates.iorlist))
 
         #test indexmapping
-        Glist = list(dbstates.crys.G)
-        x = np.random.randint(0,len(Glist))
-        g = Glist[x] #select random groupop
-        for stateind,tup in enumerate(dbstates.iorlist):
-            i,o = tup[0],tup[1]
-            R, (ch,inew) = dbstates.crys.g_pos(g,np.array([0,0,0]),(dbstates.chem,i))
-            onew  = np.dot(g.cartrot,o)
-            if any(np.allclose(onew+t[1],0,atol=1.e-8) for t in dbstates.iorlist):
-                onew = -onew
-            count=0
-            for j,t in enumerate(dbstates.iorlist):
-                if(t[0]==inew and np.allclose(t[1],onew)):
-                    foundindex=j
-                    count+=1
-            self.assertEqual(count,1)
-            self.assertEqual(foundindex,dbstates.indexmap[x][stateind])
+        for g in dbstates.crys.G:
+            self.assertEqual(len(dbstates.indexmap[g]),len(dbstates.iorlist))
+            for stateind,tup in enumerate(dbstates.iorlist):
+                i,o = tup[0],tup[1]
+                R, (ch,inew) = dbstates.crys.g_pos(g,np.array([0,0,0]),(dbstates.chem,i))
+                onew  = np.dot(g.cartrot,o)
+                if any(np.allclose(onew+t[1],0,atol=1.e-8) for t in dbstates.iorlist):
+                    onew = -onew
+                count=0
+                for j,t in enumerate(dbstates.iorlist):
+                    if(t[0]==inew and np.allclose(t[1],onew)):
+                        foundindex=j
+                        count+=1
+                self.assertEqual(count,1)#Only one state is mapped into
+                self.assertEqual(foundindex,dbstates.indexmap[g][stateind])
 
         #test_indexedsymlist
         i1=np.random.randint(0,len(dbstates.indsymlist))
@@ -180,21 +179,19 @@ class test_statemaking(unittest.TestCase):
         self.assertEqual(sm,len(mstates1.iorlist))
 
         #check indexmapping
-        Glist = list(mstates1.crys.G)
-        x = np.random.randint(0,len(Glist))
-        g = Glist[x] #select random groupop
-        i,o = mstates1.iorlist[0]
-        for stateind,tup in enumerate(mstates1.iorlist):
-            i,o = tup[0],tup[1]
-            R, (ch,inew) = mstates1.crys.g_pos(g,np.array([0,0,0]),(mstates1.chem,i))
-            onew  = np.dot(g.cartrot,o)
-            count=0
-            for j,t in enumerate(mstates1.iorlist):
-                if(t[0]==inew and np.allclose(t[1],onew)):
-                    foundindex=j
-                    count+=1
-            self.assertEqual(count,1)
-            self.assertEqual(foundindex,mstates1.indexmap[x][stateind])
+        for g in mstates1.crys.G:
+            self.assertEqual(len(mstates1.indexmap[g]),len(mstates1.iorlist))
+            for stateind,tup in enumerate(mstates1.iorlist):
+                i,o = tup[0],tup[1]
+                R, (ch,inew) = mstates1.crys.g_pos(g,np.array([0,0,0]),(mstates1.chem,i))
+                onew  = np.dot(g.cartrot,o)
+                count=0
+                for j,t in enumerate(mstates1.iorlist):
+                    if(t[0]==inew and np.allclose(t[1],onew)):
+                        foundindex=j
+                        count+=1
+                self.assertEqual(count,1)
+                self.assertEqual(foundindex,mstates1.indexmap[g][stateind])
 
         #Check indexing of symlist
         i1=np.random.randint(0,len(dbstates.indsymlist))

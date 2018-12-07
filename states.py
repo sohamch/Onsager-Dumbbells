@@ -142,9 +142,11 @@ class dbStates(object):
         return symlist
 
     def indexmapping(self):
-        ng = len(self.crys.G)
-        indexmap = np.zeros((ng,len(self.iorlist)),dtype=int)
-        for i,g in enumerate(self.crys.G):
+        # ng = len(self.crys.G)
+        # indexmap = np.zeros((ng,len(self.iorlist)),dtype=int)
+        indexmap = {}
+        for g in self.crys.G:
+            maplist=[]
             for st,ior in enumerate(self.iorlist):
                 R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
                 onew  = np.dot(g.cartrot,ior[1])
@@ -152,7 +154,8 @@ class dbStates(object):
                     onew = -onew+0.
                 for j,t in enumerate(self.iorlist):
                     if(t[0]==inew and np.allclose(t[1],onew)):
-                        indexmap[i][st]=j
+                        maplist.append(j)
+                indexmap[g] = maplist
         return indexmap
 
     def gdumb(self,g,db):
@@ -433,16 +436,23 @@ class mStates(object):
                     invmap[i]=ind
         return invmap
 
+    #Equivalent of enumeration over dicts - for k,v in dict.items() - read docs.
+    #Make indexmap a dictionary with the gops as keys.
+    #Read up on dicts and sets in python.
+    #Also, do not hash into floats.
     def indexmapping(self):
         ng = len(self.crys.G)
         indexmap = np.zeros((ng,len(self.iorlist)),dtype=int)
-        for i,g in enumerate(self.crys.G):
+        indexmap={}
+        for g in self.crys.G:
+            maplist=[]
             for st,ior in enumerate(self.iorlist):
                 R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
                 onew  = np.dot(g.cartrot,ior[1])
                 for j,t in enumerate(self.iorlist):
                     if(t[0]==inew and np.allclose(t[1],onew)):
-                        indexmap[i][st]=j
+                        maplist.append(j)
+            indexmap[g]=maplist
         return indexmap
 
     def jumpnetwork(self,cutoff,solt_solv_cut,closestdistance):
