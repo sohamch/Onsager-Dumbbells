@@ -4,7 +4,7 @@ import onsager.crystal as crystal
 from representations import *
 import GFcalc
 from functools import reduce
-import scipy.linalg as la
+from scipy.linalg import pinv2
 from onsager.OnsagerCalc import Interstitial
 
 class BareDumbbell(Interstitial):
@@ -33,8 +33,8 @@ class BareDumbbell(Interstitial):
             # pseudoinverse required:
             self.bias_solver = lambda omega, b: np.dot(pinv2(omega), b)
 
-        self.sitegroupops = self.generateStateGroupOps()
-        self.jumpgroupops = self.generateJumpGroupOps()
+        # self.sitegroupops = self.generateStateGroupOps()
+        # self.jumpgroupops = self.generateJumpGroupOps()
 
 
     def FullVectorBasis(self,mixed):
@@ -89,7 +89,7 @@ class BareDumbbell(Interstitial):
             lis=[]
             for ind,tup in enumerate(l):
                 for gind,g in enumerate(self.container.crys.G):
-                    if self.container.indexmap[gind][ind]==stind:
+                    if self.container.indexmap[g][ind]==stind:
                         lis.append(g)
             glist.append(lis)
         return glist
@@ -150,7 +150,7 @@ class BareDumbbell(Interstitial):
         if len(betaeneT) != len(self.jumpnetwork):
             raise IndexError("length of energies {} doesn't match jump network".format(betaeneT))
 
-        rho = self.siteprob(pre, betaene)
+        rho = self.stateprob(pre, betaene)
         sqrtrho = np.sqrt(rho)
         ratelist = self.ratelist(pre, betaene, preT, betaeneT)
         symmratelist = self.symmratelist(pre, betaene, preT, betaeneT)
@@ -163,23 +163,22 @@ class BareDumbbell(Interstitial):
         Db = np.zeros((3, 3))
         stateene = np.array([betaene[w] for w in self.container.invmap])
         #Boltmann averaged energies of all states
-        Eave = np.dot(rho, siteene)
+        Eave = np.dot(rho, stateene)
 
-        for jlist, rates, symmrates, beT in zip(self.jumpnetwork,ratelist,symmratelist,betaeneT):
+        for jlist, rates, symmrates, bET in zip(self.jumpnetwork,ratelist,symmratelist,betaeneT):
             for (i,j,dx,c1,c2),rate,symmrate in zip(jlist,rates,symmrates):
                 omega_ij[i,j] += symmrate
                 omega_ij[i,i] -= rate
                 domega_ij[i,j] += symmrate * (bET - 0.5 * (stateene[i] + stateene[j]))
                 bias_i[i] += sqrtrho[i] * rate * dx
-                dbias_i[i] += sqrtrho[i] * rate * dx * (bET - 0.5 * (siteene[i] + Eave))
+                dbias_i[i] += sqrtrho[i] * rate * dx * (bET - 0.5 * (stateene[i] + Eave))
                 #for domega and dbias - read up section 2.2 in the paper.
                 #These are to evaluate the derivative of D wrt to beta. Read later.
                 D0 += 0.5 * np.outer(dx, dx) * rho[i] * rate
                 Db += 0.5 * np.outer(dx, dx) * rho[i] * rate * (bET - Eave)
                 #Db - derivative with respect to beta
-        gamma_i = np.zeros((self.N, 3))
-        for i in range(self.N):
-            gamma_i[i] = self.bias_solver(omega_ij, bias_i)
+        # gamma_i = np.zeros((self.N, 3))
+        gamma_i = np.dot(pinv2(omega_ij), bias_i)
         Dcorr = np.zeros((3,3))
         for i in range(self.N):
             Dcorr += np.outer(bias_i[i],gamma_i[i])
