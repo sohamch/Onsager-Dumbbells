@@ -60,7 +60,7 @@ class BareDumbbell(Interstitial):
         for statelistind,statelist in enumerate(self.container.symorlist):
             N = len(self.container.iorlist)
             glist=makeglist(statelist[0])
-            vbasis=reduce(starset.crys.CombineVectorBasis,[starset.crys.VectorBasis(*g.eigen()) for g in glist])
+            vbasis=reduce(self.container.crys.CombineVectorBasis,[self.container.crys.VectorBasis(*g.eigen()) for g in glist])
             for v in crys.vectlist(vbasis):
                 v /= np.sqrt(len(statelist))
                 vb = np.zeros((N,3))
