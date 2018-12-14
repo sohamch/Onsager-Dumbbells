@@ -59,8 +59,8 @@ class vectorStars(object):
                     self.vecvec.append(veclist)
             self.Nvstars_pure = len(vecpos)
         #Now do it for the mixed dumbbells - all negative checks dissappear
-        for s in starset.stars[starset.mixedstartindex:]:
-            pair0 = states[s[0]]
+        for star in starset.stars[starset.mixedstartindex:]:
+            pair0 = star[0]
             glist=[]
             #Find group operations that leave state unchanged
             for g in starset.crys.G:
@@ -74,7 +74,7 @@ class vectorStars(object):
             Nvect = len(vlist)
             if Nvect > 0:
                 for v in vlist:
-                    self.vecpos.append(s.copy())
+                    self.vecpos.append(star) #again, implement copy
                     veclist = []
                     for pairI in star:
                         for g in starset.crys.G:
@@ -96,21 +96,15 @@ class vectorStars(object):
         Returns:
             bias0, bias1, bias2, bias4 and bias3 expansions
         """
-        def disp(jump):
-            if isinstance(jump.state1,dumbbell):
-                dx = self.starset.crys.unit2cart(jump.state2.R,jump.state2.i) - self.starset.crys.unit2cart(jump.state1.R,jump.state1.i)
-            else:
-                dx = self.starset.crys.unit2cart(jump.state2.db.R,jump.state2.db.i) - self.starset.crys.unit2cart(jump.state1.db.R,jump.state1.db.i)
-        #First, what would be the shape of bias0expansion
+        #Expansion of pure dumbbell state bias vectors and complex state bias vectors
         bias0expansion = np.zeros((self.Nvstars_pure,len(self.starset.jumpindices)))
         bias1expansion = np.zeros((self.Nvstars_pure,len(jumpnetwork_omega1)))
 
         bias4expansion = np.zeros((self.Nvstars_pure,len(jumpnetwork_omega34)))
-        #Expansion of pure dumbbell state bias vectors and comple state bias vectors
 
+        #Expansion of mixed dumbbell state bias vectors.
         bias2expansion = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega2)))
         bias3expansion = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
-        #Expansion of mixed dumbbell state bias vectors.
 
         for i, states, vectors in zip(itertools.count(),self.vecpos[:Nvstars_pure],self.vecvec[:Nvstars_pure]):
             #First construct bias1expansion and bias0expansion
@@ -120,7 +114,7 @@ class vectorStars(object):
             for k,jumplist,jt in zip(itertools.count(), jumpnetwork_omega1, jumptype):
                 for j in jumplist:
                     IS=j.state1
-                    dx = disp(j)
+                    dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if states[0]==IS:
                         geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
@@ -133,7 +127,7 @@ class vectorStars(object):
                     IS=j.state1
                     if IS.is_zero(): #check if initial state is mixed dumbbell -> then skip
                         continue
-                    dx = disp(j)
+                    dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if states[0]==IS:
                         geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
@@ -146,7 +140,7 @@ class vectorStars(object):
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega2):
                 for j in jumplist:
                     IS=j.state1
-                    dx = disp(j)
+                    dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if states[0]==IS:
                         geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
@@ -157,7 +151,7 @@ class vectorStars(object):
                     if not IS.is_zero(): #check if initial state is a complex -> then skip
                         continue
                     IS=j.state1
-                    dx = disp(j)
+                    dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if states[0]==IS:
                         geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
