@@ -83,7 +83,7 @@ class StarSet(object):
                     try:
                         pairnew = pair.addjump(j)
                         if not pair.i==pairnew.i and np.allclose(pairnew.R_s,pair.R_s,atol=self.crys.threshold):
-                            raise("Solute shifted from a complex!(?)")
+                            raise  RuntimeError("Solute shifted from a complex!(?)")
                     except:
                         continue
                     nextshell.add(pairnew)
@@ -91,8 +91,8 @@ class StarSet(object):
             lastshell = nextshell
             nextshell=set([])
         self.stateset = stateset
-        #group the states by symmetry - form the starset
-        self.starset=[]
+        #group the states by symmetry - form the stars
+        self.stars=[]
         hashset=set([])
         for state in self.stateset:
             if not state in hashset:
@@ -104,14 +104,14 @@ class StarSet(object):
                     if not newstate in hashset and newstate in self.stateset:
                         newstar.append(newstate)
                         hashset.add(newstate)
-                self.starset.append(newstar)
+                self.stars.append(newstar)
 
-        for sl in self.starset:
+        for sl in self.stars:
             for s in sl:
                 if not np.allclose(s.R_s,0,atol=self.crys.threshold):
                     raise RuntimeError("Solute not at origin")
 
-        self.mixedstartindex = len(self.starset)
+        self.mixedstartindex = len(self.stars)
         #Now add in the mixed states
         self.mixedstateset=set([])
         for l in self.mdbcontainer.symorlist:
@@ -121,7 +121,7 @@ class StarSet(object):
                 mdb = SdPair(tup[0],z,db)
                 newlist.append(mdb)
                 self.mixedstateset.add(mdb)
-            self.starset.append(newlist)
+            self.stars.append(newlist)
 
     def jumpnetwork_omega1(self):
         jumpnetwork=[]
