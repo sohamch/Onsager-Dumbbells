@@ -83,7 +83,7 @@ class StarSet(object):
                     try:
                         pairnew = pair.addjump(j)
                         if not pair.i==pairnew.i and np.allclose(pairnew.R_s,pair.R_s,atol=self.crys.threshold):
-                            raise  RuntimeError("Solute shifted from a complex!(?)")
+                            raise RuntimeError("Solute shifted from a complex!(?)")
                     except:
                         continue
                     nextshell.add(pairnew)
@@ -115,6 +115,7 @@ class StarSet(object):
         #Now add in the mixed states
         self.mixedstateset=set([])
         for l in self.mdbcontainer.symorlist:
+            #The sites and orientations are already grouped - convert them into SdPairs
             newlist=[]
             for tup in l:
                 db=dumbbell(tup[0],tup[1],z)
