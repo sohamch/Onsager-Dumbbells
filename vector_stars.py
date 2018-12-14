@@ -46,15 +46,17 @@ class vectorStars(object):
             Nvect=len(vlist)
             if Nvect > 0:
                 for v in vlist:
-                            self.vecpos.append(star)
-                            #implement a copy function like in case of vacancies
-                            veclist = []
-                            for pairI in [pair for pair in s]:
-                                for g in starset.crys.G:
-                                    if pair0.g(starset.crys, starset.chem, g) == pairI or pair0.g(starset.crys, starset.chem, g) == -pairI:
-                                        veclist.append(starset.crys.g_direc(g, v))
-                                        break
-                            self.vecvec.append(veclist)
+                    self.vecpos.append(star)
+                    #implement a copy function like in case of vacancies
+                    veclist = []
+                    for pairI in star:
+                        for g in starset.crys.G:
+                            pairnew = pair0.g(starset.crys, starset.chem, g)
+                            pairnew = pairnew - pairnew.R_s #translate solute back to origin
+                            if pairnew == pairI or pairnew == -pairI:
+                                veclist.append(starset.crys.g_direc(g, v))
+                                break
+                    self.vecvec.append(veclist)
             self.Nvstars_pure = len(vecpos)
         #Now do it for the mixed dumbbells - all negative checks dissappear
         for s in starset.stars[starset.mixedstartindex:]:
@@ -72,14 +74,16 @@ class vectorStars(object):
             Nvect = len(vlist)
             if Nvect > 0:
                 for v in vlist:
-                            self.vecpos.append(s.copy())
-                            veclist = []
-                            for pairI in [pair for pair in s]:
-                                for g in starset.crys.G:
-                                    if pair0.g(starset.crys, starset.chem, g) == pairI:
-                                        veclist.append(starset.crys.g_direc(g, v))
-                                        break
-                            self.vecvec.append(veclist)
+                    self.vecpos.append(s.copy())
+                    veclist = []
+                    for pairI in star:
+                        for g in starset.crys.G:
+                            pairnew = pair0.g(starset.crys, starset.chem, g)
+                            pairnew = pairnew - pairnew.R_s #translate solute back to origin
+                            if pairnew == pairI:
+                                veclist.append(starset.crys.g_direc(g, v))
+                                break
+                    self.vecvec.append(veclist)
             self.Nvstars = len(vecpos)
 
     def biasexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega34):
