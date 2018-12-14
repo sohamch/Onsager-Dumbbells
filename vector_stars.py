@@ -6,7 +6,12 @@ from representations import *
 from stars import *
 from functools import reduce
 import itertools
+
 class vectorStars(object):
+    """
+    Stores the vector stars corresponding to a given starset of dumbbell states
+    """
+
     def __init__(self,crys_star=None):
         self.starset = None
         if starset is not None:
@@ -24,8 +29,8 @@ class vectorStars(object):
         self.vecpos = []
         self.vecvec = []
         #first do it for the complexes
-        for s in starset.stars[:starset.mixedstartindex]:
-            pair0 = states[s[0]]
+        for star in starset.stars[:starset.mixedstartindex]:
+            pair0 = star[0]
             glist=[]
             #Find group operations that leave state unchanged
             for g in starset.crys.G:
@@ -33,7 +38,7 @@ class vectorStars(object):
                 if pairnew == pair0 or pairnew==-pair0:
                     glist.append(g)
             #Find the intersected vector basis for these group operations
-            vb=reduce(starset.crys.CombineVectorBasis,[starset.crys.VectorBasis(*g.eigen()) for g in glist])
+            vb=reduce(crystal.CombineVectorBasis,[crystal.VectorBasis(*g.eigen()) for g in glist])
             #Get orthonormal vectors
             vlist = starset.crys.vectlist(vb)
             scale = 1./np.sqrt(len(s))
@@ -41,7 +46,8 @@ class vectorStars(object):
             Nvect=len(vlist)
             if Nvect > 0:
                 for v in vlist:
-                            self.vecpos.append(s.copy())
+                            self.vecpos.append(star)
+                            #implement a copy function like in case of vacancies
                             veclist = []
                             for pairI in [pair for pair in s]:
                                 for g in starset.crys.G:
@@ -50,30 +56,30 @@ class vectorStars(object):
                                         break
                             self.vecvec.append(veclist)
             self.Nvstars_pure = len(vecpos)
-            #Now do it for the mixed dumbbells - all negative checks dissappear
-            for s in starset.stars[starset.mixedstartindex:]:
-                pair0 = states[s[0]]
-                glist=[]
-                #Find group operations that leave state unchanged
-                for g in starset.crys.G:
-                    pairnew = pair0.gop(starset.crys,starset.chem,g)
-                    if pairnew == pair0:
-                        glist.append(g)
-                #Find the intersected vector basis for these group operations
-                vb=reduce(CombineVectorBasis,[VectorBasis(*g.eigen()) for g in glist])
-                #Get orthonormal vectors
-                vlist = starset.crys.vectlist(vb)
-                Nvect = len(vlist)
-                if Nvect > 0:
-                    for v in vlist:
-                                self.vecpos.append(s.copy())
-                                veclist = []
-                                for pairI in [pair for pair in s]:
-                                    for g in starset.crys.G:
-                                        if pair0.g(starset.crys, starset.chem, g) == pairI:
-                                            veclist.append(starset.crys.g_direc(g, v))
-                                            break
-                                self.vecvec.append(veclist)
+        #Now do it for the mixed dumbbells - all negative checks dissappear
+        for s in starset.stars[starset.mixedstartindex:]:
+            pair0 = states[s[0]]
+            glist=[]
+            #Find group operations that leave state unchanged
+            for g in starset.crys.G:
+                pairnew = pair0.gop(starset.crys,starset.chem,g)
+                if pairnew == pair0:
+                    glist.append(g)
+            #Find the intersected vector basis for these group operations
+            vb=reduce(crystal.CombineVectorBasis,[crystal.VectorBasis(*g.eigen()) for g in glist])
+            #Get orthonormal vectors
+            vlist = starset.crys.vectlist(vb)
+            Nvect = len(vlist)
+            if Nvect > 0:
+                for v in vlist:
+                            self.vecpos.append(s.copy())
+                            veclist = []
+                            for pairI in [pair for pair in s]:
+                                for g in starset.crys.G:
+                                    if pair0.g(starset.crys, starset.chem, g) == pairI:
+                                        veclist.append(starset.crys.g_direc(g, v))
+                                        break
+                            self.vecvec.append(veclist)
             self.Nvstars = len(vecpos)
 
     def biasexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega34):
