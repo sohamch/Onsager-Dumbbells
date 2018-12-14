@@ -41,7 +41,7 @@ class vectorStars(object):
             vb=reduce(crystal.CombineVectorBasis,[crystal.VectorBasis(*g.eigen()) for g in glist])
             #Get orthonormal vectors
             vlist = starset.crys.vectlist(vb)
-            scale = 1./np.sqrt(len(s))
+            scale = 1./np.sqrt(len(star))
             vlist = [v * scale for v in vlist] # see equation 80 in the paper - (there is a typo, this is correct).
             Nvect=len(vlist)
             if Nvect > 0:
@@ -71,6 +71,8 @@ class vectorStars(object):
             vb=reduce(crystal.CombineVectorBasis,[crystal.VectorBasis(*g.eigen()) for g in glist])
             #Get orthonormal vectors
             vlist = starset.crys.vectlist(vb)
+            scale = 1./np.sqrt(len(star))
+            vlist = [v * scale for v in vlist]
             Nvect = len(vlist)
             if Nvect > 0:
                 for v in vlist:
@@ -86,6 +88,7 @@ class vectorStars(object):
                     self.vecvec.append(veclist)
             self.Nvstars = len(vecpos)
 
+    #See group meeting update slides of sept 10th to see how this works.
     def biasexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega34):
         """
         Returns an expansion of the bias vector in terms of the displacements produced by jumps.
@@ -109,6 +112,7 @@ class vectorStars(object):
         for i, states, vectors in zip(itertools.count(),self.vecpos[:Nvstars_pure],self.vecvec[:Nvstars_pure]):
             #First construct bias1expansion and bias0expansion
             #This contains the expansion of omega_0 jumps and omega_1 type jumps
+            #See slides of Sept. 30 for diagram.
             #omega_0 : pure -> pure
             #omega_1 : complex -> complex
             for k,jumplist,jt in zip(itertools.count(), jumpnetwork_omega1, jumptype):
@@ -117,7 +121,7 @@ class vectorStars(object):
                     dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if states[0]==IS:
-                        geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
+                        geom_bias = np.dot(vectors[0], dx)
                         bias1expansion[i, k] += geom_bias
                         bias0expansion[i, jt] += geom_bias
             #Next, omega_4: complex -> mixed
@@ -148,7 +152,7 @@ class vectorStars(object):
             #Next, omega_3: mixed -> complex
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega34):
                 for j in jumplist:
-                    if not IS.is_zero(): #check if initial state is a complex -> then skip
+                    if not IS.is_zero(): #check if initial state is not a mixed state -> skip if not mixed
                         continue
                     IS=j.state1
                     dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
@@ -163,6 +167,7 @@ class vectorStars(object):
         Implements expansion of the jump rates in terms of the basis function of the vector stars.
         (Note to self) - Refer to earlier notes for details.
         """
+        #See my slides of Sept. 30 for diagram
         rate0expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(self.starset.jumpindices)))
         rate1expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(jumpnetwork)))
         rate0escape = np.zeros((self.Nvstars_pure, len(self.starset.jumpindices)))
@@ -170,14 +175,14 @@ class vectorStars(object):
         #First, we do the rate1 and rate0 expansions
         for k,jumplist,jt in zip(itertools.count(), jumpnetwork_omega1, jumptype):
             for jmp in jumplist:
-                for i in range(self.Nvstars_pure):
+                for i in range(self.Nvstars_pure): #The first inner sum
                     for chi_i,vi in zip(self.vecpos[i],self.vecvec[i]):
-                        if chi_i==jmp.state1:
+                        if chi_i==jmp.state1:#This is the delta functions of chi_0
                             rate0escape[i, jt] -= np.dot(vi, vi)
                             rate1escape[i, k] -= np.dot(vi, vi)
-                            for j in range(self.Nvstars_pure):
+                            for j in range(self.Nvstars_pure): #The second inner sum
                                 for chi_j,vj in zip(self.vecpos[j],self.vecvec[j]):
-                                    if chi_j==jmp.state2:
+                                    if chi_j==jmp.state2: #this is the delta function of chi_1
                                         rate1expansion[i,j,k] += np.dot(vi,vj)
                                         rate0expansion[i,j,jt] += np.dot(vi,vj)
         #Next, let's do the rate4expansion -> complex to mixed jumps
@@ -188,24 +193,26 @@ class vectorStars(object):
         rate3escape = np.zeros((self.Nvstars_pure, len(self.starset.jumpindices)))
         rate4escape = np.zeros((self.Nvstars-self.Nvstars_pure, len(jumpnetwork)))
 
+        #We implement the math for omega4 and note that omega3 is the negative jump of omega4
+        #This is because the order of the sum over stars in the rate expansion does not matter (see Sept. 30 slides).
         for k,jumplist in zip(itertools.count(), jumpnetwork_omega34):
             for jmp in jumplist:
                 if jmp.state1.is_zero(): #the initial state must be a complex
-                                         #the negative of this jump is a omega_3 jump anyway
+                                         #the negative of this jump is an omega_3 jump anyway
                     continue
-                for i in range(self.Nvstars_pure):
+                for i in range(self.Nvstars_pure): # iterate over complex states - the first inner sum
                     for chi_i,vi in zip(self.vecpos[i],self.vecvec[i]):
                         #Go through the initial pure states
                         if chi_i==jmp.state1:
                             rate4escape[i,k] -= np.dot(vi,vi)
-                            for j in range(self.Nvstars_pure,self.Nvstars):
+                            for j in range(self.Nvstars_pure,self.Nvstars): #iterate over mixed states - the second inner sum
                                 for chi_j,vj in zip(self.vecpos[j],self.vecvec[j]):
                                     #Go through the final complex states
                                     if chi_j==jmp.state2:
                                         rate3escape[j-self.Nvstars_pure,k] -= np.dot(vj,vj)
                                         rate4expansion[i,j,k] += np.dot(vi,vj)
                                         rate3expansion[j,i,k] += np.dot(vj,vi)
-                                        #The type of jump remains the same because they have the same transition state
+                                        #The jump type remains the same because they have the same transition state
 
         #Next, we do the rate2expansion for mixed->mixed jumps
         rate2expansion = np.zeros((self.Nvstars-self.Nvstars_pure,self.Nvstars-self.Nvstars_pure, len(jumpnetwork_omega2)))
@@ -221,12 +228,16 @@ class vectorStars(object):
                                     if chi_j.i_s==jmp.state2.i_s and np.allclose(chi_j.R_s,jmp.state2.R_s) and chi_j.db.i==jmp.state2.db.i and np.allclose(chi_j.db.o,jmp.state2.db.o):
                                         rate2expansion[i,j,k] += np.dot(vi,vj)
 
-        return rate0expansion,rate1expansion,rate4expansion,rate3expansion,rate2expansion
+        return rate0expansion,rate1expansion,rate2expansion,rate3expansion,rate4expansion
         #One more thing to think about - in our Dyson equation, the diagonal sum of om3 and om4 are added to om2
-        #and om0 respectively. How to implement that?
+        #and om0 respectively. How to implement that? See where delta_omega is constructed for vacancies.. we need to do it there
 
 
     def bareexpansion(self,jumpnetwork_omega1,jumptype):
+        """
+        Returns the contributions to the terms of the bare diffusivity term,
+        grouped separately for each type of jump.
+        """
         D0expansion = np.zeros((3,3,len(self.starset.jumpindices)))
         D1expansion = np.zeros((3,3,len(jumpnetwork_omega1)))
         #The next part should be exactly the same as for the vacancy case
