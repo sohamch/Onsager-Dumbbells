@@ -1,6 +1,6 @@
 import numpy as np
 import onsager.crystal as crystal
-from onsager.crystalStars import zeroclean
+from onsager.crystalStars import zeroclean,VectorStarSet
 from jumpnet3 import *
 from states import *
 from representations import *
@@ -8,16 +8,16 @@ from stars import *
 from functools import reduce
 import itertools
 
-class vectorStars(object):
+class vectorStars(VectorStarSet):
     """
     Stores the vector stars corresponding to a given starset of dumbbell states
     """
-
-    def __init__(self,crys_star=None):
-        self.starset = None
-        if starset is not None:
-            if starset.Nshells > 0:
-                self.generate(crys_star)
+    #__init__ now inherited from crystalStars
+    # def __init__(self,crys_star=None):
+    #     self.starset = None
+    #     if crys_star is not None:
+    #         if starset.Nshells > 0:
+    #             self.generate(crys_star)
 
     def generate(starset):
         """
