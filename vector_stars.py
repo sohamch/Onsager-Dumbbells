@@ -1,5 +1,6 @@
 import numpy as np
 import onsager.crystal as crystal
+from onsager.crystalStars import zeroclean
 from jumpnet3 import *
 from states import *
 from representations import *
@@ -160,7 +161,8 @@ class vectorStars(object):
                     if states[0]==IS:
                         geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
                         bias3expansion[i, k] += geom_bias
-        return bias0expansion,bias1expansion,bias2expansion,bias3expansion,bias4expansion
+        return zeroclean(bias0expansion),zeroclean(bias1expansion),zeroclean(bias2expansion),\
+               zeroclean(bias3expansion),zeroclean(bias4expansion)
 
     def rateexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega34):
         """
@@ -228,10 +230,10 @@ class vectorStars(object):
                                     if chi_j.i_s==jmp.state2.i_s and np.allclose(chi_j.R_s,jmp.state2.R_s) and chi_j.db.i==jmp.state2.db.i and np.allclose(chi_j.db.o,jmp.state2.db.o):
                                         rate2expansion[i,j,k] += np.dot(vi,vj)
 
-        return rate0expansion,rate1expansion,rate2expansion,rate3expansion,rate4expansion
+        return zeroclean(rate0expansion),zeroclean(rate1expansion),zeroclean(rate2expansion),\
+               zeroclean(rate3expansion),zeroclean(rate4expansion)
         #One more thing to think about - in our Dyson equation, the diagonal sum of om3 and om4 are added to om2
         #and om0 respectively. How to implement that? See where delta_omega is constructed for vacancies.. we need to do it there
-
 
     def bareexpansion(self,jumpnetwork_omega1,jumptype):
         """
@@ -245,4 +247,4 @@ class vectorStars(object):
             d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
             D0expansion[:, :, jt] += d0
             D1expansion[:, :, k] += d0
-        return D0expansion, D1expansion
+        return zeroclean(D0expansion), zeroclean(D1expansion)
