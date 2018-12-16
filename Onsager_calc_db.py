@@ -197,3 +197,19 @@ class BareDumbbell(Interstitial):
         #     gamma_v = self.bias_solver(omega_v, bias_v)
         #     # dgamma_v = np.dot(domega_v, gamma_v)
         #     Dcorrection = np.dot(np.dot(self.VV, bias_v), gamma_v)
+
+class dumbbellMediated:
+    """
+    class to compute dumbbell mediated solute transport coefficients.
+    Here, unlike vacancies, we must compute the Green's Function by Block inversion
+    and Taylor expansion (as in the GFcalc_dumbbells module) for both bare pure (g0)
+    and mixed(g2) dumbbells, since our Dyson equation requires so.
+    Also, instead of working with crystal and chem, we work with the container objects.
+    """
+    def __init__(self,pdbcontainer,mdbcontainer,NGFMAX=4,Nthermo=0):
+        #All the required quantities will be extracted from the containers as we move along
+        self.crys = pdbcontainer.crys #we assume this is the same in both containers
+        self.chem = pdbcontainer.chem
+        #The GFCalculator will only work with indexed jumpnetwork.
+        self.om0_jn_full, self.om0_jn = copy.deepcopy(pdbcontainer.jumpnetwork)
+        self.om2_jn_full, self.om2_jn = copy.deepcopy(mdbcontainer.jumpnetwork)
