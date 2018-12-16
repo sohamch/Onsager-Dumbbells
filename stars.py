@@ -60,6 +60,8 @@ class StarSet(object):
             self.generate(Nshells)
 
     def generate(self,Nshells):
+        #Return nothing if Nshells are not specified
+        if Nshells==None: return
         z=np.zeros(3).astype(int)
         if Nshells<=1:
             #A minimum of one shell will be produced.
