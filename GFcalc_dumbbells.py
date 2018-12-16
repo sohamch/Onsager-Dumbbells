@@ -75,7 +75,9 @@ class GF_dumbbells(GFCrystalcalc):
     @staticmethod
     def networkcount(jumpnetwork, N):
 
-        """Follows exactly the one for vacancies.
+        """
+        Returns how many seperate networks of connected (via jumps) i,or states there are.
+        Follows exactly the one for vacancies.
         Note - doesn't matter what c1, c2 are. If there is a jump (i, j, dx, c1, c2),
         then this means the two dumbbell states are connected.
         Return a count of how many separate connected networks there are
@@ -127,8 +129,8 @@ class GF_dumbbells(GFCrystalcalc):
             for (i, j, dx, c1, c2) in jumplist:
                 FTjumps[J, :, i, j] += np.exp(1.j * np.dot(kpts, dx)) #this is an array of exponentials
                 SEjumps[i, J] += 1
-                #How many jumps of each type come out of site j
-                #in case of dumbbell -> point to the (i,or) index
+                #How many jumps of each type come out of state j
+                #in case of dumbbell -> point to the (i,or) index j
         return FTjumps, SEjumps
 
     def TaylorExpandJumps(self, jumpnetwork, N):
@@ -170,7 +172,7 @@ class GF_dumbbells(GFCrystalcalc):
         for ng, g in enumerate(self.crys.G):
             grouparray[ng, :, :] = g.cartrot[:, :]
             #first construct the indexmap of the group operations for dumbbells
-            indexmap = self.indexmap[ng]
+            indexmap = self.indexmap[g]
             for i in range(self.N):
                 for j in range(self.N):
                     indexpair[i, j, ng, 0], indexpair[i, j, ng, 1] = indexmap[i], indexmap[j]
