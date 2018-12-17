@@ -88,7 +88,13 @@ class vectorStars(VectorStarSet):
                                 break
                     self.vecvec.append(veclist)
             self.Nvstars = len(vecpos)
+    # We must produce two expansions. One for pure dumbbell states pointing to pure dumbbell state
+    # and the other from mixed dumbbell states to mixed states.
 
+    def GFexpansion_pure(self):
+        pass
+    def GFexpansion_mixed(self):
+        pass
     #See group meeting update slides of sept 10th to see how this works.
     def biasexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega34):
         """
