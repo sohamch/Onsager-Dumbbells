@@ -2,6 +2,7 @@ import numpy as np
 import onsager.crystal as crystal
 # from jumpnet3 import *
 from states import *
+import itertools
 from representations import *
 
 class StarSet(object):
@@ -125,6 +126,49 @@ class StarSet(object):
                 newlist.append(mdb)
                 self.mixedstateset.add(mdb)
             self.stars.append(newlist)
+        self.purestates = list(self.stateset)
+        self.mixedstates = list(self.mixedstateset)
+
+        #generate an indexed version of the starset - seperate for mixed and pure stars
+        starindexed = []
+        for star in self.stars[:self.mixedstartindex]:
+            indlist=[]
+            for state in star:
+                for j,st in enumerate(self.purestates):
+                    if st==state:
+                        indlist.append(j)
+            starindexed.append(indlist)
+
+        for star in self.stars[self.mixedstartindex:]:
+            indlist=[]
+            for state in star:
+                for j,st in enumerate(self.mixedstates):
+                    if st==state:
+                        indlist.append(j)
+            starindexed.append(indlist)
+
+        self.starindexed = starindexed
+        #self.starindexed -> gives the indices to the states list of the states sotred in the starset
+
+        #now generate the index dicts
+        # --starindex -> tells us which star (via it's index in the states list) a state belongs to.
+        # --indexdict -> tell us given a pair state, what is its index in the states list and the starset.
+        self.pureindex = np.zeros(len(self.purestates),dtype=int)
+        self.mixedindex = np.zeros(len(self.mixedstates),dtype=int)
+        self.pureindexdict = {}
+        self.mixedindexdict = {}
+
+        for si, star, starind in zip(itertools.count(),self.stars[:self.mixedstartindex],\
+        self.starindexed[:self.mixedstartindex]):
+            for state,ind in zip(star,starind):
+                self.pureindex[ind] = si
+                self.pureindexdict[state] = (ind, si)
+
+        for si, star, starind in zip(itertools.count(),self.stars[self.mixedstartindex:],\
+        self.starindexed[self.mixedstartindex:]):
+            for state,ind in zip(star,starind):
+                self.mixedindex[ind] = si
+                self.mixedindexdict[state] = (ind, si)
 
     def jumpnetwork_omega1(self):
         jumpnetwork=[]

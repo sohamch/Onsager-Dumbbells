@@ -27,6 +27,26 @@ class test_StarSet(unittest.TestCase):
                     test_list = l.copy()
         self.assertEqual(len(test_list),6)
 
+    def test_indexing_jumpnetwork(self):
+        famp0 = [np.array([1.,0.,0.])*0.145]
+        family = [famp0]
+        hcp_Mg=crystal.Crystal.HCP(0.3294,chemistry=["Mg"])
+        pdbcontainer = dbStates(hcp_Mg,0,family)
+        mdbcontainer = mStates(hcp_Mg,0,family)
+        jset0 = pdbcontainer.jumpnetwork(0.45,0.01,0.01)
+        jset2 = mdbcontainer.jumpnetwork(0.45,0.01,0.01)
+        crys_stars = StarSet(pdbcontainer,mdbcontainer,jset0,jset2,1)
+        #test indexing
+        for star,starind in zip(crys_stars.stars[:crys_stars.mixedstartindex],\
+        crys_stars.starindexed[:crys_stars.mixedstartindex]):
+            for state,stateind in zip(star,starind):
+                self.assertEqual(state,crys_stars.purestates[stateind])
+
+        for star,starind in zip(crys_stars.stars[crys_stars.mixedstartindex:],\
+        crys_stars.starindexed[crys_stars.mixedstartindex:]):
+            for state,stateind in zip(star,starind):
+                self.assertEqual(state,crys_stars.mixedstates[stateind])
+
     def test_jumpnetworks(self):
         #See the example file. Provides much clearer understanding.
         #The tests have just one Wyckoff site for now
