@@ -27,7 +27,7 @@ class test_StarSet(unittest.TestCase):
                     test_list = l.copy()
         self.assertEqual(len(test_list),6)
 
-    def test_indexing_jumpnetwork(self):
+    def test_indexing_stars(self):
         famp0 = [np.array([1.,0.,0.])*0.145]
         family = [famp0]
         hcp_Mg=crystal.Crystal.HCP(0.3294,chemistry=["Mg"])
@@ -46,6 +46,28 @@ class test_StarSet(unittest.TestCase):
         crys_stars.starindexed[crys_stars.mixedstartindex:]):
             for state,stateind in zip(star,starind):
                 self.assertEqual(state,crys_stars.mixedstates[stateind])
+
+        #test pureindex, mixedindex and the dictionaries
+        count=0 #count incorrect results
+        for i,starindex in enumerate(crys_stars.pureindex):
+            star = crys_stars.stars[starindex]
+            tlist=[]
+            for state in star:
+                if state==crys_stars.purestates[i]:
+                    tlist.append(state)
+            if len(tlist)!=1: #see that the state has been found in the indicated star exactly once
+                count=1
+        self.assertEqual(count,0)
+
+        for i,starindex in enumerate(crys_stars.mixedindex):
+            star = crys_stars.stars[starindex]
+            tlist=[]
+            for state in star:
+                if state==crys_stars.mixedstates[i]:
+                    tlist.append(state)
+            if len(tlist)!=1: #see that the state has been found in the indicated star exactly once
+                count=1
+        self.assertEqual(count,0)
 
     def test_jumpnetworks(self):
         #See the example file. Provides much clearer understanding.

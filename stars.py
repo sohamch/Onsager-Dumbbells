@@ -167,8 +167,8 @@ class StarSet(object):
         for si, star, starind in zip(itertools.count(),self.stars[self.mixedstartindex:],\
         self.starindexed[self.mixedstartindex:]):
             for state,ind in zip(star,starind):
-                self.mixedindex[ind] = si
-                self.mixedindexdict[state] = (ind, si)
+                self.mixedindex[ind] = si+self.mixedstartindex
+                self.mixedindexdict[state] = (ind, si+self.mixedstartindex)
 
     def jumpnetwork_omega1(self):
         jumpnetwork=[]
