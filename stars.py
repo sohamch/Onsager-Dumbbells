@@ -126,9 +126,24 @@ class StarSet(object):
                 newlist.append(mdb)
                 self.mixedstateset.add(mdb)
             self.stars.append(newlist)
+
         self.purestates = list(self.stateset)
         self.mixedstates = list(self.mixedstateset)
-
+        self.pureindexto_symorlist = np.zeros(len(self.purestates),dtype=int)
+        self.mixedindexto_symorlist = np.zeros(len(self.purestates),dtype=int)
+        #index states to pure and mixed symorlists
+        for stateind,st in enumerate(self.purestates):
+            i,o = st.db.i,st.db.o
+            for wyckind,tuplist in self.pdbcontainer.symorlist:
+                for tup in tuplist:
+                    if tup[0]==i and np.allclose(tup[1],o,atol=self.crys.threshold):
+                        self.pureindexto_symorlist[stateind]=wyckind
+        for stateind,st in enumerate(self.mixedstates):
+            i,o = st.db.i,st.db.o
+            for wyckind,tuplist in self.mdbcontainer.symorlist:
+                for tup in tuplist:
+                    if tup[0]==i and np.allclose(tup[1],o,atol=self.crys.threshold):
+                        self.mixedindexto_symorlist[stateind]=wyckind
         #generate an indexed version of the starset - seperate for mixed and pure stars
         starindexed = []
         for star in self.stars[:self.mixedstartindex]:

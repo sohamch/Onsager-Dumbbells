@@ -1,0 +1,154 @@
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.         -0.14142136 -0.14142136]
+Jumping from c = 1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.         -0.14142136 -0.14142136]
+Jumping from c = -1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Jumping from c = 1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Jumping from c = -1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.         -0.14142136]
+Jumping from c = 1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.         -0.14142136]
+Jumping from c = -1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.         -0.14142136 -0.14142136]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Jumping from c = 1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [-0.         -0.14142136 -0.14142136]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Jumping from c = -1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.         -0.14142136 -0.14142136]
+Jumping from c = 1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.         -0.14142136 -0.14142136]
+Jumping from c = -1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Jumping from c = 1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Jumping from c = -1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.         -0.14142136  0.14142136]
+Jumping from c = 1 to c= 1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.         -0.14142136  0.14142136]
+Jumping from c = -1 to c= 1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.         -0.14142136]
+Jumping from c = 1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.         -0.14142136]
+Jumping from c = -1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.         -0.14142136]
+Final state:
+	dumbbell :basis index = 0, lattice vector = [-1 -1 -1], orientation = [ 0.         -0.14142136  0.14142136]
+Jumping from c = -1 to c= 1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.         -0.14142136 -0.14142136]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Jumping from c = 1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [-0.         -0.14142136 -0.14142136]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Jumping from c = -1 to c= -1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.         -0.14142136  0.14142136]
+Jumping from c = 1 to c= 1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.         -0.14142136  0.14142136]
+Jumping from c = -1 to c= 1
+
+Jump object:
+Initial state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.         -0.14142136  0.14142136]
+Final state:
+	dumbbell :basis index = 1, lattice vector = [-1 -1 -1], orientation = [ 0.14142136 -0.14142136 -0.        ]
+Jumping from c = -1 to c= -1
+

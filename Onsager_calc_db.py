@@ -2,7 +2,9 @@ import numpy as np
 from states import *
 import onsager.crystal as crystal
 from representations import *
-import GFcalc
+# import GFcalc
+# import vector_stars
+import GFcalc_dumbbells
 from functools import reduce
 from scipy.linalg import pinv2
 from onsager.OnsagerCalc import Interstitial
@@ -210,6 +212,37 @@ class dumbbellMediated:
         #All the required quantities will be extracted from the containers as we move along
         self.crys = pdbcontainer.crys #we assume this is the same in both containers
         self.chem = pdbcontainer.chem
+        self.pdbcontainer = pdbcontainer
+        self.mdbcontainer = mdbcontainer
         #The GFCalculator will only work with indexed jumpnetwork.
         self.om0_jn_full, self.om0_jn = copy.deepcopy(pdbcontainer.jumpnetwork)
         self.om2_jn_full, self.om2_jn = copy.deepcopy(mdbcontainer.jumpnetwork)
+
+        self.thermo = stars.StarSet(self.pdbcontainer, self.mdbcontainer, self.om0_jn, self.om2_jn)  # just create; call generate later
+        self.kinetic = stars.StarSet(self.pdbcontainer, self.mdbcontainer, self.om0_jn, self.om2_jn)
+        #Create the nearest (jump) neighbor star
+        self.kinetic = stars.StarSet(self.pdbcontainer, self.mdbcontainer, self.om0_jn, self.om2_jn,1)
+        self.vkinetic = vector_stars.vectorStars()
+        self.generate(Nthermo)
+        # self.generatematrices()
+
+    def generate(self,Nthermo):
+        if Nthermo==0:return
+        self.Nthermo=Nthermo
+        self.thermo.generate(Nthermo)
+        self.kinetic.generate(Nthermo+1)
+        self.vkinetic.generate(self.kinetic)
+        #we need two expansions - one for omega_0 and one for omega_2
+        #TODO - try to do this with one single function
+        self.GFexpansion_pure, self.GFstarset_pure = self.vkinetic.GFexpansion_pure()
+        self.GFexpansion_mixed, self.GFstarset_mixed = self.vkinetic.GFexpansion_mixed()
+
+        #representative (i.e, first) state of the stars in the thermodynamic shell.
+        #TODO - put all of the things below in a dictionary
+
+        #thermo2kin -> gives the index into the states list of the kinetic shell, of the
+        self.thermo2kin_pure = [self.kinetic.pureindexdict(self.thermo.purestates[s[0]]) for s in self.thermo.starindexed[:self.thermo.mixedstartindex]]
+        self.thermo2kin_mixed = [self.kinetic.mixedindexdict(self.thermo.mixedstates[s[0]]) for s in self.thermo.starindexed[self.thermo.mixedstartindex:]]
+
+        #kin2vacancy -> gives the index into the states list of the kinetic shell, of the
+        self.kin2pdb = [self.pdbcontainer.invmap[self.kinetic.states[s[0]].db] for s in self.kinetic.stars]

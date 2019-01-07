@@ -275,9 +275,29 @@ class GFCrystalcalc(object):
             c = [(n, n, np.zeros((Taylor.powlrange[n], N, N), dtype=complex)) for n in range(Taylor.Lmax + 1)]
             for (i, j), dx in jumplist:
                 pexp = Taylor.powexp(dx, normalize=False) #make the powerexpansion for the components of dx
+
                 for n in range(Taylor.Lmax + 1):
                     (c[n][2])[:, i, j] += pre[n] * (Taylor.powercoeff[n] * pexp)[:Taylor.powlrange[n]]
-                    ######
+
+                    #(c[n][2]) = nxNxN matrix
+
+                    #pexp = [1,dx_z,dx_y,dx_x,dx_z^2,dx_y*dx_z,dx_y^2,dx_x*dx_z,dxxdxy,dx2x,dx3z,dxydx2z,dx2ydxz,dx3y,dxxdx2z,
+                    # dxxdxydxz,dxxdx2y,dx2xdxz,dx2xdxy,dx3x,dx4z,dxydx3z,dx2ydx2z,dx3ydxz,dx4y,dxxdx3z,dxxdxydx2z,
+                    # dxxdx2ydxz,dxxdx3y,dx2xdx2z,dx2xdxydxz,dx2xdx2y,dx3xdxz,dx3xdxy,dx4x]
+
+                    #Taylor.powercoeff =
+                    #[[ 1.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+                    #   0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+                    # [ 0.  1.  1.  1.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+                    #   0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+                    # [ 0.  0.  0.  0.  1.  2.  1.  2.  2.  1.  0.  0.  0.  0.  0.  0.  0.  0.
+                    #   0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+                    # [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  1.  3.  3.  1.  3.  6.  3.  3.
+                    #   3.  1.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+                    # [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+                    #   0.  0.  1.  4.  6.  4.  1.  4. 12. 12.  4.  6. 12.  6.  4.  4.  1.]]
+
+                    #Taylor.powlrange = [ 1  4 10 20 35  0]
             Taylorjumps.append(Taylor(c))
         return Taylorjumps
 
@@ -330,6 +350,7 @@ class GFCrystalcalc(object):
 
         self.omega_Taylor = sum(symmrate * expansion
                                 for symmrate, expansion in zip(self.symmrate, self.Taylorjumps))
+        #sum() adds terms from left to right, i.e, __add__ of the left object is called first, not __radd__ of the right.
         #here, "expansion" is a Taylor3D object, symmrate is a number. see __rmul__ in Taylor3D.
         #Multiplies all the matrix elements in the Cs corresponding to each jump with the rate.
         #Then does an element-wise addition of the matrix elements in c[2]s for each jumptype.
@@ -342,6 +363,7 @@ class GFCrystalcalc(object):
         self.r, self.vr = self.DiagGamma()#eigenvalues and vectors at q=0.
         if not np.allclose(self.r[:self.Ndiff], 0):
             #Why should there be as many zeros as there are disconnected pieces of the jumpnetwork?
+            #Each of those subnetworks must by themselves reach equilibrium.
             #Work this out
             raise ArithmeticError("Did not find {} equilibrium solution to rates?".format(self.Ndiff))
         self.omega_Taylor_rotate = (self.omega_Taylor.ldot(self.vr.T)).rdot(self.vr)

@@ -1,7 +1,7 @@
 import numpy as np
 import onsager.crystal as crystal
 from onsager.crystalStars import zeroclean,VectorStarSet
-from jumpnet3 import *
+# from jumpnet3 import *
 from states import *
 from representations import *
 from stars import *
