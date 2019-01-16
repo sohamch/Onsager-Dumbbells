@@ -238,7 +238,7 @@ class dbStates(object):
             if initindex==None or finindex==None:
                 raise RuntimeError("The given initial or final dumbbell state in the jump is not in the (i,or) list provided")
             dx = disp(crys,chem,j.state1,j.state2)
-            tup = (initindex,finindex,dx,j.c1,j.c2)
+            tup = (initindex,finindex,dx)
             return tup
 
         nmax = [int(np.round(np.sqrt(cutoff**2/crys.metric[i,i]))) + 1 for i in range(3)]
@@ -490,7 +490,7 @@ class mStates(object):
             if initindex==None or finindex==None:
                 raise RuntimeError("The given initial or final dumbbell state in the jump is not in the (i,or) list provided")
             dx = disp(crys,chem,j.state1,j.state2)
-            tup = (initindex,finindex,dx,j.c1,j.c2)
+            tup = (initindex,finindex,dx)
             return tup
 
         nmax = [int(np.round(np.sqrt(cutoff**2/crys.metric[i,i]))) + 1 for i in range(3)]
