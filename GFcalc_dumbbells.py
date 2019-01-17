@@ -35,8 +35,8 @@ class GF_dumbbells(GFCrystalcalc):
         """
         # this is really just used by loadHDF5() to circumvent __init__
         if all(x is None for x in (container, jumpnetwork)): return
-        if any (len(tup)!=5 for l in jumpnetwork for tup in l):
-            raise TypeError("Enter the jumpnetwork of the form (i,j,dx,c1,c2)")
+        if any (len(tup)!=2 for l in jumpnetwork for tup in l):
+            raise TypeError ("Need the indexed form of the jumpnetwork.")
         self.crys = container.crys
         self.chem = container.chem
         self.iorlist = container.iorlist.copy()
@@ -66,72 +66,72 @@ class GF_dumbbells(GFCrystalcalc):
         self.FTjumps, self.SEjumps = self.FourierTransformJumps(jumpnetwork, self.N, self.kpts)
         # generate the Taylor expansion coefficients for each jump
         #generate the jumppairs
-        self.jumppairs = tuple((self.invmap[jumplist[0][0]], self.invmap[jumplist[0][1]])
+        self.jumppairs = tuple((self.invmap[jumplist[0][0][0]], self.invmap[jumplist[0][0][1]])
                                for jumplist in jumpnetwork)
         self.Taylorjumps = self.TaylorExpandJumps(jumpnetwork, self.N)
 
         self.D, self.eta = 0, 0
 
-    @staticmethod
-    def networkcount(jumpnetwork, N):
+    # @staticmethod
+    # def networkcount(jumpnetwork, N):
+    #
+    #     """
+    #     Returns how many seperate networks of connected (via jumps) i,or states there are.
+    #     Follows exactly the one for vacancies.
+    #     Note - doesn't matter what c1, c2 are. If there is a jump (i, j, dx, c1, c2),
+    #     then this means the two dumbbell states are connected.
+    #     Return a count of how many separate connected networks there are
+    #     that is, how many states are connected by jumps.
+    #     say we have three states {0,1,2} in the iorlist.
+    #     If 0 is connected to 1 and 1 to 2, then the connectivity is 1, because 0 and 2 are connected via 1
+    #     even if not directly - see jupyter notebook in Practice Files folder."""
+    #     jngraph = np.zeros((N, N), dtype=bool)
+    #     for jlist in jumpnetwork:
+    #         for (i, j, dx, c1, c2) in jlist:
+    #             jngraph[i,j] = True
+    #     connectivity = 0
+    #     disconnected = {i for i in range(N)}#this is a set.
+    #     while len(disconnected)>0:
+    #         i = min(disconnected)
+    #         cset = {i}
+    #         disconnected.remove(i)
+    #         while True:
+    #             clen = len(cset)
+    #             for n in cset.copy():
+    #                 for m in disconnected.copy():
+    #                     if jngraph[n,m]:
+    #                         cset.add(m)
+    #                         disconnected.remove(m)
+    #             # check if we've stopped adding new members:
+    #             if clen == len(cset): break
+    #         connectivity += 1
+    #
+    #     return connectivity
 
-        """
-        Returns how many seperate networks of connected (via jumps) i,or states there are.
-        Follows exactly the one for vacancies.
-        Note - doesn't matter what c1, c2 are. If there is a jump (i, j, dx, c1, c2),
-        then this means the two dumbbell states are connected.
-        Return a count of how many separate connected networks there are
-        that is, how many states are connected by jumps.
-        say we have three states {0,1,2} in the iorlist.
-        If 0 is connected to 1 and 1 to 2, then the connectivity is 1, because 0 and 2 are connected via 1
-        even if not directly - see jupyter notebook in Practice Files folder."""
-        jngraph = np.zeros((N, N), dtype=bool)
-        for jlist in jumpnetwork:
-            for (i, j, dx, c1, c2) in jlist:
-                jngraph[i,j] = True
-        connectivity = 0
-        disconnected = {i for i in range(N)}#this is a set.
-        while len(disconnected)>0:
-            i = min(disconnected)
-            cset = {i}
-            disconnected.remove(i)
-            while True:
-                clen = len(cset)
-                for n in cset.copy():
-                    for m in disconnected.copy():
-                        if jngraph[n,m]:
-                            cset.add(m)
-                            disconnected.remove(m)
-                # check if we've stopped adding new members:
-                if clen == len(cset): break
-            connectivity += 1
-
-        return connectivity
-
-    def FourierTransformJumps(self, jumpnetwork, N, kpts):
-        """
-        Generate the Fourier transform coefficients for each jump - almost entirely same as vacancies
-
-        :param jumpnetwork: list of unique transitions, as lists of (i, j, dx, c1, c2)
-                            i,j correspond to pair indices in iorlist
-        :param N: number of sites
-        :param kpts: array[Nkpt][3], in Cartesian (same coord. as dx) - the kpoints that are considered
-        :return FTjumps: array[Njump][Nkpt][Nsite][Nsite] of FT of the jump network
-                ->The Fourier transform of the repr. of each type of jump
-                ->their values at the kpoint considered.
-                ->their matrix elements corresponding to the initial and final sites.
-                -> see equation(38) in the paper
-        :return SEjumps: array[Nsite][Njump] multiplicity of jump on each site (?)
-        """
-        FTjumps = np.zeros((len(jumpnetwork), self.Nkpt, N, N), dtype=complex)
-        SEjumps = np.zeros((N, len(jumpnetwork)), dtype=int)
-        for J, jumplist in enumerate(jumpnetwork):
-            for (i, j, dx, c1, c2) in jumplist:
-                FTjumps[J, :, i, j] += np.exp(1.j * np.dot(kpts, dx)) #this is an array of exponentials
-                SEjumps[i, J] += 1
-                #How many jumps of each type come out of state j
-                #in case of dumbbell -> point to the (i,or) index j
-        return FTjumps, SEjumps
+    # def FourierTransformJumps(self, jumpnetwork, N, kpts):
+    #     """
+    #     Generate the Fourier transform coefficients for each jump - almost entirely same as vacancies
+    #
+    #     :param jumpnetwork: list of unique transitions, as lists of (i, j, dx, c1, c2)
+    #                         i,j correspond to pair indices in iorlist
+    #     :param N: number of sites
+    #     :param kpts: array[Nkpt][3], in Cartesian (same coord. as dx) - the kpoints that are considered
+    #     :return FTjumps: array[Njump][Nkpt][Nsite][Nsite] of FT of the jump network
+    #             ->The Fourier transform of the repr. of each type of jump
+    #             ->their values at the kpoint considered.
+    #             ->their matrix elements corresponding to the initial and final sites.
+    #             -> see equation(38) in the paper
+    #     :return SEjumps: array[Nsite][Njump] multiplicity of jump on each site (?)
+    #     """
+    #     FTjumps = np.zeros((len(jumpnetwork), self.Nkpt, N, N), dtype=complex)
+    #     SEjumps = np.zeros((N, len(jumpnetwork)), dtype=int)
+    #     for J, jumplist in enumerate(jumpnetwork):
+    #         for (i, j, dx, c1, c2) in jumplist:
+    #             FTjumps[J, :, i, j] += np.exp(1.j * np.dot(kpts, dx)) #this is an array of exponentials
+    #             SEjumps[i, J] += 1
+    #             #How many jumps of each type come out of state j
+    #             #in case of dumbbell -> point to the (i,or) index j
+    #     return FTjumps, SEjumps
 
     # def TaylorExpandJumps(self, jumpnetwork, N):
     #     """
