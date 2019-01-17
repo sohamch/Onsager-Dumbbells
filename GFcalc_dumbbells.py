@@ -133,31 +133,31 @@ class GF_dumbbells(GFCrystalcalc):
                 #in case of dumbbell -> point to the (i,or) index j
         return FTjumps, SEjumps
 
-    def TaylorExpandJumps(self, jumpnetwork, N):
-        """
-        Generate the Taylor expansion coefficients for each jump
-
-        :param jumpnetwork: list of unique transitions, as lists of (i, j, dx, c1, c2)
-                            i,j correspond to pair indices in iorlist
-        :param N: number of states
-        :return T3Djumps: list of Taylor3D expansions of the jump network
-        """
-        Taylor = T3D
-        Taylor()
-        # Taylor expansion coefficient prefactors for exp(1j*x) : (1j)^n/n!
-        pre = np.array([(1j) ** n / factorial(n, True) for n in range(Taylor.Lmax + 1)])
-        #The prefactors for the jumps in the Taylor expansion of e^(-iq.dx)
-        Taylorjumps = []
-        for jumplist in jumpnetwork:
-            # coefficients; we use tuples because we'll be successively adding to the coefficients in place
-            c = [(n, n, np.zeros((Taylor.powlrange[n], N, N), dtype=complex)) for n in range(Taylor.Lmax + 1)]
-            for (i, j, dx,c1,c2) in jumplist:
-                pexp = Taylor.powexp(dx, normalize=False) #make the powerexpansion for the components of dx
-                for n in range(Taylor.Lmax + 1):
-                    (c[n][2])[:, i, j] += pre[n] * (Taylor.powercoeff[n] * pexp)[:Taylor.powlrange[n]]
-                    #look at the symoblic python notebook for each of these
-            Taylorjumps.append(Taylor(c))
-        return Taylorjumps
+    # def TaylorExpandJumps(self, jumpnetwork, N):
+    #     """
+    #     Generate the Taylor expansion coefficients for each jump
+    #
+    #     :param jumpnetwork: list of unique transitions, as lists of (i, j, dx, c1, c2)
+    #                         i,j correspond to pair indices in iorlist
+    #     :param N: number of states
+    #     :return T3Djumps: list of Taylor3D expansions of the jump network
+    #     """
+    #     Taylor = T3D
+    #     Taylor()
+    #     # Taylor expansion coefficient prefactors for exp(1j*x) : (1j)^n/n!
+    #     pre = np.array([(1j) ** n / factorial(n, True) for n in range(Taylor.Lmax + 1)])
+    #     #The prefactors for the jumps in the Taylor expansion of e^(-iq.dx)
+    #     Taylorjumps = []
+    #     for jumplist in jumpnetwork:
+    #         # coefficients; we use tuples because we'll be successively adding to the coefficients in place
+    #         c = [(n, n, np.zeros((Taylor.powlrange[n], N, N), dtype=complex)) for n in range(Taylor.Lmax + 1)]
+    #         for (i, j, dx,c1,c2) in jumplist:
+    #             pexp = Taylor.powexp(dx, normalize=False) #make the powerexpansion for the components of dx
+    #             for n in range(Taylor.Lmax + 1):
+    #                 (c[n][2])[:, i, j] += pre[n] * (Taylor.powercoeff[n] * pexp)[:Taylor.powlrange[n]]
+    #                 #look at the symoblic python notebook for each of these
+    #         Taylorjumps.append(Taylor(c))
+    #     return Taylorjumps
 
     def BreakdownGroups(self):
         """
