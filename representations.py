@@ -63,6 +63,7 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
 
     def dx(self,crys,chem):
         return crys.unit2cart(self.db.R,crys.basis[chem][self.db.i]) - crys.unit2cart(self.R_s,crys.basis[chem][self.i_s])
+        
     def __eq__(self, other):
         true_class = isinstance(other,self.__class__)
         true_solute = self.i_s == other.i_s and np.allclose(self.R_s,other.R_s,atol=1e-8)
