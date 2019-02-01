@@ -154,8 +154,8 @@ class test_statemaking(unittest.TestCase):
             for lindex in range(len(jind)):
                 self.assertEqual(len(jind[lindex]),len(jset[lindex]))
                 for jindex in range(len(jind[lindex])):
-                    (i1,o1) = pdbcontainer.iorlist[jind[lindex][jindex][0]]
-                    (i2,o2) = pdbcontainer.iorlist[jind[lindex][jindex][1]]
+                    (i1,o1) = pdbcontainer.iorlist[jind[lindex][jindex][0][0]]
+                    (i2,o2) = pdbcontainer.iorlist[jind[lindex][jindex][0][1]]
                     self.assertEqual(jset[lindex][jindex].state1.i,i1)
                     self.assertEqual(jset[lindex][jindex].state2.i,i2)
                     self.assertTrue(np.allclose(jset[lindex][jindex].state1.o,o1))
@@ -241,8 +241,8 @@ class test_statemaking(unittest.TestCase):
         for lindex in range(len(jind)):
             self.assertEqual(len(jind[lindex]),len(jset[lindex]))
             for jindex in range(len(jind[lindex])):
-                (i1,o1) = mdbcontainer.iorlist[jind[lindex][jindex][0]]
-                (i2,o2) = mdbcontainer.iorlist[jind[lindex][jindex][1]]
+                (i1,o1) = mdbcontainer.iorlist[jind[lindex][jindex][0][0]]
+                (i2,o2) = mdbcontainer.iorlist[jind[lindex][jindex][0][1]]
                 self.assertEqual(jset[lindex][jindex].state1.db.i,i1)
                 self.assertEqual(jset[lindex][jindex].state2.db.i,i2)
                 self.assertTrue(np.allclose(jset[lindex][jindex].state1.db.o,o1))
