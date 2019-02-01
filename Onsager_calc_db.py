@@ -3,9 +3,37 @@ from states import *
 import onsager.crystal as crystal
 from representations import *
 import GFcalc
+import stars
+import vector_stars
 from functools import reduce
 from scipy.linalg import pinv2
-from onsager.OnsagerCalc import Interstitial
+from onsager.OnsagerCalc import Interstitial, VacancyMediated
+#Making stateprob, ratelist and symmratelist universal functions so that I can also use them later on in the case of solutes.
+def stateprob(self, pre, betaene, invmap):
+    """Returns our (i,or) probabilities, normalized, as a vector.
+       Straightforward extension from vacancy case.
+    """
+    # be careful to make sure that we don't under-/over-flow on beta*ene
+    minbetaene = min(betaene)
+    rho = np.array([pre[w] * np.exp(minbetaene - betaene[w]) for w in self.container.invmap])
+    return rho / sum(rho)
+
+#make a static method and reuse later for solute case?
+def ratelist(self, pre, betaene, preT, betaeneT, invmap):
+    """Returns a list of lists of rates, matched to jumpnetwork"""
+    stateene = np.array([betaene[w] for w in self.container.invmap])
+    statepre = np.array([pre[w] for w in self.container.invmap])
+    return [[pT * np.exp(stateene[i] - beT) / statepre[i]
+             for i, j, dx, c1, c2 in t]
+            for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
+
+def symmratelist(self, pre, betaene, preT, betaeneT, invmap):
+    """Returns a list of lists of symmetrized rates, matched to jumpnetwork"""
+    stateene = np.array([betaene[w] for w in self.container.invmap])
+    statepre = np.array([pre[w] for w in self.container.invmap])
+    return [[pT * np.exp(0.5 * stateene[i] + 0.5 * stateene[j] - beT) / np.sqrt(statepre[i] * statepre[j])
+             for i, j, dx, c1, c2 in t]
+            for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
 
 class BareDumbbell(Interstitial):
     """
@@ -112,30 +140,31 @@ class BareDumbbell(Interstitial):
             glist.append(lis)
         return glist
 
-    def stateprob(self, pre, betaene):
-        """Returns our (i,or) probabilities, normalized, as a vector.
-           Straightforward extension from vacancy case.
-        """
-        # be careful to make sure that we don't under-/over-flow on beta*ene
-        minbetaene = min(betaene)
-        rho = np.array([pre[w] * np.exp(minbetaene - betaene[w]) for w in self.container.invmap])
-        return rho / sum(rho)
-
-    def ratelist(self, pre, betaene, preT, betaeneT):
-        """Returns a list of lists of rates, matched to jumpnetwork"""
-        stateene = np.array([betaene[w] for w in self.container.invmap])
-        statepre = np.array([pre[w] for w in self.container.invmap])
-        return [[pT * np.exp(stateene[i] - beT) / statepre[i]
-                 for i, j, dx, c1, c2 in t]
-                for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
-
-    def symmratelist(self, pre, betaene, preT, betaeneT):
-        """Returns a list of lists of symmetrized rates, matched to jumpnetwork"""
-        stateene = np.array([betaene[w] for w in self.container.invmap])
-        statepre = np.array([pre[w] for w in self.container.invmap])
-        return [[pT * np.exp(0.5 * stateene[i] + 0.5 * stateene[j] - beT) / np.sqrt(statepre[i] * statepre[j])
-                 for i, j, dx, c1, c2 in t]
-                for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
+    # def stateprob(self, pre, betaene):
+    #     """Returns our (i,or) probabilities, normalized, as a vector.
+    #        Straightforward extension from vacancy case.
+    #     """
+    #     # be careful to make sure that we don't under-/over-flow on beta*ene
+    #     minbetaene = min(betaene)
+    #     rho = np.array([pre[w] * np.exp(minbetaene - betaene[w]) for w in self.container.invmap])
+    #     return rho / sum(rho)
+    #
+    # #make a static method and reuse later for solute case?
+    # def ratelist(self, pre, betaene, preT, betaeneT):
+    #     """Returns a list of lists of rates, matched to jumpnetwork"""
+    #     stateene = np.array([betaene[w] for w in self.container.invmap])
+    #     statepre = np.array([pre[w] for w in self.container.invmap])
+    #     return [[pT * np.exp(stateene[i] - beT) / statepre[i]
+    #              for i, j, dx, c1, c2 in t]
+    #             for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
+    #
+    # def symmratelist(self, pre, betaene, preT, betaeneT):
+    #     """Returns a list of lists of symmetrized rates, matched to jumpnetwork"""
+    #     stateene = np.array([betaene[w] for w in self.container.invmap])
+    #     statepre = np.array([pre[w] for w in self.container.invmap])
+    #     return [[pT * np.exp(0.5 * stateene[i] + 0.5 * stateene[j] - beT) / np.sqrt(statepre[i] * statepre[j])
+    #              for i, j, dx, c1, c2 in t]
+    #             for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
 
     def diffusivity(self, pre, betaene, preT, betaeneT):
         """
@@ -150,10 +179,10 @@ class BareDumbbell(Interstitial):
         if len(betaeneT) != len(self.jumpnetwork):
             raise IndexError("length of energies {} doesn't match jump network".format(betaeneT))
 
-        rho = self.stateprob(pre, betaene)
+        rho = stateprob(pre, betaene, self.container.invmap)
         sqrtrho = np.sqrt(rho)
-        ratelist = self.ratelist(pre, betaene, preT, betaeneT)
-        symmratelist = self.symmratelist(pre, betaene, preT, betaeneT)
+        ratelist = ratelist(pre, betaene, preT, betaeneT, self.container.invmap)
+        symmratelist = symmratelist(pre, betaene, preT, betaeneT, self.container.invmap)
         omega_ij = np.zeros((self.N, self.N))
         domega_ij = np.zeros((self.N, self.N))
         bias_i = np.zeros((self.N, 3))
@@ -185,31 +214,69 @@ class BareDumbbell(Interstitial):
 
         return D0 + Dcorr
 
-        # if self.NV > 0:
-        #     omega_v = np.zeros((self.NV, self.NV))
-        #     bias_v = np.zeros(self.NV)
-        #     for a, va in enumerate(self.VB):
-        #         bias_v[a] = np.trace(np.dot(bias_i.T, va))
-        #         # dbias_v[a] = np.trace(np.dot(dbias_i.T, va))
-        #         for b, vb in enumerate(self.VectorBasis):
-        #             omega_v[a, b] = np.trace(np.dot(va.T, np.dot(omega_ij, vb)))
-        #         #    domega_v[a, b] = np.trace(np.dot(va.T, np.dot(domega_ij, vb)))
-        #     gamma_v = self.bias_solver(omega_v, bias_v)
-        #     # dgamma_v = np.dot(domega_v, gamma_v)
-        #     Dcorrection = np.dot(np.dot(self.VV, bias_v), gamma_v)
-
-class dumbbellMediated:
+class dumbbellMediated(VacancyMediated):
     """
-    class to compute dumbbell mediated solute transport coefficients.
+    class to compute dumbbell mediated solute transport coefficients. We inherit the calculator
+    for vacancies from Prof. Trinkle's code for vacancies with changes as and when required.
+
     Here, unlike vacancies, we must compute the Green's Function by Block inversion
-    and Taylor expansion (as in the GFcalc_dumbbells module) for both bare pure (g0)
+    and Taylor expansion (as in the GFCalc module) for both bare pure (g0)
     and mixed(g2) dumbbells, since our Dyson equation requires so.
     Also, instead of working with crystal and chem, we work with the container objects.
     """
-    def __init__(self,pdbcontainer,mdbcontainer,NGFMAX=4,Nthermo=0):
+    def __init__(self,pdbcontainer,mdbcontainer,NGFmax=4,Nthermo=0):
         #All the required quantities will be extracted from the containers as we move along
+        self.pdbcontainer = pdbcontainer
+        self.mdbcontainer = mdbcontainer
         self.crys = pdbcontainer.crys #we assume this is the same in both containers
         self.chem = pdbcontainer.chem
         #The GFCalculator will only work with indexed jumpnetwork.
-        self.om0_jn_full, self.om0_jn = copy.deepcopy(pdbcontainer.jumpnetwork)
-        self.om2_jn_full, self.om2_jn = copy.deepcopy(mdbcontainer.jumpnetwork)
+        self.om0_jn_states, self.om0_jn = copy.deepcopy(pdbcontainer.jumpnetwork)
+        self.om2_jn_states, self.om2_jn = copy.deepcopy(mdbcontainer.jumpnetwork)
+        self.GFcalc_pdb = self.GFCalculator(NGFmax)
+        self.GFcalc_mdb = self.GFCalculator(NGFmax,pdb=False)
+        self.thermo = stars.StarSet(pdbcontainer,mdbcontainer,self.om0_jn_states,self.om2_jn_states)
+        self.kinetic = stars.StarSet(pdbcontainer,mdbcontainer,self.om0_jn_states,self.om2_jn_states)
+        #Note - even if empty, our starsets go out to atleast the NNstar - later we'll have to keep this in mind
+        self.NNstar = stars.StarSet(pdbcontainer,mdbcontainer,self.om0_jn_states,self.om2_jn_states,2)
+        self.vkinetic = vector_stars.vectorStars()
+        self.generate(Nthermo)
+        self.generatematrices()
+        #we'll have to modify these methods as our star sets are constructed in a different manner.
+        #The default starset always has first NN
+    def GFCalculator(self,NGFmax=0,pdb=True):
+        """
+        Mostly similar to vacancy case - returns the GF calculator for pure or mixed dumbbell
+        states as specified.
+        """
+        #unlike the vacancy case, it is better to recalculate for now.
+        if NGFmax<0: raise ValueError("NGFmax must be greater than 0")
+        self.NGFmax=NGFmax
+        self.clearcache(pdb)#make all precalculated lists empty
+        if pdb:
+            return GFcalc_dumbbells.GF_dumbbells(self.pdbcontainer,self.om0_jn,NGFmax)
+        return GFcalc_dumbbells.GF_dumbbells(self.mdbcontainer,self.om2_jn,NGFmax)
+
+    def clearcache(self,pdb):
+        """
+        Makes all pre-computed dicitionaries empty for pure or mixed dumbbell as specified
+        """
+        if pdb:
+            self.GFvalues_pdb, self.LvvValues_pdb, self.etav_pdb = {}, {}, {}
+        else:
+            self.GFvalues_mdb, self.LvvValues_mdb, self.etav_mdb = {}, {}, {}
+
+    def generate(self,Nthermo):
+
+        if Nthermo==getattr(self,"Nthermo",0): return
+        self.Nthermo = Nthermo
+        self.thermo.generate(Nthermo) #we have to consider originstates since they are required in the Dyson equation
+        self.kinetic.generate(Nthermo+1)
+        self.vkinetic.generate(self.kinetic) #we generate the vector star out of the kinetic shell
+        #Now generate the pure and mixed dumbbell Green functions - internalized within
+        self.GFexpansion_pure,self.GFexpansion_mixed = self.vkinetic.GFexpansion_pure,self.vkinetic.GFexpansion_mixed
+        self.GFstarset_pure,self.GFstarset_mixed = self.vkinetic.GFstarset_pure,self.vkinetic.GFstarset_mixed
+
+        #See how the thermo2kin and all of that works
+
+        self.om1_jn, self.om1_jt, self.om1_SP = self.kinetic.jumpnetwork_omega1()

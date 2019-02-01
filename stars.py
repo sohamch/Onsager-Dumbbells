@@ -5,6 +5,54 @@ from states import *
 import itertools
 from representations import *
 
+def calc_dx_species(crys,jnet,jnet_indexed,type='bare'):
+    """
+    Return a jumpnetwork for the individual species 'alpha' in the form (i,j,dx_alpha)
+    Parameters:
+    jnet - jumpnetwork with jumps in terms of states
+    jnet_indexed - the indexed jumpnetwork.
+    species - indicates which species we are calculating "dx" for.
+    pure - True if we are working in pure dumbell space, False if in mixed dumbell space
+    Returns:
+    symmetry grouped jumps of the form (i,j,dx_species)
+    """
+    if not(type=='bare' or type=='mixed'):
+        raise ValueError('the type can only be bare or mixed')
+    if len(jnet_indexed!=jnet):
+        raise ValueError("Need the same indexed jumplist as the original jumplist")
+    if type=="bare":
+        if not isinstance(jnet[0][0].state1,dumbbell):
+            raise TypeError("bare dumbell transitions need to be between dumbbell objects")
+    else:
+        if not isinstance(jnet[0][0].state1,SdPair):
+            raise TypeError("mixed dumbbell or complex transitions need to be between SdPair objects")
+    #First deal with solute in pure dumbbell space
+    jnet_solvent=[]
+    jnet_solute=[]
+    if pure:
+        for i,jlist in enumerate(jnet):
+            speclist=[]
+            for j,jmp in enumerate(jlist):
+                dx=jnet_indexed[i][j][2]
+                dx += (jmp.c2*jmp.state2.o/2. - jmp.c1*jmp.state1.o/2.)
+                speclist.append(((jnet_indexed[i][j][0][0],jnet_indexed[i][j][0][1]),dx))
+            jnet_solvent.append(speclist)
+        return jnet_solvent,None
+    else:
+        for i,jlist in enumerate(jnet):
+            speclist_solute=[]
+            speclist_solvent=[]
+            for j,jmp in enumerate(jlist):
+                dx=jnet_indexed[i][j][2]
+                dx_solute = dx + (jmp.state2.db.o/2. - jmp.state1.db.o/2.)
+                dx_solvent = dx + (-jmp.state2.db.o/2. + jmp.state1.db.o/2.)
+                speclist_solute.append(((jnet_indexed[i][j][0][0],jnet_indexed[i][j][0][1]),dx_solute))
+                speclist_solvent.append(((jnet_indexed[i][j][0][0],jnet_indexed[i][j][0][1]),dx_solvent))
+            jnet_solvent.append(speclist)
+        return jnet_solvent,jnet_solute
+
+
+
 class StarSet(object):
     """
     class to form the crystal stars, with shells indicated by the number of jumps.
@@ -44,9 +92,16 @@ class StarSet(object):
         self.mdbcontainer = mdbcontainer
         self.mixedset = mdbcontainer.iorlist
         self.jumpnetwork = jumpnetwork_omega0[0]
+
         self.jumpnetwork_indexed = jumpnetwork_omega0[1]
+        #get version of the indexed jumpnetwork containing ((i,j),dx_alpha) type jump representations
+        #where alpha='solute' means solute displacement, alpha = 'solvent' means solvent displacement
+        self.jumpnetwork_indexed_solute, self.jumpnetwork_indexed_solvent = calc_dx_species()
+
         self.jumpnetwork_omega2 = jumpnetwork_omega2[0]
+
         self.jumpnetwork_omega2_indexed = jumpnetwork_omega2[1]
+
         self.jumplist = [j for l in self.jumpnetwork for j in l]
         self.jumpset = set(self.jumplist)
         self.jumpindices = []
