@@ -29,21 +29,16 @@ def calc_dx_species(crys,jnet,jnet_indexed,type='bare'):
     #First deal with solute in pure dumbbell space
     jnet_solvent=[]
     jnet_solute=[]
-    if pure:
-        for i,jlist in enumerate(jnet):
-            speclist=[]
-            for j,jmp in enumerate(jlist):
-                dx=jnet_indexed[i][j][2]
-                dx += (jmp.c2*jmp.state2.o/2. - jmp.c1*jmp.state1.o/2.)
-                speclist.append(((jnet_indexed[i][j][0][0],jnet_indexed[i][j][0][1]),dx))
-            jnet_solvent.append(speclist)
-        return jnet_solvent,None
+    if type=='bare':
+        #See the notes, the mass tranport of solvent between pure dumbbell jumps is the same as dx
+        jnet_solvent = [[((i,j),dx.copy()) for (i,j),dx in jlist]for jlist in jnet_indexed]
+        jnet_solute = [[((i,j),np.zeros(3)) for (i,j),dx in jlist]for jlist in jnet_indexed]
     else:
         for i,jlist in enumerate(jnet):
             speclist_solute=[]
             speclist_solvent=[]
             for j,jmp in enumerate(jlist):
-                dx=jnet_indexed[i][j][2]
+                dx=jnet_indexed[i][j][1]
                 dx_solute = dx + (jmp.state2.db.o/2. - jmp.state1.db.o/2.)
                 dx_solvent = dx + (-jmp.state2.db.o/2. + jmp.state1.db.o/2.)
                 speclist_solute.append(((jnet_indexed[i][j][0][0],jnet_indexed[i][j][0][1]),dx_solute))
@@ -91,20 +86,20 @@ class StarSet(object):
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
         self.mixedset = mdbcontainer.iorlist
-        self.jumpnetwork = jumpnetwork_omega0[0]
 
+        self.jumpnetwork = jumpnetwork_omega0[0]
         self.jumpnetwork_indexed = jumpnetwork_omega0[1]
-        #get version of the indexed jumpnetwork containing ((i,j),dx_alpha) type jump representations
-        #where alpha='solute' means solute displacement, alpha = 'solvent' means solvent displacement
-        self.jumpnetwork_indexed_solute, self.jumpnetwork_indexed_solvent = calc_dx_species()
 
         self.jumpnetwork_omega2 = jumpnetwork_omega2[0]
-
         self.jumpnetwork_omega2_indexed = jumpnetwork_omega2[1]
 
         self.jumplist = [j for l in self.jumpnetwork for j in l]
         self.jumpset = set(self.jumplist)
-        self.jumpindices = []
+
+        self.jumpindices = [] #what is this? contain a symmetry grouped omega0 jumpnetwork
+                              #But the elements in the symmetry-unique lists are not jump objects, but indices
+                              #into jumplist.
+
         self.Nshells = Nshells
         count=0
         for l in self.jumpnetwork:
@@ -114,6 +109,11 @@ class StarSet(object):
                 count+=1
         if not Nshells==None:
             self.generate(Nshells)
+
+    def _sortkey(self,entry):
+        sol_pos = self.crys.unit2cart(entry.R_s,self.crys.basis[self.chem][entry.i_s])
+        db_pos = self.crys.unit2cart(entry.db.R,self.crys.basis[self.chem][entry.db.i])
+        return np.dot(db_pos-sol_pos,db_pos-sol_pos)
 
     def generate(self,Nshells):
         #Return nothing if Nshells are not specified
@@ -140,8 +140,8 @@ class StarSet(object):
                         raise RuntimeError("The solute is not at the origin")
                     try:
                         pairnew = pair.addjump(j)
-                        if not pair.i==pairnew.i and np.allclose(pairnew.R_s,pair.R_s,atol=self.crys.threshold):
-                            raise RuntimeError("Solute shifted from a complex!(?)")
+                        if not (pair.i_s==pairnew.i_s and np.allclose(pairnew.R_s,pairs.R_s,atol=self.crys.threshold)):
+                            raise ArithmeticError("Solute shifted from a complex!(?)")
                     except:
                         continue
                     nextshell.add(pairnew)
@@ -181,8 +181,8 @@ class StarSet(object):
                 newlist.append(mdb)
                 self.mixedstateset.add(mdb)
             self.stars.append(newlist)
-        self.purestates = list(self.stateset)
-        self.mixedstates = list(self.mixedstateset)
+        self.purestates = sorted(list(self.stateset),key=self._sortkey)
+        self.mixedstates = sorted(list(self.mixedstateset),key=self._sortkey)
 
         #generate an indexed version of the starset - seperate for mixed and pure stars
         starindexed = []
@@ -226,7 +226,8 @@ class StarSet(object):
                 self.mixedindexdict[state] = (ind, si+self.mixedstartindex)
 
     def jumpnetwork_omega1(self):
-        jumpnetwork=[]
+        jumpnetwork= []
+        jumpindexed = []
         jumptype=[]
         starpair=[]
         jumpset=set([])#set where newly produced jumps will be stored
@@ -246,6 +247,7 @@ class StarSet(object):
                     jpair = jump(pair,pairnew,j.c1,j.c2)
                     if not jpair in jumpset and not -jpair in jumpset: #see if the jump has not already been considered
                         newlist=[]
+                        indices=[]
                         for g in self.crys.G:
                             jnew = jpair.gop(self.crys,self.chem,g)
                             db1new = self.pdbcontainer.gdumb(g,jpair.state1.db)
@@ -260,7 +262,7 @@ class StarSet(object):
                                 if not(jnew.state1.i_s==jnew.state1.i_s):
                                     raise RuntimeError("Solute must remain in exactly the same position before and after the jump")
                                 newlist.append(jnew)
-                                newlist.append(-jnew) #we can add the negative since solute always remain at the origin
+                                newlist.append(-jnew) #we can add the negative since solute always remains at the origin
                                 jumpset.add(jnew)
                                 jumpset.add(-jnew)
                         if (newlist[0].state1.is_zero() and newlist[0].state2.is_zero()):
@@ -271,32 +273,43 @@ class StarSet(object):
                                 if not j_equiv in newnewlist:
                                     newnewlist.add(j)
                             newlist=list(newnewlist)
+                        for jmp in newlist:
+                            initial = self.pureindexdict[jmp.state1][0]
+                            final = self.pureindexdict[jmp.state2][0]
+                            indices.append(((initial,final),disp(self.crys, self.chem, jmp.state1, jmp.state2)))
                         jumpnetwork.append(newlist)
+                        jumpindexed.append(indices)
                         jumptype.append(jt)
 
-        return jumpnetwork, jumptype
+        return (jumpnetwork,jumpindexed), jumptype
 
     def jumpnetwork_omega34(self,cutoff,solv_solv_cut,solt_solv_cut,closestdistance):
         #building omega_4 -> association - c2=-1 -> since solvent movement is tracked
         #cutoff required is solute-solvent as well as solvent solvent
         alljumpset_omega4=set([])
         symjumplist_omega4=[]
-        alljumpset_omega3=set([])
+        symjumplist_omega4_indexed=[]
+
+        # alljumpset_omega3=set([])
+
         symjumplist_omega3=[]
+        symjumplist_omega3_indexed=[]
+
         symjumplist_omega43_all=[]
+        symjumplist_omega43_all_indexed=[]
         alljumpset_omega43_all=set([])
-        for p_pure in self.stateset:
+        for p_pure in self.purestates:
             if p_pure.is_zero(): #Specator rotating into mixed does not make sense.
                 continue
-            for p_mixed in self.mixedstateset:
+            for p_mixed in self.mixedstates:
                 for c1 in [-1,1]:
                     try:
                         j = jump(p_pure,p_mixed,c1,-1)
                     except:
                         continue
                     #The next four lines should be commented out when ready
-                    if not (np.allclose(p_pure.R_s,0,atol=self.crys.threshold) and np.allclose(p_mixed.R_s,0,atol=self.crys.threshold)):
-                        raise RuntimeError("Solute shifted from origin - cannot happen")
+                    # if not (np.allclose(p_pure.R_s,0,atol=self.crys.threshold) and np.allclose(p_mixed.R_s,0,atol=self.crys.threshold)):
+                    #     raise RuntimeError("Solute shifted from origin - cannot happen")
                     # if not(p_pure.i_s==p_mixed.i_s): #The solute must remain in exactly the same position before and after the jump
                     #     raise RuntimeError("Incorrect jump constructed")
                     dx = disp(self.crys,self.chem,j.state1,j.state2)
@@ -306,8 +319,8 @@ class StarSet(object):
                         if not collision_self(self.crys,self.chem,j,solv_solv_cut,solt_solv_cut):
                             if not collision_others(self.crys,self.chem,j,closestdistance):
                                 newset=set([])
-                                newnegset=set([])
-                                new_allset=set([])
+                                # newnegset=set([])
+                                # new_allset=set([])
                                 for g in self.crys.G:
                                     jnew = j.gop(self.crys,self.chem,g)
                                     db1new = self.pdbcontainer.gdumb(g,j.state1.db)
@@ -316,13 +329,40 @@ class StarSet(object):
                                     if not jnew in newset:
                                         if jnew.state1.i_s==jnew.state1.db.i and np.allclose(jnew.state1.R_s,jnew.state1.db.R,atol=self.crys.threshold):
                                             raise RuntimeError("Initial state mixed")
+                                        if not(jnew.state2.i_s==jnew.state2.db.i and np.allclose(jnew.state2.R_s,jnew.state2.db.R,atol=self.crys.threshold)):
+                                            raise RuntimeError("Final state not mixed")
                                         newset.add(jnew)
-                                        newnegset.add(-jnew)
-                                        new_allset.add(jnew)
-                                        new_allset.add(-jnew)
+                                        # newnegset.add(-jnew)
+                                        # new_allset.add(jnew)
+                                        # new_allset.add(-jnew)
                                         alljumpset_omega4.add(jnew)
-                                symjumplist_omega4.append(list(newset))
-                                symjumplist_omega3.append(list(newnegset))
-                                symjumplist_omega43_all.append(list(new_allset))
 
-        return symjumplist_omega43_all,symjumplist_omega4,symjumplist_omega3
+                                newset = list(newset)
+                                newnegset = [-jmp for jmp in newset]
+                                newallset=[]
+                                for i in range(len(newset)):
+                                    newallset.append(newset[i])
+                                    newallset.append(newnegset[i])
+
+                                new4index=[]
+                                new3index=[]
+                                newallindex=[]
+
+                                for jmp in newset:
+                                    pure_ind = self.pureindexdict[jmp.state1][0]
+                                    mixed_ind = self.mixedindexdict[jmp.state2][0]
+                                    new4index.append(((pure_ind,mixed_ind),disp(self.crys, self.chem, jmp.state1, jmp.state2)))
+                                    new3index.append(((mixed_ind,pure_ind),disp(self.crys, self.chem, jmp.state2, jmp.state1)))
+                                    newallindex.append(((pure_ind,mixed_ind),disp(self.crys, self.chem, jmp.state1, jmp.state2)))
+                                    newallindex.append(((mixed_ind,pure_ind),disp(self.crys, self.chem, jmp.state2, jmp.state1)))
+
+                                symjumplist_omega4.append(newset)
+                                symjumplist_omega4_indexed.append(new4index)
+
+                                symjumplist_omega3.append(newnegset)
+                                symjumplist_omega3_indexed.append(new3index)
+
+                                symjumplist_omega43_all.append(newallset)
+                                symjumplist_omega43_all_indexed.append(newallindex)
+
+        return (symjumplist_omega43_all,symjumplist_omega43_all_indexed),(symjumplist_omega4,symjumplist_omega4_indexed),(symjumplist_omega3,symjumplist_omega3_indexed)
