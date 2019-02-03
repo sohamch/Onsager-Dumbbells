@@ -63,7 +63,7 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
 
     def dx(self,crys,chem):
         return crys.unit2cart(self.db.R,crys.basis[chem][self.db.i]) - crys.unit2cart(self.R_s,crys.basis[chem][self.i_s])
-        
+
     def __eq__(self, other):
         true_class = isinstance(other,self.__class__)
         true_solute = self.i_s == other.i_s and np.allclose(self.R_s,other.R_s,atol=1e-8)
@@ -238,3 +238,22 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
         state1new=self.state1.gop(crys,chem,g)
         state2new=self.state2.gop(crys,chem,g)
         return self.__class__(state1new,state2new,self.c1,self.c2)
+
+class connector(namedtuple('connector','state1 state2')):
+    """
+    An object that simple connects two states.
+    Similar to the jump object, but does not contain information regarding connecting path.
+    Checks compatibility of connections as well.
+    """
+    def __init__(self):
+        if not (isinstance(self.state1,SdPair) and isinstance(self.state2,SdPair)):
+            raise TypeError("Incompatible Initial and final states. They must be of the SdPair type.")
+        #Check compatibility
+        if self.state1.i_s != self.state.R_s or not(np.allclose(self.state1.R_s,self.state2.R_s)):
+            raise ArithmeticError("can only connect states with same solute location.")
+
+    def __eq__(self,other):
+        return (self.state1==other.state1 and self.state2==other.state2)
+
+    def __hash__(self):
+        return hash((self.state1,self.state2))
