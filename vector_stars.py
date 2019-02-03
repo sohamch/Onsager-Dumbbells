@@ -161,8 +161,12 @@ class vectorStars(VectorStarSet):
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if purestar[0]==IS:
                         dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
-                        geom_bias = np.dot(vectors[0], dx)*len(purestar)
-                        bias4expansion[i, k] += geom_bias #this is contribution of omega_4 jumps, to the bias
+                        dx_solute =
+                        dx_solvent =
+                        geom_bias_solute = np.dot(vectors[0], dx_solute)*len(purestar)
+                        geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(purestar)
+                        bias4expansion_solute[i, k] += geom_bias_solute #this is contribution of omega_4 jumps, to the bias
+                        bias4expansion_solvent[i, k] += geom_bias_solvent
                         #vector along v_i
                         #So, to find the total bias along v_i due to omega_4 jumps, we sum over k.
 
@@ -176,8 +180,12 @@ class vectorStars(VectorStarSet):
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if mixedstar[0]==IS:
                         dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
-                        geom_bias = np.dot(vectors[0], dx)*len(mixedstar)
-                        bias2expansion[i, k] += geom_bias
+                        dx_solute = dx + j.state2.db.o/2. - j.state1.db.o/2.
+                        dx_solvent = dx - j.state2.db.o/2. + j.state1.db.o/2. 
+                        geom_bias_solute = np.dot(vectors[0], dx_solute)*len(mixedstar)
+                        geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(mixedstar)
+                        bias2expansion_solute[i, k] += geom_bias
+                        bias2expansion_solvent[i, k] += geom_bias
             #Next, omega_3: mixed -> complex
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega34):
                 for j in jumplist:
@@ -187,8 +195,12 @@ class vectorStars(VectorStarSet):
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if mixedstar[0]==IS:
                         dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
-                        geom_bias = np.dot(vectors[0], dx)*len(mixedstar)
-                        bias3expansion[i, k] += geom_bias
+                        dx_solute =
+                        dx_solvent =
+                        geom_bias_solute = np.dot(vectors[0], dx_solute)*len(mixedstar)
+                        geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(mixedstar)
+                        bias3expansion_solute[i, k] += geom_bias_solute
+                        bias3expansion_solvent[i, k] += geom_bias_solvent
         return zeroclean(bias0expansion),zeroclean(bias1expansion),zeroclean(bias2expansion),\
                zeroclean(bias3expansion),zeroclean(bias4expansion)
 
