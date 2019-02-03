@@ -1,7 +1,6 @@
 import numpy as np
 import onsager.crystal as crystal
 from onsager.crystalStars import zeroclean,VectorStarSet
-from jumpnet3 import *
 from states import *
 from representations import *
 from stars import *
@@ -12,25 +11,21 @@ class vectorStars(VectorStarSet):
     """
     Stores the vector stars corresponding to a given starset of dumbbell states
     """
-    #__init__ now inherited from crystalStars
-    # def __init__(self,crys_star=None):
-    #     self.starset = None
-    #     if crys_star is not None:
-    #         if starset.Nshells > 0:
-    #             self.generate(crys_star)
 
     def generate(starset):
         """
         Follows almost the same as that for solute-vacancy case. Only generalized to keep the state
         under consideration unchanged.
         """
+        self.starset=None
         if starset.Nshells == 0: return
         if starset == self.starset: return
         self.starset = starset
         self.vecpos = []
+        self.vecpos_indexed = []
         self.vecvec = []
         #first do it for the complexes
-        for star in starset.stars[:starset.mixedstartindex]:
+        for star, indstar in zip(starset.stars[:starset.mixedstartindex],starset.starindexed[:starset.mixedstartindex]):
             pair0 = star[0]
             glist=[]
             #Find group operations that leave state unchanged
@@ -48,6 +43,7 @@ class vectorStars(VectorStarSet):
             if Nvect > 0:
                 for v in vlist:
                     self.vecpos.append(star)
+                    self.vecpos_indexed.append(indstar)
                     #implement a copy function like in case of vacancies
                     veclist = []
                     for pairI in star:
@@ -60,24 +56,28 @@ class vectorStars(VectorStarSet):
                     self.vecvec.append(veclist)
             self.Nvstars_pure = len(vecpos)
         #Now do it for the mixed dumbbells - all negative checks dissappear
-        for star in starset.stars[starset.mixedstartindex:]:
+        for star, indstar in zip(starset.stars[starset.mixedstartindex:],starset.starindexed[starset.mixedstartindex:]):
             pair0 = star[0]
             glist=[]
             #Find group operations that leave state unchanged
             for g in starset.crys.G:
                 pairnew = pair0.gop(starset.crys,starset.chem,g)
+                #what about dumbbell rotations? Does not matter - the state has to remain unchanged
+                #Is this valid for origin states too? verify - because we have origin states.
                 if pairnew == pair0:
                     glist.append(g)
             #Find the intersected vector basis for these group operations
             vb=reduce(crystal.CombineVectorBasis,[crystal.VectorBasis(*g.eigen()) for g in glist])
             #Get orthonormal vectors
-            vlist = starset.crys.vectlist(vb)
+            vlist = starset.crys.vectlist(vb) #This also nomalizes with respect to length of the vectors.
             scale = 1./np.sqrt(len(star))
             vlist = [v * scale for v in vlist]
             Nvect = len(vlist)
-            if Nvect > 0:
+            if Nvect > 0:#why did I put this? Makes sense to expand only if Nvects >0, otherwise there is zero bias.
+            #verify this
                 for v in vlist:
                     self.vecpos.append(star) #again, implement copy
+                    self.vecpos_indexed.append(indstar)
                     veclist = []
                     for pairI in star:
                         for g in starset.crys.G:
@@ -96,7 +96,7 @@ class vectorStars(VectorStarSet):
     def GFexpansion_mixed(self):
         pass
     #See group meeting update slides of sept 10th to see how this works.
-    def biasexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega34):
+    def biasexpansion(self,jumpnetwork_omega1,jumpnetwork_omega2,jumptype,jumpnetwork_omega34):
         """
         Returns an expansion of the bias vector in terms of the displacements produced by jumps.
         Parameters:
@@ -104,33 +104,53 @@ class vectorStars(VectorStarSet):
             jumptype - the omega_0 jump type that gives rise to a omega_1 jump type (see jumpnetwork_omega1 function
             in stars.py module)
         Returns:
-            bias0, bias1, bias2, bias4 and bias3 expansions
+            bias0, bias1, bias2, bias4 and bias3 expansions, one each for solute and solvent
+            Note - bias0 for solute makes no sense, so we return only for solvent.
         """
-        #Expansion of pure dumbbell state bias vectors and complex state bias vectors
+        z=np.zeros(3,dtype=float)
+        #Expansion of pure dumbbell initial state bias vectors and complex state bias vectors
         bias0expansion = np.zeros((self.Nvstars_pure,len(self.starset.jumpindices)))
-        bias1expansion = np.zeros((self.Nvstars_pure,len(jumpnetwork_omega1)))
+        bias1expansion_solvent = np.zeros((self.Nvstars_pure,len(jumpnetwork_omega1)))
+        bias1expansion_solute = np.zeros((self.Nvstars_pure,len(jumpnetwork_omega1)))
 
-        bias4expansion = np.zeros((self.Nvstars_pure,len(jumpnetwork_omega34)))
+        bias4expansion_solvent = np.zeros((self.Nvstars_pure,len(jumpnetwork_omega34)))
+        bias4expansion_solute = np.zeros((self.Nvstars_pure,len(jumpnetwork_omega34)))
 
-        #Expansion of mixed dumbbell state bias vectors.
-        bias2expansion = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega2)))
-        bias3expansion = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
+        #Expansion of mixed dumbbell initial state bias vectors.
+        bias2expansion_solvent = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega2)))
+        bias2expansion_solute = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega2)))
 
-        for i, states, vectors in zip(itertools.count(),self.vecpos[:Nvstars_pure],self.vecvec[:Nvstars_pure]):
+        bias3expansion_solvent = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
+        bias3expansion_solute = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
+
+        for i, purestar, purevstar in zip(itertools.count(),self.vecpos[:Nvstars_pure],self.vecvec[:Nvstars_pure]):
+            #iterates over the rows of the matrix
             #First construct bias1expansion and bias0expansion
             #This contains the expansion of omega_0 jumps and omega_1 type jumps
-            #See slides of Sept. 30 for diagram.
+            #See slides of Sept. 10 for diagram.
             #omega_0 : pure -> pure
             #omega_1 : complex -> complex
             for k,jumplist,jt in zip(itertools.count(), jumpnetwork_omega1, jumptype):
+                #iterates over the columns of the matrix
                 for j in jumplist:
                     IS=j.state1
-                    dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
-                    if states[0]==IS:
-                        geom_bias = np.dot(vectors[0], dx)
-                        bias1expansion[i, k] += geom_bias
-                        bias0expansion[i, jt] += geom_bias
+                    if purestar[0]==IS:
+                        #sees if there is a jump of the kth type with purestar[0] as the initial state.
+                        dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
+                        dx_solute=z.copy()
+                        dx_solvent = dx.copy() #just for clarity that the solvent mass transport is dx itself.
+
+                        geom_bias_solvent = np.dot(vectors[0], dx)*len(purestar)
+                        geom_bias_solute = np.dot(vectors[0], dx)*len(purestar)
+
+                        bias1expansion_solvent[i, k] += geom_bias_solvent #this is contribution of kth_type of omega_1 jumps, to the bias
+                        bias1expansion_solute[i, k] += geom_bias_solvent
+                        #vector along v_i
+                        #so to find the total bias along v_i due to omega_1 jumps, we sum over k
+                        bias0expansion[i, jt] += geom_bias_solvent #These are the contributions of the omega_0 jumps
+                        #to the bias vector along v_i, for bare dumbbells
+                        #so to find the total bias along v_i, we sum over k.
             #Next, omega_4: complex -> mixed
             #The correction delta_bias = bias4 + bias1 - bias0
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega34):
@@ -138,23 +158,25 @@ class vectorStars(VectorStarSet):
                     IS=j.state1
                     if IS.is_zero(): #check if initial state is mixed dumbbell -> then skip
                         continue
-                    dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
-                    if states[0]==IS:
-                        geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
-                        bias4expansion[i, k] += geom_bias
+                    if purestar[0]==IS:
+                        dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
+                        geom_bias = np.dot(vectors[0], dx)*len(purestar)
+                        bias4expansion[i, k] += geom_bias #this is contribution of omega_4 jumps, to the bias
+                        #vector along v_i
+                        #So, to find the total bias along v_i due to omega_4 jumps, we sum over k.
 
         #Now, construct the bias2expansion and bias3expansion
-        for i, states, vectors in zip(itertools.count(),self.vecpos[Nvstars_pure:],self.vecvec[Nvstars_pure:]):
+        for i, mixedstar, vectors in zip(itertools.count(),self.vecpos[Nvstars_pure:],self.vecvec[Nvstars_pure:]):
             #First construct bias2expansion
             #omega_2 : mixed -> mixed
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega2):
                 for j in jumplist:
                     IS=j.state1
-                    dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
-                    if states[0]==IS:
-                        geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
+                    if mixedstar[0]==IS:
+                        dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
+                        geom_bias = np.dot(vectors[0], dx)*len(mixedstar)
                         bias2expansion[i, k] += geom_bias
             #Next, omega_3: mixed -> complex
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega34):
@@ -162,10 +184,10 @@ class vectorStars(VectorStarSet):
                     if not IS.is_zero(): #check if initial state is not a mixed state -> skip if not mixed
                         continue
                     IS=j.state1
-                    dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
-                    if states[0]==IS:
-                        geom_bias = np.dot(vectors[0], dx) #I haven't normalized with respect to no. of states.
+                    if mixedstar[0]==IS:
+                        dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
+                        geom_bias = np.dot(vectors[0], dx)*len(mixedstar)
                         bias3expansion[i, k] += geom_bias
         return zeroclean(bias0expansion),zeroclean(bias1expansion),zeroclean(bias2expansion),\
                zeroclean(bias3expansion),zeroclean(bias4expansion)
@@ -175,11 +197,11 @@ class vectorStars(VectorStarSet):
         Implements expansion of the jump rates in terms of the basis function of the vector stars.
         (Note to self) - Refer to earlier notes for details.
         """
-        #See my slides of Sept. 30 for diagram
+        #See my slides of Sept. 10 for diagram
         rate0expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(self.starset.jumpindices)))
         rate1expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(jumpnetwork)))
         rate0escape = np.zeros((self.Nvstars_pure, len(self.starset.jumpindices)))
-        rate1escape = np.zeros((self.Nvstars_pure, len(jumpnetwork)))
+        rate1escape = np.zeros((self.Nvstars_pure, len(jumpnetwork_omega1)))
         #First, we do the rate1 and rate0 expansions
         for k,jumplist,jt in zip(itertools.count(), jumpnetwork_omega1, jumptype):
             for jmp in jumplist:
@@ -241,16 +263,25 @@ class vectorStars(VectorStarSet):
         #One more thing to think about - in our Dyson equation, the diagonal sum of om3 and om4 are added to om2
         #and om0 respectively. How to implement that? See where delta_omega is constructed for vacancies.. we need to do it there
 
-    def bareexpansion(self,jumpnetwork_omega1,jumptype):
+    def bareexpansion(self,jumpnetwork_omega1,jumpnetwork_omega2,jumptype):
         """
         Returns the contributions to the terms of the bare diffusivity term,
         grouped separately for each type of jump.
         """
+        """
+        In mixed dumbbell space, both solute and solvent will have bare vacancy contributions.
+        The mixed dumbbell space is completely non-local.
+        """
         D0expansion = np.zeros((3,3,len(self.starset.jumpindices)))
         D1expansion = np.zeros((3,3,len(jumpnetwork_omega1)))
-        #The next part should be exactly the same as for the vacancy case
-        for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork):
+        #Need versions for solute and solvent
+        for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork_omega1):
             d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
             D0expansion[:, :, jt] += d0
             D1expansion[:, :, k] += d0
+        D2expansion = np.zeros((3,3,len(self.starset.jumpnetwork_omega2)))
+        for jt,jumplist in enumerate(self.starset.jumpnetwork_omega2):
+            d2 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
+            D2expansion[:, :, jt] += d0
+        #Expand bare contribution by omega_2
         return zeroclean(D0expansion), zeroclean(D1expansion)
