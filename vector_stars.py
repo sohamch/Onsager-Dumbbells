@@ -156,13 +156,13 @@ class vectorStars(VectorStarSet):
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega34):
                 for j in jumplist:
                     IS=j.state1
-                    if IS.is_zero(): #check if initial state is mixed dumbbell -> then skip
+                    if IS.is_zero(): #check if initial state is mixed dumbbell -> then skip - it's omega_3
                         continue
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if purestar[0]==IS:
                         dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
-                        dx_solute =
-                        dx_solvent =
+                        dx_solute = j.state2.db.o/2.
+                        dx_solvent = dx - j.state2.db.o/2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute)*len(purestar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(purestar)
                         bias4expansion_solute[i, k] += geom_bias_solute #this is contribution of omega_4 jumps, to the bias
@@ -181,7 +181,7 @@ class vectorStars(VectorStarSet):
                     if mixedstar[0]==IS:
                         dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
                         dx_solute = dx + j.state2.db.o/2. - j.state1.db.o/2.
-                        dx_solvent = dx - j.state2.db.o/2. + j.state1.db.o/2. 
+                        dx_solvent = dx - j.state2.db.o/2. + j.state1.db.o/2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute)*len(mixedstar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(mixedstar)
                         bias2expansion_solute[i, k] += geom_bias
@@ -195,14 +195,14 @@ class vectorStars(VectorStarSet):
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if mixedstar[0]==IS:
                         dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
-                        dx_solute =
-                        dx_solvent =
+                        dx_solute = -j.state1.db.o/2.
+                        dx_solvent = dx + j.state1.db.o/2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute)*len(mixedstar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(mixedstar)
                         bias3expansion_solute[i, k] += geom_bias_solute
                         bias3expansion_solvent[i, k] += geom_bias_solvent
-        return zeroclean(bias0expansion),zeroclean(bias1expansion),zeroclean(bias2expansion),\
-               zeroclean(bias3expansion),zeroclean(bias4expansion)
+        return zeroclean(bias0expansion),(zeroclean(bias1expansion_solute),zeroclean(bias1expansion_solvent)),(zeroclean(bias2expansion_solute),zeroclean(bias2expansion_solvent)),\
+               (zeroclean(bias3expansion_solute),zeroclean(bias3expansion_solvent)),(zeroclean(bias4expansion_solute),zeroclean(bias4expansion_solvent))
 
     def rateexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega34):
         """
@@ -275,25 +275,40 @@ class vectorStars(VectorStarSet):
         #One more thing to think about - in our Dyson equation, the diagonal sum of om3 and om4 are added to om2
         #and om0 respectively. How to implement that? See where delta_omega is constructed for vacancies.. we need to do it there
 
-    def bareexpansion(self,jumpnetwork_omega1,jumpnetwork_omega2,jumptype):
+    def bareexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega2,jumpnetwork_omega3,jumpnetwork_omega4):
         """
-        Returns the contributions to the terms of the bare diffusivity term,
-        grouped separately for each type of jump.
-        """
-        """
-        In mixed dumbbell space, both solute and solvent will have bare vacancy contributions.
+        Returns the contributions to the terms of the uncorrelated diffusivity term,
+        grouped separately for each type of jump. Intended to be called after displacements have been applied to the displacements.
+
+        Params:
+            jumpnetwork_omega* - indexed versions of the jumpnetworks with displacements for a given species. - jumps need to be of the form ((i,j),dx_species)
+            jumptype - list that contains the omega_0 jump a given omega_1 jump list corresponds to. - these are the rates to be used to dot into b_0.
+
+        In mixed dumbbell space, both solute and solvent will have uncorrelated contributions.
         The mixed dumbbell space is completely non-local.
         """
+        # TODO: What about the cross-species terms - look up later
         D0expansion = np.zeros((3,3,len(self.starset.jumpindices)))
         D1expansion = np.zeros((3,3,len(jumpnetwork_omega1)))
+        D2expansion = np.zeros((3,3,len(jumpnetwork_omega2)))
+        D3expansion = np.zeros((3,3,len(jumpnetwork_omega3)))
+        D4expansion = np.zeros((3,3,len(jumpnetwork_omega4)))
         #Need versions for solute and solvent
         for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork_omega1):
-            d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
-            D0expansion[:, :, jt] += d0
-            D1expansion[:, :, k] += d0
-        D2expansion = np.zeros((3,3,len(self.starset.jumpnetwork_omega2)))
+            d0 = np.sum(0.5 * np.outer(dx,dx) for (i,j),dx in jumplist)
+            D0expansion_solute[:, :, jt] += d0_solute
+            D1expansion_solute[:, :, k] += d0_solute
+
         for jt,jumplist in enumerate(self.starset.jumpnetwork_omega2):
-            d2 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
+            d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
             D2expansion[:, :, jt] += d0
-        #Expand bare contribution by omega_2
-        return zeroclean(D0expansion), zeroclean(D1expansion)
+
+        for jt,jumplist in enumerate(self.starset.jumpnetwork_omega3):
+            d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
+            D3expansion[:, :, jt] += d0
+
+        for jt,jumplist in enumerate(self.starset.jumpnetwork_omega4):
+            d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
+            D4expansion[:, :, jt] += d0
+
+        return zeroclean(D0expansion), zeroclean(D1expansion), zeroclean(D2expansion), zeroclean(D3expansion), zeroclean(D4expansion)
