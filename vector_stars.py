@@ -168,6 +168,9 @@ class vectorStars(VectorStarSet):
         return GFstarset_pure,GFstarset_pure_starind,GFstarset_mixed,GFstarset_mixed_starind
 
     def GFexpansion(self):
+        """
+        carries out the expansion of the Green's function in the vector basis of the states.
+        """
         self.GFstarset_pure,self.GFPureStarInd,self.GFstarset_mixed,self.GFMixedStarInd = self.genGFstarset()
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
