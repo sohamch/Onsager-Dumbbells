@@ -115,6 +115,18 @@ class StarSet(object):
         db_pos = self.crys.unit2cart(entry.db.R,self.crys.basis[self.chem][entry.db.i])
         return np.dot(db_pos-sol_pos,db_pos-sol_pos)
 
+    def genIndextoContainer(self,purestates,mixedstates):
+        pureDict={}
+        mixedDict={}
+        for st in purestates:
+            db = st.db - st.db.R
+            pureDict[st] = self.pdbcontainer.iorindex[db]
+
+        for st in mixedstates:
+            db = st.db - st.db.R
+            mixedDict[st] = self.mdbcontainer.iorindex[db]
+        return pureDict,mixedDict
+
     def generate(self,Nshells):
         #Return nothing if Nshells are not specified
         if Nshells==None: return
@@ -183,7 +195,7 @@ class StarSet(object):
             self.stars.append(newlist)
         self.purestates = sorted(list(self.stateset),key=self._sortkey)
         self.mixedstates = sorted(list(self.mixedstateset),key=self._sortkey)
-
+        self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)
         #generate an indexed version of the starset - seperate for mixed and pure stars
         starindexed = []
         for star in self.stars[:self.mixedstartindex]:
