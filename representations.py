@@ -135,6 +135,15 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
     def __sub__(self,other):
         return self.__add__(-other)
 
+    def __xor__(self,other):
+        """
+        Creates a connector object, from dumbbell state of self to dumbbell state of other.
+        """
+        if self.state1.i_s != self.state.R_s or not(np.allclose(self.state1.R_s,self.state2.R_s)):
+            raise ArithmeticError("can only connect states with same solute location.")
+
+        return connector(self.db,other.db)
+
 # Jump obects are rather simple, contain just initial and final orientations
 # Also adding a jump to a dumbbell is now done here.
 # dumbell/pair obects are not aware of jump dbects.
@@ -246,14 +255,17 @@ class connector(namedtuple('connector','state1 state2')):
     Checks compatibility of connections as well.
     """
     def __init__(self):
-        if not (isinstance(self.state1,SdPair) and isinstance(self.state2,SdPair)):
-            raise TypeError("Incompatible Initial and final states. They must be of the SdPair type.")
+        if not (isinstance(self.state1,dumbbell) and isinstance(self.state2,dumbbell)):
+            raise TypeError("Incompatible Initial and final states. They must be of the dumbbell type.")
         #Check compatibility
-        if self.state1.i_s != self.state.R_s or not(np.allclose(self.state1.R_s,self.state2.R_s)):
-            raise ArithmeticError("can only connect states with same solute location.")
 
     def __eq__(self,other):
         return (self.state1==other.state1 and self.state2==other.state2)
 
     def __hash__(self):
         return hash((self.state1,self.state2))
+
+    def gop(self,crys,chem,g): #Find symmetry equivalent jumps - required when making composite jumps.
+        state1new=self.state1.gop(crys,chem,g)
+        state2new=self.state2.gop(crys,chem,g)
+        return self.__class__(state1new,state2new)
