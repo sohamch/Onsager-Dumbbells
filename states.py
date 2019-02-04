@@ -38,6 +38,16 @@ class dbStates(object):
         self.invmap = self.invmap(self.iorlist,self.symorlist)
         self.indexmap = self.indexmapping()
         self.indsymlist = self.indexedsymlist()
+        self.iorindex = gendict(self.iorlist)
+        #iorindex contains origin centered dumbbells as keys, and their indices in iorlist as values
+
+    @staticmethod
+    def gendict(iorlist):
+        indDict={}
+        for ind,tup in enumerate(iorlist):
+            db = dumbbell(tup[0],tup[1].copy(),np.zeros(3,dtype=int))
+            indDict[db] = ind
+        return indDict
 
     @staticmethod
     def invmap(iorlist,symorlist):
@@ -306,8 +316,15 @@ class mStates(object):
         self.threshold = crys.threshold
         self.invmap = self.invmap(self.iorlist,self.symorlist)
         self.indexmap = self.indexmapping()
+        self.iorindex = gendict(self.iorlist)
 
-    #Is this function really necessary for dumbbells? This is not a static method so it does occupy space every time mdb is instatiated
+    @staticmethod
+    def gendict(iorlist):
+        indDict={}
+        for ind,tup in enumerate(iorlist):
+            db = dumbbell(tup[0],tup[1].copy(),np.zeros(3,dtype=int))
+            indDict[db] = ind
+        return indDict
 
     def checkinlist(self,mdb):
         """
@@ -320,10 +337,11 @@ class mStates(object):
         if not(mdb.i_s==mdb.db.i and np.allclose(mdb.R_s,mdb.db.R,atol=self.threshold)):
             raise TypeError("Passed in pair is not a mixed dumbbell")
 
-        i = mdb.db.i
-        o = mdb.db.o
+        db = dumbbell(mdb.db.i,mdb.db.o.copy(),np.zeros(3,dtype=int))
+        value = self.iorindex.get(db)
+
         #Place a check for test purposes
-        return any(i==x[0] and np.allclose(o,x[1],atol=self.threshold) for x in self.iorlist)
+        return not(value==None)
 
     def indexedsymlist(self):
         """
