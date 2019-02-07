@@ -31,6 +31,7 @@ class vectorStars(VectorStarSet):
             #Find group operations that leave state unchanged
             for g in starset.crys.G:
                 pairnew = pair0.gop(starset.crys,starset.chem,g)
+                pairnew = pairnew - pairnew.R_s
                 if pairnew == pair0 or pairnew==-pair0:
                     glist.append(g)
             #Find the intersected vector basis for these group operations
@@ -281,7 +282,7 @@ class vectorStars(VectorStarSet):
                         geom_bias_solute = np.dot(vectors[0], dx)*len(purestar)
 
                         bias1expansion_solvent[i, k] += geom_bias_solvent #this is contribution of kth_type of omega_1 jumps, to the bias
-                        bias1expansion_solute[i, k] += geom_bias_solvent
+                        bias1expansion_solute[i, k] += geom_bias_solute
                         #vector along v_i
                         #so to find the total bias along v_i due to omega_1 jumps, we sum over k
                         bias0expansion[i, jt] += geom_bias_solvent #These are the contributions of the omega_0 jumps
@@ -320,8 +321,8 @@ class vectorStars(VectorStarSet):
                         dx_solvent = dx - j.state2.db.o/2. + j.state1.db.o/2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute)*len(mixedstar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(mixedstar)
-                        bias2expansion_solute[i, k] += geom_bias
-                        bias2expansion_solvent[i, k] += geom_bias
+                        bias2expansion_solute[i, k] += geom_bias_solute
+                        bias2expansion_solvent[i, k] += geom_bias_solvent
             #Next, omega_3: mixed -> complex
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega34):
                 for j in jumplist:
@@ -337,6 +338,7 @@ class vectorStars(VectorStarSet):
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(mixedstar)
                         bias3expansion_solute[i, k] += geom_bias_solute
                         bias3expansion_solvent[i, k] += geom_bias_solvent
+                        
         return zeroclean(bias0expansion),(zeroclean(bias1expansion_solute),zeroclean(bias1expansion_solvent)),(zeroclean(bias2expansion_solute),zeroclean(bias2expansion_solvent)),\
                (zeroclean(bias3expansion_solute),zeroclean(bias3expansion_solvent)),(zeroclean(bias4expansion_solute),zeroclean(bias4expansion_solvent))
 
