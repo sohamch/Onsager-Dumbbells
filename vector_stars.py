@@ -49,10 +49,11 @@ class vectorStars(VectorStarSet):
                     for pairI in star:
                         for g in starset.crys.G:
                             pairnew = pair0.gop(starset.crys, starset.chem, g)
-                            # pairnew = pairnew - pairnew.R_s #translate solute back to origin
-                            #The above is wrong - we should not se translations back to the origin at all.
-                            #This is because the gop must leave the state unchanged, without needing any translations.
-                            #If it needs a translation, that means the state has changed and therefore the gop is not valid.
+                            pairnew = pairnew - pairnew.R_s #translate solute back to origin
+                            #This is because the vectors associated with a state are translationally invariant.
+                            #Wherever the solute is, if the relative position of the solute and the solvent is the same,
+                            #The vector remains unchanged due to that group op.
+                            #Remember that only the rotational part of the group op will act on the vector.
                             if pairnew == pairI or pairnew == -pairI:
                                 veclist.append(starset.crys.g_direc(g, v))
                                 break
@@ -65,6 +66,7 @@ class vectorStars(VectorStarSet):
             #Find group operations that leave state unchanged
             for g in starset.crys.G:
                 pairnew = pair0.gop(starset.crys,starset.chem,g)
+                pairnew = pairnew - pairnew.R_s #again, only the rotation part matters.
                 #what about dumbbell rotations? Does not matter - the state has to remain unchanged
                 #Is this valid for origin states too? verify - because we have origin states.
                 if pairnew == pair0:
