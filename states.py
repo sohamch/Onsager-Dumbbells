@@ -38,7 +38,7 @@ class dbStates(object):
         self.invmap = self.invmap(self.iorlist,self.symorlist)
         self.indexmap = self.indexmapping()
         self.indsymlist = self.indexedsymlist()
-        self.iorindex = gendict(self.iorlist)
+        self.iorindex = self.gendict(self.iorlist)
         #iorindex contains origin centered dumbbells as keys, and their indices in iorlist as values
 
     @staticmethod
@@ -316,7 +316,7 @@ class mStates(object):
         self.threshold = crys.threshold
         self.invmap = self.invmap(self.iorlist,self.symorlist)
         self.indexmap = self.indexmapping()
-        self.iorindex = gendict(self.iorlist)
+        self.iorindex = self.gendict(self.iorlist)
 
     @staticmethod
     def gendict(iorlist):
