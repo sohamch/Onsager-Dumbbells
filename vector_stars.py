@@ -12,7 +12,7 @@ class vectorStars(VectorStarSet):
     Stores the vector stars corresponding to a given starset of dumbbell states
     """
 
-    def generate(starset):
+    def generate(self,starset):
         """
         Follows almost the same as that for solute-vacancy case. Only generalized to keep the state
         under consideration unchanged.
@@ -48,13 +48,16 @@ class vectorStars(VectorStarSet):
                     veclist = []
                     for pairI in star:
                         for g in starset.crys.G:
-                            pairnew = pair0.g(starset.crys, starset.chem, g)
-                            pairnew = pairnew - pairnew.R_s #translate solute back to origin
+                            pairnew = pair0.gop(starset.crys, starset.chem, g)
+                            # pairnew = pairnew - pairnew.R_s #translate solute back to origin
+                            #The above is wrong - we should not se translations back to the origin at all.
+                            #This is because the gop must leave the state unchanged, without needing any translations.
+                            #If it needs a translation, that means the state has changed and therefore the gop is not valid.
                             if pairnew == pairI or pairnew == -pairI:
                                 veclist.append(starset.crys.g_direc(g, v))
                                 break
                     self.vecvec.append(veclist)
-            self.Nvstars_pure = len(vecpos)
+            self.Nvstars_pure = len(self.vecpos)
         #Now do it for the mixed dumbbells - all negative checks dissappear
         for star, indstar in zip(starset.stars[starset.mixedstartindex:],starset.starindexed[starset.mixedstartindex:]):
             pair0 = star[0]
@@ -81,13 +84,13 @@ class vectorStars(VectorStarSet):
                     veclist = []
                     for pairI in star:
                         for g in starset.crys.G:
-                            pairnew = pair0.g(starset.crys, starset.chem, g)
+                            pairnew = pair0.gop(starset.crys, starset.chem, g)
                             pairnew = pairnew - pairnew.R_s #translate solute back to origin
                             if pairnew == pairI:
                                 veclist.append(starset.crys.g_direc(g, v))
                                 break
                     self.vecvec.append(veclist)
-            self.Nvstars = len(vecpos)
+            self.Nvstars = len(self.vecpos)
     # We must produce two expansions. One for pure dumbbell states pointing to pure dumbbell state
     # and the other from mixed dumbbell states to mixed states.
 
@@ -123,8 +126,8 @@ class vectorStars(VectorStarSet):
                     continue
                 connectlist=[]
                 for g in self.startset.crys.G:
-                    db1new = self.startset.pdbcontainer.gdumb(s.state1)[0]
-                    db2new = self.startset.pdbcontainer.gdumb(s.state2)[0]
+                    db1new = self.startset.pdbcontainer.gdumb(g,s.state1)[0]
+                    db2new = self.startset.pdbcontainer.gdumb(g,s.state2)[0]
                     dx=disp(self.startset.crys,self.kinetic.chem,db1new,db2new)
                     db1new = db1new - db1new.R
                     db2new = db2new - db2new.R
@@ -175,7 +178,7 @@ class vectorStars(VectorStarSet):
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
         GFexpansion_pure = np.zeros((Nvstars_pure,Nvstars_pure,len(self.GFstarset_pure)))
-        GFexpansion_mixed = np.zeros((Nvstars_mixed,Nvstars_mixed,len(self.GFstarset_mixed))
+        GFexpansion_mixed = np.zeros((Nvstars_mixed,Nvstars_mixed,len(self.GFstarset_mixed)))
 
         #build up the pure GFexpansion
         for i in range(Nvstars_pure):
