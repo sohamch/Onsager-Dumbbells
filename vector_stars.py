@@ -260,7 +260,7 @@ class vectorStars(VectorStarSet):
         bias3expansion_solvent = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
         bias3expansion_solute = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
 
-        for i, purestar, purevstar in zip(itertools.count(),self.vecpos[:Nvstars_pure],self.vecvec[:Nvstars_pure]):
+        for i, purestar, vectors in zip(itertools.count(),self.vecpos[:self.Nvstars_pure],self.vecvec[:self.Nvstars_pure]):
             #iterates over the rows of the matrix
             #First construct bias1expansion and bias0expansion
             #This contains the expansion of omega_0 jumps and omega_1 type jumps
@@ -275,11 +275,11 @@ class vectorStars(VectorStarSet):
                     if purestar[0]==IS:
                         #sees if there is a jump of the kth type with purestar[0] as the initial state.
                         dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
-                        dx_solute=z.copy()
+                        dx_solute=z
                         dx_solvent = dx.copy() #just for clarity that the solvent mass transport is dx itself.
 
-                        geom_bias_solvent = np.dot(vectors[0], dx)*len(purestar)
-                        geom_bias_solute = np.dot(vectors[0], dx)*len(purestar)
+                        geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(purestar) #should this be square root? check with tests.
+                        geom_bias_solute = np.dot(vectors[0], dx_solute)*len(purestar)
 
                         bias1expansion_solvent[i, k] += geom_bias_solvent #this is contribution of kth_type of omega_1 jumps, to the bias
                         bias1expansion_solute[i, k] += geom_bias_solute
@@ -308,7 +308,7 @@ class vectorStars(VectorStarSet):
                         #So, to find the total bias along v_i due to omega_4 jumps, we sum over k.
 
         #Now, construct the bias2expansion and bias3expansion
-        for i, mixedstar, vectors in zip(itertools.count(),self.vecpos[Nvstars_pure:],self.vecvec[Nvstars_pure:]):
+        for i, mixedstar, vectors in zip(itertools.count(),self.vecpos[self.Nvstars_pure:],self.vecvec[self.Nvstars_pure:]):
             #First construct bias2expansion
             #omega_2 : mixed -> mixed
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega2):
@@ -338,7 +338,7 @@ class vectorStars(VectorStarSet):
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(mixedstar)
                         bias3expansion_solute[i, k] += geom_bias_solute
                         bias3expansion_solvent[i, k] += geom_bias_solvent
-                        
+
         return zeroclean(bias0expansion),(zeroclean(bias1expansion_solute),zeroclean(bias1expansion_solvent)),(zeroclean(bias2expansion_solute),zeroclean(bias2expansion_solvent)),\
                (zeroclean(bias3expansion_solute),zeroclean(bias3expansion_solvent)),(zeroclean(bias4expansion_solute),zeroclean(bias4expansion_solvent))
 
