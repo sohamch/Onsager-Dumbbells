@@ -260,6 +260,7 @@ class vectorStars(VectorStarSet):
         bias3expansion_solvent = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
         bias3expansion_solute = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
 
+        #First, bias1 and bias0
         for i, purestar, vectors in zip(itertools.count(),self.vecpos[:self.Nvstars_pure],self.vecvec[:self.Nvstars_pure]):
             #iterates over the rows of the matrix
             #First construct bias1expansion and bias0expansion
@@ -326,9 +327,9 @@ class vectorStars(VectorStarSet):
             #Next, omega_3: mixed -> complex
             for k,jumplist in zip(itertools.count(), jumpnetwork_omega34):
                 for j in jumplist:
+                    IS=j.state1
                     if not IS.is_zero(): #check if initial state is not a mixed state -> skip if not mixed
                         continue
-                    IS=j.state1
                 # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if mixedstar[0]==IS:
                         dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
