@@ -94,6 +94,25 @@ class vectorStars(VectorStarSet):
                                 break
                     self.vecvec.append(veclist)
             self.Nvstars = len(self.vecpos)
+
+    #index the states into the vector stars - required in OnsagerCalc
+        self.stateToVecStar_pure = {}
+        for st in self.starset.purestates:
+            indlist=[]
+            for IndOfStar,crStar in enumerate(self.vecpos):
+                for IndOfState,state in enumerate(crStar):
+                    if state==st:
+                        indlist.append((IndOfStar,IndOfState))
+            self.stateToVecStar_pure[st] = indlist
+
+        self.stateToVecStar_mixed = {}
+        for st in self.starset.mixedstates:
+            indlist=[]
+            for IndOfStar,crStar in enumerate(self.vecpos):
+                for IndOfState,state in enumerate(crStar):
+                    if state==st:
+                        indlist.append((IndOfStar,IndOfState))
+            self.stateToVecStar_mixed[st] = indlist
     # We must produce two expansions. One for pure dumbbell states pointing to pure dumbbell state
     # and the other from mixed dumbbell states to mixed states.
 

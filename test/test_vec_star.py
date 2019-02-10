@@ -70,6 +70,17 @@ class test_vecstars(unittest.TestCase):
                 count_eigs+=1
         self.assertEqual(count,count_eigs,msg="{}".format(testvecstate))
 
+    def test_state_indexing(self):
+        for st in self.vec_stars.starset.purestates:
+            indToVecStars = self.vec_stars.stateToVecStar_pure[st]
+            for tup in indToVecStars:
+                self.assertEqual(st,self.vec_stars.vecpos[tup[0]][tup[1]])
+
+        for st in self.vec_stars.starset.mixedstates:
+            indToVecStars = self.vec_stars.stateToVecStar_mixed[st]
+            for tup in indToVecStars:
+                self.assertEqual(st,self.vec_stars.vecpos[tup[0]][tup[1]])
+
     def test_bias1expansions(self):
         for i in range(10):
             #test bias_1
