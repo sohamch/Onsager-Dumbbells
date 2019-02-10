@@ -9,6 +9,7 @@ from functools import reduce
 from scipy.linalg import pinv2
 from onsager.OnsagerCalc import Interstitial, VacancyMediated
 #Making stateprob, ratelist and symmratelist universal functions so that I can also use them later on in the case of solutes.
+
 def stateprob(self, pre, betaene, invmap):
     """Returns our (i,or) probabilities, normalized, as a vector.
        Straightforward extension from vacancy case.
@@ -195,7 +196,7 @@ class BareDumbbell(Interstitial):
         Eave = np.dot(rho, stateene)
 
         for jlist, rates, symmrates, bET in zip(self.jumpnetwork,ratelist,symmratelist,betaeneT):
-            for (i,j,dx,c1,c2),rate,symmrate in zip(jlist,rates,symmrates):
+            for ((i,j),dx),rate,symmrate in zip(jlist,rates,symmrates):
                 omega_ij[i,j] += symmrate
                 omega_ij[i,i] -= rate
                 domega_ij[i,j] += symmrate * (bET - 0.5 * (stateene[i] + stateene[j]))
@@ -224,29 +225,32 @@ class dumbbellMediated(VacancyMediated):
     and mixed(g2) dumbbells, since our Dyson equation requires so.
     Also, instead of working with crystal and chem, we work with the container objects.
     """
-    def __init__(self,pdbcontainer,mdbcontainer,NGFmax=4,Nthermo=0):
+    def __init__(self,pdbcontainer,mdbcontainer,cutoff,solt_solv_cut,solv_solv_cut,closestdistance,NGFmax=4,Nthermo=0):
         #All the required quantities will be extracted from the containers as we move along
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
         self.crys = pdbcontainer.crys #we assume this is the same in both containers
         self.chem = pdbcontainer.chem
-        #The GFCalculator will only work with indexed jumpnetwork.
-        self.om0_jn_states, self.om0_jn = copy.deepcopy(pdbcontainer.jumpnetwork)
-        self.om2_jn_states, self.om2_jn = copy.deepcopy(mdbcontainer.jumpnetwork)
+
         self.GFcalc_pdb = self.GFCalculator(NGFmax)
         self.GFcalc_mdb = self.GFCalculator(NGFmax,pdb=False)
         self.thermo = stars.StarSet(pdbcontainer,mdbcontainer,self.om0_jn_states,self.om2_jn_states)
         self.kinetic = stars.StarSet(pdbcontainer,mdbcontainer,self.om0_jn_states,self.om2_jn_states)
+
         #Note - even if empty, our starsets go out to atleast the NNstar - later we'll have to keep this in mind
         self.NNstar = stars.StarSet(pdbcontainer,mdbcontainer,self.om0_jn_states,self.om2_jn_states,2)
         self.vkinetic = vector_stars.vectorStars()
-        self.generate(Nthermo)
-        self.generatematrices()
-        #we'll have to modify these methods as our star sets are constructed in a different manner.
-        #The default starset always has first NN
+
+        #Generate the initialized crystal and vector stars and the jumpnetworks with the kinetic shell
+        self.generate(Nthermo,cutoff,solt_solv_cut,solv_solv_cut,closestdistance)
+
+        #Generate the jumpnetworks using the kinetic shell
+        # TODO: Implement generatematrices when required
+        # self.generatematrices()
+
     def GFCalculator(self,NGFmax=0,pdb=True):
         """
-        Mostly similar to vacancy case - returns the GF calculator for pure or mixed dumbbell
+        Mostly similar to vacancy case - returns the GF calculator for complex or mixed dumbbell
         states as specified.
         """
         #unlike the vacancy case, it is better to recalculate for now.
@@ -266,17 +270,72 @@ class dumbbellMediated(VacancyMediated):
         else:
             self.GFvalues_mdb, self.LvvValues_mdb, self.etav_mdb = {}, {}, {}
 
+    def generate_jnets(self,cutoff,solt_solv_cut,solv_solv_cut,closestdistance):
+
+        #first omega0 and omega2 - indexed to purestates and mixed states
+        (self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2_indexed)=\
+        self.vkinetic.pdbcontainer.jumpnetwork(cutoff,solv_solv_cut,closestdistance),\
+        self.vkinetic.mdbcontainer.jumpnetwork(cutoff,solt_solv_cut,closestdistance)
+
+        #Next - omega1 - indexed to purestates
+        (self.jnet_1,self.jnet_indexed), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
+
+        #next, omega3 and omega_4, indexed to pure and mixed states
+        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed),(self.symjumplist_omega3,self.symjumplist_omega3_indexed)=self.vkinetics.starset.jumpnetwork_omega34(cutoff,solv_solv_cut,solt_solv_cut,closestdistance)
+
     def generate(self,Nthermo):
 
         if Nthermo==getattr(self,"Nthermo",0): return
         self.Nthermo = Nthermo
-        self.thermo.generate(Nthermo) #we have to consider originstates since they are required in the Dyson equation
+        self.thermo.generate(Nthermo)
         self.kinetic.generate(Nthermo+1)
+        self.Nmixedstates = len(self.kinetic.mixedstates)
+        self.Npurestates = len(self.kinetic.purestates)
         self.vkinetic.generate(self.kinetic) #we generate the vector star out of the kinetic shell
-        #Now generate the pure and mixed dumbbell Green functions - internalized within
-        self.GFexpansion_pure,self.GFexpansion_mixed = self.vkinetic.GFexpansion_pure,self.vkinetic.GFexpansion_mixed
-        self.GFstarset_pure,self.GFstarset_mixed = self.vkinetic.GFstarset_pure,self.vkinetic.GFstarset_mixed
+        #Now generate the pure and mixed dumbbell Green functions expnsions - internalized within vkinetic.
+        (self.GFexpansion_pure,self.GFstarset_pure,self.GFPureStarInd), (self.GFexpansion_mixed,self.GFstarset_mixed,self.GFMixedStarInd)\
+        = self.vkinetic.GFexpansion()
 
-        #See how the thermo2kin and all of that works
+        #See how the thermo2kin and all of that works later as and when needed
+        #Generate the jumpnetworks
+        self.generate_jnets(cutoff,solt_solv_cut,solv_solv_cut,closestdistance)
 
-        self.om1_jn, self.om1_jt, self.om1_SP = self.kinetic.jumpnetwork_omega1()
+        #clear the cache of GFcalcs
+        self.clearcache()
+
+    def Lij(self, pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T):
+        """
+        Function to calculate the onsager transport coefficients.
+        """
+        #First, build g2 from omega2 jumpnetwork using pinv
+        rate2list = ratelist(pre2, betaene2, pre2T, betaene2T, self.mdbcontainer.invmap)
+        rate0list = ratelist(pre0, betaene0, pre0T, betaene0T, self.pdbcontainer.invmap)
+        # symmrate2list = symmratelist(pre, betaene, preT, betaeneT, self.container.invmap)
+
+        #get the bias1 and bias2 expansions
+        self.biases = self.vkinetic.biasexpansion(jnet_omega1,jnet_omega2,jtype,jnet_43)
+
+        #generate the non-local solute and solvent biases for initial states in pure and mixed stateset of vkinetic.
+        self.NlsoluteBias1
+        self.NlsolventBias1
+        self.NlsoluteBias2
+        self.NlsoluteBias1
+
+        #generate the non-local complex-complex block
+        oemga1_nonloc = np.zeros((len(self.vkinetic.starset.purestates),len(self.vkinetic.starset.purestates)))
+        #use the indexed omega1 to fill up the elements
+        #omega1 is indexed to the purestates list in vkinetic.starset
+
+
+        #invert it with pinv2
+
+        #dot with the cartesian bias to get the eta0 for each state
+        eta0=np.zeros((len(self.vkinetic.starset.purestates).3))
+
+        #Now for omega2
+        oemga2_nonloc = np.zeros((len(self.vkinetic.starset.mixedstates),len(self.vkinetic.starset.mixedstates)))
+        #use the indexed omega2 to fill this up
+
+        #invert it with pinv2
+
+        #dot with the cartesian bias vectors to get the eta0 for each state
