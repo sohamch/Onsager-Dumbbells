@@ -372,5 +372,5 @@ class dumbbellMediated(VacancyMediated):
         #invert it with pinv2
         g2 = pinv2(omega2_nonloc)
         #dot with the cartesian bias vectors to get the eta0 for each state
-        eta02_solvent=np.dot(g2,NlsolventBias1,axes=(1,0))
-        eta02_solute=np.dot(g2,NlsoluteBias1,axes=(1,0))
+        eta02_solvent=np.tensordot(g2,NlsolventBias1,axes=(1,0))
+        eta02_solute=np.tensordot(g2,NlsoluteBias1,axes=(1,0))
