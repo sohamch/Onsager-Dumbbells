@@ -208,3 +208,13 @@ class test_StarSet(unittest.TestCase):
                     # print(crys_stars.mixedstates[indjmp[0][0]])
                     self.assertTrue(jmp.state1==crys_stars.mixedstates[indjmp[0][0]],msg="{}".format(struct))
                     self.assertTrue(jmp.state2==crys_stars.purestates[indjmp[0][1]])
+
+            #Next, omega2 to mixedstates
+            jnet2,jnet2stateindex = crys_stars.jumpnetwork_omega2,crys_stars.jnet2_indexed
+            for i in range(len(jnet2)):
+                self.assertEqual(len(jnet2[i]),len(jnet2stateindex[i]))
+                for jpair,jind in zip(jnet2[i],jnet2stateindex[i]):
+                    IS = crys_stars.mixedstates[jind[0][0]]
+                    FS = crys_stars.mixedstates[jind[0][1]]
+                    self.assertEqual(IS,jpair.state1-jpair.state1.R_s,msg="{} not equal to {}".format(IS,jpair.state1))
+                    self.assertEqual(FS,jpair.state2-jpair.state2.R_s,msg="{} not equal to {}".format(FS,jpair.state2))

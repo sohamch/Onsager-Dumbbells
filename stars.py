@@ -62,6 +62,18 @@ class StarSet(object):
         jumpnetwork_omega0,jumpnetwork_omega2 - jumpnetworks in pure and mixed dumbbell spaces respectively.
             Note - must send in both as pair states and indexed.
         Nshells - number of thermodynamic shells. Minimum - one jump away - corresponds to Nshells=0
+
+        Index objects contained in the starset
+        All the indexing are done into the following four lists
+        ->pdbcontainer.iorlist, mdbcontainer.iorlist - the list of (site, orientation) tuples allowed for pure and mixed dumbbells respectively.
+        ->purestates,mixedstates - the list SdPair objects, containing the complex and mixed dumbbells that make up the starset
+
+        --starindexed -> gives the indices to the states list of the states stored in the starset
+        --pureindex, mixedindex -> tells us which star (via it's index in the pure(or mixed)states list) a state belongs to.
+        --pureindexdict, mixedindexdict -> tell us given a pair state, what is its index in the states list and the starset, as elements of a 2-tuple.
+        --pureStatesToContainer, mixedStatesToContainer -> tell us the index of the (i,o) of a dumbbell in a SdPair in pure/mixedstates in the
+        respective iorlists.
+
         """
         #check that we have the same crystal structures for pdbcontainer and mdbcontainer
         if not np.allclose(pdbcontainer.crys.lattice,mdbcontainer.crys.lattice):
@@ -195,8 +207,21 @@ class StarSet(object):
             self.stars.append(newlist)
         self.purestates = sorted(list(self.stateset),key=self._sortkey)
         self.mixedstates = sorted(list(self.mixedstateset),key=self._sortkey)
+
+        #Now index the mixed jumpnetwork to the mixedstates
+        self.jnet2_indexed = []
+        for jlist in self.jumpnetwork_omega2:
+            indlist=[]
+            for j in jlist:
+                for i,st1 in enumerate(self.mixedstates):
+                    if j.state1-j.state1.R_s==st1:
+                        for k,st2 in enumerate(self.mixedstates):
+                            if j.state2-j.state2.R_s==st2:
+                                indlist.append(((i,k),disp(self.crys,self.chem,st1,st2)))
+            self.jnet2_indexed.append(indlist)
+
         self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)
-        #generate an indexed version of the starset - seperate for mixed and pure stars
+        #generate an indexed version of the starset to the iorlists in the container objects - seperate for mixed and pure stars
         starindexed = []
         for star in self.stars[:self.mixedstartindex]:
             indlist=[]
@@ -215,7 +240,7 @@ class StarSet(object):
             starindexed.append(indlist)
 
         self.starindexed = starindexed
-        #self.starindexed -> gives the indices to the states list of the states sotred in the starset
+        #self.starindexed -> gives the indices to the states list of the states stored in the starset
 
         #now generate the index dicts
         # --starindex -> tells us which star (via it's index in the states list) a state belongs to.
