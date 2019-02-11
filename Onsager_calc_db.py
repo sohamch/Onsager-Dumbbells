@@ -20,21 +20,21 @@ def stateprob(self, pre, betaene, invmap):
     return rho / sum(rho)
 
 #make a static method and reuse later for solute case?
-def ratelist(self, pre, betaene, preT, betaeneT, invmap):
+def ratelist(self, jumpnetwork, pre, betaene, preT, betaeneT, invmap):
     """Returns a list of lists of rates, matched to jumpnetwork"""
     stateene = np.array([betaene[w] for w in self.container.invmap])
     statepre = np.array([pre[w] for w in self.container.invmap])
     return [[pT * np.exp(stateene[i] - beT) / statepre[i]
-             for i, j, dx, c1, c2 in t]
-            for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
+             for (i, j), dx in t]
+            for t, pT, beT in zip(jumpnetwork, preT, betaeneT)]
 
-def symmratelist(self, pre, betaene, preT, betaeneT, invmap):
+def symmratelist(self, jumpnetwork, pre, betaene, preT, betaeneT, invmap):
     """Returns a list of lists of symmetrized rates, matched to jumpnetwork"""
     stateene = np.array([betaene[w] for w in self.container.invmap])
     statepre = np.array([pre[w] for w in self.container.invmap])
     return [[pT * np.exp(0.5 * stateene[i] + 0.5 * stateene[j] - beT) / np.sqrt(statepre[i] * statepre[j])
-             for i, j, dx, c1, c2 in t]
-            for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
+             for (i, j), dx in t]
+            for t, pT, beT in zip(jumpnetwork, preT, betaeneT)]
 
 class BareDumbbell(Interstitial):
     """
@@ -182,8 +182,8 @@ class BareDumbbell(Interstitial):
 
         rho = stateprob(pre, betaene, self.container.invmap)
         sqrtrho = np.sqrt(rho)
-        ratelist = ratelist(pre, betaene, preT, betaeneT, self.container.invmap)
-        symmratelist = symmratelist(pre, betaene, preT, betaeneT, self.container.invmap)
+        ratelist = ratelist(self.jumpnetwork,pre, betaene, preT, betaeneT, self.container.invmap)
+        symmratelist = symmratelist(self.jumpnetwork,pre, betaene, preT, betaeneT, self.container.invmap)
         omega_ij = np.zeros((self.N, self.N))
         domega_ij = np.zeros((self.N, self.N))
         bias_i = np.zeros((self.N, 3))
@@ -273,12 +273,12 @@ class dumbbellMediated(VacancyMediated):
     def generate_jnets(self,cutoff,solt_solv_cut,solv_solv_cut,closestdistance):
 
         #first omega0 and omega2 - indexed to purestates and mixed states
-        (self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2_indexed)=\
+        (self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList)=\
         self.vkinetic.pdbcontainer.jumpnetwork(cutoff,solv_solv_cut,closestdistance),\
         self.vkinetic.mdbcontainer.jumpnetwork(cutoff,solt_solv_cut,closestdistance)
-
+        self.jnet2_indexed = self.vkinetic.starset.jnet2_indexed
         #Next - omega1 - indexed to purestates
-        (self.jnet_1,self.jnet_indexed), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
+        (self.jnet_1,self.jnet1_indexed), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
 
         #next, omega3 and omega_4, indexed to pure and mixed states
         (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed),(self.symjumplist_omega3,self.symjumplist_omega3_indexed)=self.vkinetics.starset.jumpnetwork_omega34(cutoff,solv_solv_cut,solt_solv_cut,closestdistance)
@@ -289,8 +289,8 @@ class dumbbellMediated(VacancyMediated):
         self.Nthermo = Nthermo
         self.thermo.generate(Nthermo)
         self.kinetic.generate(Nthermo+1)
-        self.Nmixedstates = len(self.kinetic.mixedstates)
-        self.Npurestates = len(self.kinetic.purestates)
+        # self.Nmixedstates = len(self.kinetic.mixedstates)
+        # self.Npurestates = len(self.kinetic.purestates)
         self.vkinetic.generate(self.kinetic) #we generate the vector star out of the kinetic shell
         #Now generate the pure and mixed dumbbell Green functions expnsions - internalized within vkinetic.
         (self.GFexpansion_pure,self.GFstarset_pure,self.GFPureStarInd), (self.GFexpansion_mixed,self.GFstarset_mixed,self.GFMixedStarInd)\
@@ -307,35 +307,70 @@ class dumbbellMediated(VacancyMediated):
         """
         Function to calculate the onsager transport coefficients.
         """
-        #First, build g2 from omega2 jumpnetwork using pinv
-        rate2list = ratelist(pre2, betaene2, pre2T, betaene2T, self.mdbcontainer.invmap)
-        rate0list = ratelist(pre0, betaene0, pre0T, betaene0T, self.pdbcontainer.invmap)
+        #First, build (velo),ity
+        rate2list = ratelist(self.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
+        rate0list = ratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
         # symmrate2list = symmratelist(pre, betaene, preT, betaeneT, self.container.invmap)
 
         #get the bias1 and bias2 expansions
         self.biases = self.vkinetic.biasexpansion(jnet_omega1,jnet_omega2,jtype,jnet_43)
 
         #generate the non-local solute and solvent biases for initial states in pure and mixed stateset of vkinetic.
-        self.NlsoluteBias1
-        self.NlsolventBias1
-        self.NlsoluteBias2
-        self.NlsoluteBias1
+        self.NlsoluteBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
+        self.NlsolventBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
+        self.NlsoluteBias2 = np.zeros((len(self.vkinetic.starset.mixedstates),3))
+        self.NlsoluteBias1 = np.zeros((len(self.vkinetic.starset.mixedstates),3))
 
-        #generate the non-local complex-complex block
-        oemga1_nonloc = np.zeros((len(self.vkinetic.starset.purestates),len(self.vkinetic.starset.purestates)))
+        bias1solute,bias1solvent = self.biases[1]
+        bias2solute,bias2solvent = self.biases[2]
+        #first,generate the solute bias in complex space.
+        rate1_nonloc = np.array([rate0list[self.om1types[i]] for i in len(self.jnet_1)])
+        bias1SoluteTotNonLoc = np.dot(bias1solute,rate1_nonloc)
+        bias1SolventTotNonLoc = np.dot(bias1solvent,rate1_nonloc)
+        #Now go state by state
+        for st in self.vkinetic.starset.purestates:
+            indlist = self.vkinetic.stateToVecStar_pure[st]
+            self.NlsoluteBias1[self.vkinetic.starset.pureindexdict[st][1]][:]=\
+            sum([bias1SoluteTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+
+            self.NlsolventBias1[self.vkinetic.starset.pureindexdict[st][1]][:]=\
+            sum([bias1SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+
+        #Next, we do this for omega2
+        bias2SoluteTotNonLoc = np.dot(bias1solute,rate1_nonloc)
+        bias2SolventTotNonLoc = np.dot(bias1solvent,rate1_nonloc)
+        #Now go state by state
+        for st in self.vkinetic.starset.mixedstates:
+            indlist = self.vkinetic.stateToVecStar_mixed[st]
+            self.NlsoluteBias2[self.vkinetic.starset.pureindexdict[st][1]][:]=\
+            sum([bias1SoluteTotNonLoc[tup[0]-self.vkinetic.vecvec.Nvstars_pure]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+
+            self.NlsolventBias2[self.vkinetic.starset.pureindexdict[st][1]][:]=\
+            sum([bias1SolventTotNonLoc[tup[0]-self.vkinetic.vecvec.Nvstars_pure]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+
+        #Okay, so now we have the velocity vectors in cartesian coordinates, state by state.
+
+        #generate the non-local complex-complex block w0
+        omega1_nonloc = np.zeros((len(self.vkinetic.starset.purestates),len(self.vkinetic.starset.purestates)))
         #use the indexed omega1 to fill up the elements
-        #omega1 is indexed to the purestates list in vkinetic.starset
-
-
+        for om0rate,jlist in zip(rate1_nonloc,self.jnet1_indexed):
+            for (i,j),dx in jlist:
+                omega1_nonloc[i,j] += om0rate
+                omega1_nonloc[i,i] -= om0rate #"add" the escapes
         #invert it with pinv2
-
-        #dot with the cartesian bias to get the eta0 for each state
-        eta0=np.zeros((len(self.vkinetic.starset.purestates).3))
-
+        g0_kin = pinv2(omega1_nonloc)
+        #tensordot with the cartesian bias to get the eta0 for each state
+        eta00_solvent = np.tensordot(g0_kin,NlsolventBias1,axes=(1,0))
+        eta00_solute = np.tensordot(g0_kin,NlsoluteBias1,axes=(1,0))
         #Now for omega2
         oemga2_nonloc = np.zeros((len(self.vkinetic.starset.mixedstates),len(self.vkinetic.starset.mixedstates)))
-        #use the indexed omega2 to fill this up
-
+        #use the indexed omega2 to fill this up - need omega2 indexed to mixed subspace of starset
+        for rate2,jlist in zip(rate2list,self.jnet2_indexed):
+            for (i,j),dx in jlist:
+                omega2_nonloc[i,j] += rate2
+                omega2_nonloc[i,i] -= rate2
         #invert it with pinv2
-
+        g2 = pinv2(omega2_nonloc)
         #dot with the cartesian bias vectors to get the eta0 for each state
+        eta02_solvent=np.dot(g2,NlsolventBias1,axes=(1,0))
+        eta02_solute=np.dot(g2,NlsoluteBias1,axes=(1,0))
