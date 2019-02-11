@@ -84,36 +84,35 @@ class test_vecstars(unittest.TestCase):
     def test_bias1expansions(self):
         for i in range(10):
             #test bias_1
-            #select a representative state and another state in the same star at random from complex states
+            #select a representative state and another state in the same star at random
+            #from complex state space
             starind = np.random.randint(0,self.vec_stars.Nvstars_pure)
             st = self.vec_stars.vecpos[starind][0] #get the representative state.
             n = np.random.randint(0,len(self.vec_stars.vecpos[starind]))
             st2 = self.vec_stars.vecpos[starind][n]
-            #Now, we calculate the total bias vector
-            bias_st_solute=np.zeros(3)
+            #Now, we calculate the total bias vector - zero for solute in complex space
             bias_st_solvent=np.zeros(3)
             bias_st_solvent2=np.zeros(3)
             count=0
-            for jlist in self.jnet_1:
+            for jt,jlist in enumerate(self.jnet_1):
                 for j in jlist:
                     if st==j.state1:
                         count+=1
                         dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                        # bias_st_solute += np.zeros(3)
-                        bias_st_solvent += dx
+                        bias_st_solvent += self.W1list[jt]*dx
                     if st2==j.state1:
                         dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                        # bias_st_solute += np.zeros(3)
-                        bias_st_solvent2 += dx
+                        bias_st_solvent2 += self.W1list[jt]*dx
 
             bias1expansion_solute,bias1expansion_solvent = self.biases[1]
             self.assertTrue(count>=1)
             self.assertTrue(np.allclose(bias1expansion_solute,np.zeros_like(bias1expansion_solute)),msg="{}\n{}".format(bias1expansion_solute,bias1expansion_solute))
             self.assertEqual(bias1expansion_solvent.shape[1],len(self.W1list))
-            # vectors
-            tot_bias_solvent = np.dot(bias1expansion_solvent,self.W1list)
 
-            #now get the components
+            #get the total bias vector
+            bias1expansion_solute,bias1expansion_solvent = self.biases[1]
+            tot_bias_solvent = np.dot(bias1expansion_solvent,self.W1list)
+            #now get the components of the given states
             indlist=[]
             # bias_cartesian = np.zeros(3)
             for ind,starlist in enumerate(self.vec_stars.vecpos):
@@ -123,8 +122,8 @@ class test_vecstars(unittest.TestCase):
             bias_cartesian = sum([tot_bias_solvent[i]*self.vec_stars.vecvec[i][0] for i in indlist])
             bias_cartesian2 = sum([tot_bias_solvent[i]*self.vec_stars.vecvec[i][n] for i in indlist])
 
-            self.assertTrue(np.allclose(bias_cartesian,bias_st_solvent),msg="{}\n{}".format(bias_cartesian,bias_st_solvent)) #should get the same bias vector anyway
-            self.assertTrue(np.allclose(bias_cartesian2,bias_st_solvent2),msg="{}\n{}".format(bias_cartesian,bias_st_solvent))
+            self.assertTrue(np.allclose(bias_cartesian,bias_st_solvent))
+            self.assertTrue(np.allclose(bias_cartesian2,bias_st_solvent2)
 
     def test_bias2expansions(self):
         for i in range(10):

@@ -303,7 +303,7 @@ class dumbbellMediated(VacancyMediated):
         #clear the cache of GFcalcs
         self.clearcache()
 
-    def Lij(self, pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T):
+    def calc_eta(self, pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T):
         """
         Function to calculate the onsager transport coefficients.
         """
@@ -325,9 +325,10 @@ class dumbbellMediated(VacancyMediated):
         bias2solute,bias2solvent = self.biases[2]
         #first,generate the solute bias in complex space.
         rate1_nonloc = np.array([rate0list[self.om1types[i]] for i in len(self.jnet_1)])
+        #Get the total bias vector with components along basis vectors of states
         bias1SoluteTotNonLoc = np.dot(bias1solute,rate1_nonloc)
         bias1SolventTotNonLoc = np.dot(bias1solvent,rate1_nonloc)
-        #Now go state by state
+        #Now go state by state - bring back bias vector to cartesian form.
         for st in self.vkinetic.starset.purestates:
             indlist = self.vkinetic.stateToVecStar_pure[st]
             self.NlsoluteBias1[self.vkinetic.starset.pureindexdict[st][1]][:]=\
@@ -337,16 +338,18 @@ class dumbbellMediated(VacancyMediated):
             sum([bias1SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
         #Next, we do this for omega2
-        bias2SoluteTotNonLoc = np.dot(bias1solute,rate1_nonloc)
-        bias2SolventTotNonLoc = np.dot(bias1solvent,rate1_nonloc)
+        bias2SoluteTotNonLoc = np.dot(bias2solute,rate2list)
+        bias2SolventTotNonLoc = np.dot(bias2solvent,rate2list)
         #Now go state by state
         for st in self.vkinetic.starset.mixedstates:
             indlist = self.vkinetic.stateToVecStar_mixed[st]
             self.NlsoluteBias2[self.vkinetic.starset.pureindexdict[st][1]][:]=\
-            sum([bias1SoluteTotNonLoc[tup[0]-self.vkinetic.vecvec.Nvstars_pure]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+            sum([bias2SoluteTotNonLoc[tup[0]-self.vkinetic.vecvec.Nvstars_pure]*\
+            self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
             self.NlsolventBias2[self.vkinetic.starset.pureindexdict[st][1]][:]=\
-            sum([bias1SolventTotNonLoc[tup[0]-self.vkinetic.vecvec.Nvstars_pure]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+            sum([bias2SolventTotNonLoc[tup[0]-self.vkinetic.vecvec.Nvstars_pure]*\
+            self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
         #Okay, so now we have the velocity vectors in cartesian coordinates, state by state.
 
@@ -358,10 +361,10 @@ class dumbbellMediated(VacancyMediated):
                 omega1_nonloc[i,j] += om0rate
                 omega1_nonloc[i,i] -= om0rate #"add" the escapes
         #invert it with pinv2
-        g0_kin = pinv2(omega1_nonloc)
+        g0_per = pinv2(omega1_nonloc)
         #tensordot with the cartesian bias to get the eta0 for each state
-        eta00_solvent = np.tensordot(g0_kin,NlsolventBias1,axes=(1,0))
-        eta00_solute = np.tensordot(g0_kin,NlsoluteBias1,axes=(1,0))
+        self.eta00_solvent = np.tensordot(g0_per,NlsolventBias1,axes=(1,0))
+        self.eta00_solute = np.tensordot(g0_per,NlsoluteBias1,axes=(1,0))
         #Now for omega2
         oemga2_nonloc = np.zeros((len(self.vkinetic.starset.mixedstates),len(self.vkinetic.starset.mixedstates)))
         #use the indexed omega2 to fill this up - need omega2 indexed to mixed subspace of starset
@@ -372,5 +375,7 @@ class dumbbellMediated(VacancyMediated):
         #invert it with pinv2
         g2 = pinv2(omega2_nonloc)
         #dot with the cartesian bias vectors to get the eta0 for each state
-        eta02_solvent=np.tensordot(g2,NlsolventBias1,axes=(1,0))
-        eta02_solute=np.tensordot(g2,NlsoluteBias1,axes=(1,0))
+        self.eta02_solvent=np.tensordot(g2,NlsolventBias1,axes=(1,0))
+        self.eta02_solute=np.tensordot(g2,NlsoluteBias1,axes=(1,0))
+
+        self.gen_new_jnets()
