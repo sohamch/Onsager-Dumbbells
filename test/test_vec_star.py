@@ -24,7 +24,7 @@ class test_vecstars(unittest.TestCase):
 
         self.jset0,self.jset2 = self.pdbcontainer_si.jumpnetwork(0.4,0.01,0.01), self.mdbcontainer_si.jumpnetwork(0.4,0.01,0.01)
 
-        self.crys_stars = StarSet(self.pdbcontainer_si,self.mdbcontainer_si,self.jset0,self.jset2, Nshells=2)
+        self.crys_stars = StarSet(self.pdbcontainer_si,self.mdbcontainer_si,self.jset0,self.jset2, Nshells=1)
         self.vec_stars = vectorStars(self.crys_stars)
 
         #generate 1, 3 and 4 jumpnetworks
@@ -108,6 +108,7 @@ class test_vecstars(unittest.TestCase):
             self.assertTrue(count>=1)
             self.assertTrue(np.allclose(bias1expansion_solute,np.zeros_like(bias1expansion_solute)),msg="{}\n{}".format(bias1expansion_solute,bias1expansion_solute))
             self.assertEqual(bias1expansion_solvent.shape[1],len(self.W1list))
+            # self.assertEqual(bias1expansion_solvent.shape[0],len(self.vec_stars.vecpos)
 
             #get the total bias vector
             bias1expansion_solute,bias1expansion_solvent = self.biases[1]
@@ -123,7 +124,7 @@ class test_vecstars(unittest.TestCase):
             bias_cartesian2 = sum([tot_bias_solvent[i]*self.vec_stars.vecvec[i][n] for i in indlist])
 
             self.assertTrue(np.allclose(bias_cartesian,bias_st_solvent))
-            self.assertTrue(np.allclose(bias_cartesian2,bias_st_solvent2)
+            self.assertTrue(np.allclose(bias_cartesian2,bias_st_solvent2))
 
     def test_bias2expansions(self):
         for i in range(10):

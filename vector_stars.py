@@ -11,6 +11,21 @@ class vectorStars(VectorStarSet):
     """
     Stores the vector stars corresponding to a given starset of dumbbell states
     """
+    def __init__(self, starset=None):
+        """
+        Initiates a vector-star generator; work with a given star.
+
+        :param starset: StarSet, from which we pull nearly all of the info that we need
+        """
+        # vecpos: list of "positions" (state indices) for each vector star (list of lists)
+        # vecvec: list of vectors for each vector star (list of lists of vectors)
+        # Nvstars: number of vector stars
+
+        self.starset = None
+        self.Nvstars = 0
+        if starset is not None:
+            if starset.Nshells > 0:
+                self.generate(starset)
 
     def generate(self,starset):
         """
@@ -99,7 +114,7 @@ class vectorStars(VectorStarSet):
         self.stateToVecStar_pure = {}
         for st in self.starset.purestates:
             indlist=[]
-            for IndOfStar,crStar in enumerate(self.vecpos):
+            for IndOfStar,crStar in enumerate(self.vecpos[:self.Nvstars_pure]):
                 for IndOfState,state in enumerate(crStar):
                     if state==st:
                         indlist.append((IndOfStar,IndOfState))
@@ -108,10 +123,10 @@ class vectorStars(VectorStarSet):
         self.stateToVecStar_mixed = {}
         for st in self.starset.mixedstates:
             indlist=[]
-            for IndOfStar,crStar in enumerate(self.vecpos):
+            for IndOfStar,crStar in enumerate(self.vecpos[self.Nvstars_pure:]):
                 for IndOfState,state in enumerate(crStar):
                     if state==st:
-                        indlist.append((IndOfStar,IndOfState))
+                        indlist.append((IndOfStar+self.Nvstars_pure,IndOfState))
             self.stateToVecStar_mixed[st] = indlist
     # We must produce two expansions. One for pure dumbbell states pointing to pure dumbbell state
     # and the other from mixed dumbbell states to mixed states.
@@ -124,17 +139,17 @@ class vectorStars(VectorStarSet):
         """
         def inTotalList(conn,totlist,mixed=False):
             if not mixed:
-                ind1 = self.startset.pdbcontainer.iorindex.get(conn.state1)
-                ind2 = self.startset.pdbcontainer.iorindex.get(conn.state2)
+                ind1 = self.starset.pdbcontainer.iorindex.get(conn.state1)
+                ind2 = self.starset.pdbcontainer.iorindex.get(conn.state2)
             else:
-                ind1 = self.startset.mdbcontainer.iorindex.get(conn.state1)
-                ind2 = self.startset.mdbcontainer.iorindex.get(conn.state2)
+                ind1 = self.starset.mdbcontainer.iorindex.get(conn.state1)
+                ind2 = self.starset.mdbcontainer.iorindex.get(conn.state2)
 
-            dx = disp(self.startset.crys,self.startset.chem,conn.state1,conn.state2)
+            dx = disp(self.starset.crys,self.starset.chem,conn.state1,conn.state2)
             return any(ind1==t[0][0] and ind2==t[0][1] and np.allclose(t[2],dx,threshold=self.kinetic.crys.threshold) for tlist in totlist for t in tlist)
 
-        purestates = self.startset.purestates
-        mixedstates = self.startset.mixedstates
+        purestates = self.starset.purestates
+        mixedstates = self.starset.mixedstates
         #Connect the states
         GFstarset_pure = []
         GFstarset_pure_starind = {}
@@ -147,18 +162,18 @@ class vectorStars(VectorStarSet):
                 if inTotalList(s,GFstarset):
                     continue
                 connectlist=[]
-                for g in self.startset.crys.G:
-                    db1new = self.startset.pdbcontainer.gdumb(g,s.state1)[0]
-                    db2new = self.startset.pdbcontainer.gdumb(g,s.state2)[0]
-                    dx=disp(self.startset.crys,self.kinetic.chem,db1new,db2new)
+                for g in self.starset.crys.G:
+                    db1new = self.starset.pdbcontainer.gdumb(g,s.state1)[0]
+                    db2new = self.starset.pdbcontainer.gdumb(g,s.state2)[0]
+                    dx=disp(self.starset.crys,self.kinetic.chem,db1new,db2new)
                     db1new = db1new - db1new.R
                     db2new = db2new - db2new.R
-                    ind1 = self.startset.pdbcontainer.iorindex.get(db1new)
-                    ind2 = self.startset.pdbcontainer.iorindex.get(db2new)
+                    ind1 = self.starset.pdbcontainer.iorindex.get(db1new)
+                    ind2 = self.starset.pdbcontainer.iorindex.get(db2new)
                     if ind1==None or ind2==None:
                         raise KeyError("dumbbell not found in iorlist")
                     tup = ((ind1,ind2),dx.copy())
-                    if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],threshold=self.startset.crys.threshold) for t in connectlist):
+                    if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],threshold=self.starset.crys.threshold) for t in connectlist):
                         connectlist.append(tup)
                 for tup in connectlist:
                     GFstarset_pure_starind[tup] = len(GFstarset_pure)
@@ -175,7 +190,7 @@ class vectorStars(VectorStarSet):
                 if inTotalList(s,GFstarset,mixed=True):
                     continue
                 connectlist=[]
-                for g in self.startset.crys.G:
+                for g in self.starset.crys.G:
                     snew = s.gop(self.starset.crys,self.starset.chem,g)
                     dx=disp(self.starset.crys,self.starset.chem,snew.state1,snew.state2)
                     snew = connector(snew.state1-snew.state1.R,snew.state2-snew.state2.R)
@@ -224,18 +239,18 @@ class vectorStars(VectorStarSet):
         #Build up the mixed GF expansion
         for i in range(Nvstars_mixed):
             for si,vi in zip(self.vecpos[Nvstars_pure+i],self.vecvec[Nvstars_pure+i]):
-                for j in range(Nvstars_pure):
+                for j in range(Nvstars_mixed):
                     for sj,vj in zip(self.vecpos[Nvstars_pure+j],self.vecvec[Nvstars_pure+j]):
                         try:
                             ds = si^sj
                         except:
                             continue
                             dx=disp(self.starset.crys,self.starset.chem,ds.state1,ds.state2)
-                            ind1 = self.starset.pdbcontainer.iorindex.get(ds.state1)
-                            ind2 = self.starset.pdbcontainer.iorindex.get(ds.state2)
+                            ind1 = self.starset.mdbcontainer.iorindex.get(ds.state1)
+                            ind2 = self.starset.mdbcontainer.iorindex.get(ds.state2)
                             if ind1==None or ind2==None:
                                 raise KeyError("enpoint subtraction within starset not found in iorlist")
-                            k = GFPureStarInd.get(((ind1,ind2),dx))
+                            k = GFMixedStarInd.get(((ind1,ind2),dx))
                             if k is None:
                                 raise ArithmeticError("GF starset not big enough to accomodate state state pair {}".format(tup))
                             GFexpansion_pure[i, j, k] += np.dot(vi, vj)
@@ -248,7 +263,7 @@ class vectorStars(VectorStarSet):
         for i in range(Nvstars_mixed):
             for j in range(0,i):
                 GFexpansion_mixed[i,j,:] = GFexpansion_pure[j,i,:]
-
+        print(GFexpansion_pure.shape,GFexpansion_mixed.shape)
         return (zeroclean(GFexpansion_pure),self.GFstarset_pure,self.GFPureStarInd), (zeroclean(GFexpansion_mixed),self.GFstarset_mixed,self.GFMixedStarInd)
 
     #See group meeting update slides of sept 10th to see how this works.

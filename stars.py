@@ -209,9 +209,19 @@ class StarSet(object):
         self.purestates = sorted(list(self.stateset),key=self._sortkey)
         self.mixedstates = sorted(list(self.mixedstateset),key=self._sortkey)
 
+        self.stToPureStates={}
+        for i,st in enumerate(self.purestates):
+             self.stToPureStates[st] = i
+
+        self.stToMixedStates={}
+        for i,st in enumerate(self.mixedstates):
+             self.stToMixedStates[st] = i
+
         #Now index the mixed jumpnetwork to the mixedstates
+        #Also, maintain a jumptype
         self.jnet2_indexed = []
-        for jlist in self.jumpnetwork_omega2:
+        self.jnet2_types = []
+        for jt,jlist in enumerate(self.jumpnetwork_omega2):
             indlist=[]
             for j in jlist:
                 for i,st1 in enumerate(self.mixedstates):
@@ -220,6 +230,7 @@ class StarSet(object):
                             if j.state2-j.state2.R_s==st2:
                                 indlist.append(((i,k),disp(self.crys,self.chem,st1,st2)))
             self.jnet2_indexed.append(indlist)
+            self.jnet2_types.append(jt)
 
         self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)
         #generate an indexed version of the starset to the iorlists in the container objects - seperate for mixed and pure stars
