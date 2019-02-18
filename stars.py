@@ -18,7 +18,7 @@ def calc_dx_species(crys,jnet,jnet_indexed,type='bare'):
     """
     if not(type=='bare' or type=='mixed'):
         raise ValueError('the type can only be bare or mixed')
-    if len(jnet_indexed!=jnet):
+    if len(jnet_indexed)!=len(jnet):
         raise ValueError("Need the same indexed jumplist as the original jumplist")
     if type=="bare":
         if not isinstance(jnet[0][0].state1,dumbbell):
@@ -43,8 +43,9 @@ def calc_dx_species(crys,jnet,jnet_indexed,type='bare'):
                 dx_solvent = dx + (-jmp.state2.db.o/2. + jmp.state1.db.o/2.)
                 speclist_solute.append(((jnet_indexed[i][j][0][0],jnet_indexed[i][j][0][1]),dx_solute))
                 speclist_solvent.append(((jnet_indexed[i][j][0][0],jnet_indexed[i][j][0][1]),dx_solvent))
-            jnet_solvent.append(speclist)
-        return jnet_solvent,jnet_solute
+            jnet_solvent.append(speclist_solvent)
+            jnet_solute.append(speclist_solute)
+    return jnet_solute,jnet_solvent
 
 
 
