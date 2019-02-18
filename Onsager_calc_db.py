@@ -2,7 +2,7 @@ import numpy as np
 from states import *
 import onsager.crystal as crystal
 from representations import *
-import GFcalc
+import GFcalc_dumbbells
 import stars
 import vector_stars
 from functools import reduce
@@ -229,21 +229,20 @@ class dumbbellMediated(VacancyMediated):
         #All the required quantities will be extracted from the containers as we move along
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
+        (self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList)=\
+        self.pdbcontainer.jumpnetwork(cutoff,solv_solv_cut,closestdistance),\
+        self.mdbcontainer.jumpnetwork(cutoff,solt_solv_cut,closestdistance)
         self.crys = pdbcontainer.crys #we assume this is the same in both containers
         self.chem = pdbcontainer.chem
-
-        self.GFcalc_pdb = self.GFCalculator(NGFmax)
-        self.GFcalc_mdb = self.GFCalculator(NGFmax,pdb=False)
-        self.thermo = stars.StarSet(pdbcontainer,mdbcontainer,self.om0_jn_states,self.om2_jn_states)
-        self.kinetic = stars.StarSet(pdbcontainer,mdbcontainer,self.om0_jn_states,self.om2_jn_states)
+        self.thermo = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList))
+        self.kinetic = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList))
 
         #Note - even if empty, our starsets go out to atleast the NNstar - later we'll have to keep this in mind
-        self.NNstar = stars.StarSet(pdbcontainer,mdbcontainer,self.om0_jn_states,self.om2_jn_states,2)
+        self.NNstar = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList),2)
         self.vkinetic = vector_stars.vectorStars()
 
         #Generate the initialized crystal and vector stars and the jumpnetworks with the kinetic shell
         self.generate(Nthermo,cutoff,solt_solv_cut,solv_solv_cut,closestdistance)
-
         #Generate the jumpnetworks using the kinetic shell
         # TODO: Implement generatematrices when required
         # self.generatematrices()
@@ -258,8 +257,8 @@ class dumbbellMediated(VacancyMediated):
         self.NGFmax=NGFmax
         self.clearcache(pdb)#make all precalculated lists empty
         if pdb:
-            return GFcalc_dumbbells.GF_dumbbells(self.pdbcontainer,self.om0_jn,NGFmax)
-        return GFcalc_dumbbells.GF_dumbbells(self.mdbcontainer,self.om2_jn,NGFmax)
+            return GFcalc_dumbbells.GF_dumbbells(self.pdbcontainer,self.jnet0_indexed,NGFmax)
+        return GFcalc_dumbbells.GF_dumbbells(self.mdbcontainer,self.jnet2toIorList,NGFmax)
 
     def clearcache(self,pdb):
         """
@@ -273,9 +272,6 @@ class dumbbellMediated(VacancyMediated):
     def generate_jnets(self,cutoff,solt_solv_cut,solv_solv_cut,closestdistance):
 
         #first omega0 and omega2 - indexed to purestates and mixed states
-        (self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList)=\
-        self.vkinetic.pdbcontainer.jumpnetwork(cutoff,solv_solv_cut,closestdistance),\
-        self.vkinetic.mdbcontainer.jumpnetwork(cutoff,solt_solv_cut,closestdistance)
         self.jnet2_indexed = self.vkinetic.starset.jnet2_indexed
         #Next - omega1 - indexed to purestates
         (self.jnet_1,self.jnet1_indexed), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
@@ -283,7 +279,7 @@ class dumbbellMediated(VacancyMediated):
         #next, omega3 and omega_4, indexed to pure and mixed states
         (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed),(self.symjumplist_omega3,self.symjumplist_omega3_indexed)=self.vkinetics.starset.jumpnetwork_omega34(cutoff,solv_solv_cut,solt_solv_cut,closestdistance)
 
-    def generate(self,Nthermo):
+    def generate(self,Nthermo,cutoff,solt_solv_cut,solv_solv_cut,closestdistance):
 
         if Nthermo==getattr(self,"Nthermo",0): return
         self.Nthermo = Nthermo
@@ -299,7 +295,9 @@ class dumbbellMediated(VacancyMediated):
         #See how the thermo2kin and all of that works later as and when needed
         #Generate the jumpnetworks
         self.generate_jnets(cutoff,solt_solv_cut,solv_solv_cut,closestdistance)
-
+        #Generate the GFexpansions
+        self.GFcalc_pdb = self.GFCalculator(NGFmax)
+        self.GFcalc_mdb = self.GFCalculator(NGFmax,pdb=False)
         #clear the cache of GFcalcs
         self.clearcache()
 
