@@ -101,16 +101,36 @@ class test_dumbbell_mediated(unittest.TestCase):
         for i in range(len(eta00_solvent)):
             #get the indices of the state
             st = self.onsagercalculator.vkinetic.starset.purestates[i]
-            if st.is_zero():
-                continue
-            print(st)
-            #next get the vectorstar,state indices
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[st]
-            print(indlist)
+            if len(indlist)==0:
+                continue
+            # print(st)
+            #next get the vectorstar,state indices
+            # indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[st]
+            # print(indlist)
             #try to reconstruct the eta vector.
             vlist=[]
             for tup in indlist:
                 vlist.append(self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]])
-            eta_test = sum([np.dot(eta00_solvent[i,:],v)*v for v in vlist])
-            print(vlist)
-            self.assertTrue(np.allclose(eta_test*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),eta00_solvent[i]),msg="{} {}".format(eta_test,eta00_solvent[i]))
+            eta_test_solvent = sum([np.dot(eta00_solvent[i,:],v)*v for v in vlist])
+            eta_test_solute = sum([np.dot(eta00_solute[i,:],v)*v for v in vlist])
+            # print(vlist)
+            self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),eta00_solvent[i]),msg="{} {}".format(eta_test_solvent,eta00_solvent[i]))
+            self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),eta00_solute[i]),msg="{} {}".format(eta_test_solute,eta00_solute[i]))
+
+        Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
+        for i in range(len(eta02_solvent)):
+            #get the indices of the state
+            st = self.onsagercalculator.vkinetic.starset.mixedstates[i]
+            #next get the vectorstar,state indices
+            indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[st]
+            #The IndOfStar in indlist for the mixed case is already shifted by the number of pure vector stars.
+            if len(indlist)!=0:
+                vlist=[]
+                for tup in indlist:
+                    vlist.append(self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]])
+                eta_test_solvent = sum([np.dot(eta02_solvent[i,:],v)*v for v in vlist])
+                eta_test_solute = sum([np.dot(eta02_solute[i,:],v)*v for v in vlist])
+                # print(vlist)
+                self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),eta02_solvent[i]),msg="{} {}".format(eta_test_solvent,eta02_solvent[i]))
+                self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),eta02_solute[i]),msg="{} {}".format(eta_test_solute,eta02_solute[i]))

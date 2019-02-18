@@ -341,13 +341,14 @@ class dumbbellMediated(VacancyMediated):
         #Now go state by state
         for st in self.vkinetic.starset.mixedstates:
             indlist = self.vkinetic.stateToVecStar_mixed[st]
-            self.NlsoluteBias2[self.vkinetic.starset.mixedindexdict[st][1]][:]=\
-            sum([bias2SoluteTotNonLoc[tup[0]-self.vkinetic.Nvstars_pure]*\
-            self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+            if len(indlist)!=0:
+                self.NlsoluteBias2[self.vkinetic.starset.stToMixedStates[st]][:]=\
+                sum([bias2SoluteTotNonLoc[tup[0]-self.vkinetic.Nvstars_pure]*\
+                self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
-            self.NlsolventBias2[self.vkinetic.starset.mixedindexdict[st][1]][:]=\
-            sum([bias2SolventTotNonLoc[tup[0]-self.vkinetic.Nvstars_pure]*\
-            self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+                self.NlsolventBias2[self.vkinetic.starset.stToMixedStates[st]][:]=\
+                sum([bias2SolventTotNonLoc[tup[0]-self.vkinetic.Nvstars_pure]*\
+                self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
         #Okay, so now we have the velocity vectors in cartesian coordinates, state by state.
 
