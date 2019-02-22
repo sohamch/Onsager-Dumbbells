@@ -379,6 +379,12 @@ class dumbbellMediated(VacancyMediated):
         self.eta02_solvent=np.tensordot(g2,self.NlsolventBias2,axes=(1,0))
         self.eta02_solute=np.tensordot(g2,self.NlsoluteBias2,axes=(1,0))
 
-        return (self.eta00_solvent,self.eta00_solute), (self.eta02_solvent,self.eta02_solute)
-
         # self.gen_new_jnets()
+        #Need to bypass having to generate new jumpnetworks all over again
+    def construct_new_expansion(self):
+        """
+        Function that allows us to construct new bias and bare expansions based on the eta vectors already calculated.
+        The goal is not having to repeat the construction of the jumpnetwork based on the recalculated displacements after
+        subtraction of the eta vectors (as in the variational principle)
+        """
+        pass

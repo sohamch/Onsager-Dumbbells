@@ -89,16 +89,16 @@ class test_dumbbell_mediated(unittest.TestCase):
         pre2T = np.ones(len(self.onsagercalculator.jnet2))
         betaene2T = np.ones(len(self.onsagercalculator.jnet2))
 
-        (eta00_solvent,eta00_solute), (eta02_solvent,eta02_solute) = \
+        # (eta00_solvent,eta00_solute), (eta02_solvent,eta02_solute) = \
         self.onsagercalculator.calc_eta(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
 
-        self.assertEqual(len(eta00_solvent),len(self.onsagercalculator.vkinetic.starset.purestates))
-        self.assertEqual(len(eta00_solute),len(self.onsagercalculator.vkinetic.starset.purestates))
+        self.assertEqual(len(self.onsagercalculator.eta00_solvent),len(self.onsagercalculator.vkinetic.starset.purestates))
+        self.assertEqual(len(self.onsagercalculator.eta00_solute),len(self.onsagercalculator.vkinetic.starset.purestates))
 
-        self.assertEqual(len(eta02_solvent),len(self.onsagercalculator.vkinetic.starset.mixedstates))
-        self.assertEqual(len(eta02_solute),len(self.onsagercalculator.vkinetic.starset.mixedstates))
+        self.assertEqual(len(self.onsagercalculator.eta02_solvent),len(self.onsagercalculator.vkinetic.starset.mixedstates))
+        self.assertEqual(len(self.onsagercalculator.eta02_solute),len(self.onsagercalculator.vkinetic.starset.mixedstates))
 
-        for i in range(len(eta00_solvent)):
+        for i in range(len(self.onsagercalculator.eta00_solvent)):
             #get the indices of the state
             st = self.onsagercalculator.vkinetic.starset.purestates[i]
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[st]
@@ -112,14 +112,14 @@ class test_dumbbell_mediated(unittest.TestCase):
             vlist=[]
             for tup in indlist:
                 vlist.append(self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]])
-            eta_test_solvent = sum([np.dot(eta00_solvent[i,:],v)*v for v in vlist])
-            eta_test_solute = sum([np.dot(eta00_solute[i,:],v)*v for v in vlist])
+            eta_test_solvent = sum([np.dot(self.onsagercalculator.eta00_solvent[i,:],v)*v for v in vlist])
+            eta_test_solute = sum([np.dot(self.onsagercalculator.eta00_solute[i,:],v)*v for v in vlist])
             # print(vlist)
-            self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),eta00_solvent[i]),msg="{} {}".format(eta_test_solvent,eta00_solvent[i]))
-            self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),eta00_solute[i]),msg="{} {}".format(eta_test_solute,eta00_solute[i]))
+            self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta00_solvent[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta00_solvent[i]))
+            self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta00_solute[i]),msg="{} {}".format(eta_test_solute,self.onsagercalculator.eta00_solute[i]))
 
         Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
-        for i in range(len(eta02_solvent)):
+        for i in range(len(self.onsagercalculator.eta02_solvent)):
             #get the indices of the state
             st = self.onsagercalculator.vkinetic.starset.mixedstates[i]
             #next get the vectorstar,state indices
@@ -129,8 +129,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                 vlist=[]
                 for tup in indlist:
                     vlist.append(self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]])
-                eta_test_solvent = sum([np.dot(eta02_solvent[i,:],v)*v for v in vlist])
-                eta_test_solute = sum([np.dot(eta02_solute[i,:],v)*v for v in vlist])
+                eta_test_solvent = sum([np.dot(self.onsagercalculator.eta02_solvent[i,:],v)*v for v in vlist])
+                eta_test_solute = sum([np.dot(self.onsagercalculator.eta02_solute[i,:],v)*v for v in vlist])
                 # print(vlist)
-                self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),eta02_solvent[i]),msg="{} {}".format(eta_test_solvent,eta02_solvent[i]))
-                self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),eta02_solute[i]),msg="{} {}".format(eta_test_solute,eta02_solute[i]))
+                self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solvent[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta02_solvent[i]))
+                self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solute[i]),msg="{} {}".format(eta_test_solute,self.onsagercalculator.eta02_solute[i]))
