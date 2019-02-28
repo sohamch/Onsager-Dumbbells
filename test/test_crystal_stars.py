@@ -154,10 +154,14 @@ class test_StarSet(unittest.TestCase):
             omega43,omega4,omega3 = crys_stars.jumpnetwork_omega34(0.45,0.01,0.01,0.01)
             omega43_all,omega4_network,omega3_network = omega43[0],omega4[0],omega3[0]
             omega43_all_indexed,omega4_network_indexed,omega3_network_indexed = omega43[1],omega4[1],omega3[1]
+            omega4tag,omega3tag = omega4[2],omega3[2]
             self.assertEqual(len(omega4_network),len(omega3_network))
             for jl4,jl3 in zip(omega4_network,omega3_network):
                 self.assertEqual(len(jl3),len(jl4))
             ##TEST omega3 and omega4
+            #test that the tag lists have proper length
+            self.assertEqual(len(omega4tag),len(omega4_network))
+            self.assertEqual(len(omega3tag),len(omega3_network))
             omeg34list=[omega3_network,omega4_network]
             for i,omega in enumerate(omeg34list):
                 x=np.random.randint(0,len(omega))
@@ -208,7 +212,25 @@ class test_StarSet(unittest.TestCase):
                     # print(crys_stars.mixedstates[indjmp[0][0]])
                     self.assertTrue(jmp.state1==crys_stars.mixedstates[indjmp[0][0]],msg="{}".format(struct))
                     self.assertTrue(jmp.state2==crys_stars.purestates[indjmp[0][1]])
+            #testing the tags
+            #First, omega4
+            for jlist,initdict in zip(omega4_network_indexed,omega4tag):
+                for IS,jtag in omega4tag:
+                    #go through the rows of the jtag:
+                    for row in range(len(jtag)):
+                        self.assertTrue(jtag[row][IS]==1)
+                        for column in range(len(crys_stars.purestates) + len(crys_stars.mixedstates)):
+                            if jtag[row][column] == -1:
+                                self.assertTrue(any(i==IS and j==column-len(crys_stars.purestates) for (i,j),dx in jlist))
 
+            for jlist,initdict in zip(omega3_network_indexed,omega3tag):
+                for IS,jtag in omega3tag:
+                    #go through the rows of the jtag:
+                    for row in range(len(jtag)):
+                        self.assertTrue(jtag[row][IS]==1)
+                        for column in range(len(crys_stars.purestates) + len(crys_stars.mixedstates)):
+                            if jtag[row][column] == -1:
+                                self.assertTrue(any(i==IS-len(crys_stars.purestates) and j==column for (i,j),dx in jlist))
             #Next, omega2 to mixedstates
             jnet2,jnet2stateindex = crys_stars.jumpnetwork_omega2,crys_stars.jnet2_indexed
             for i in range(len(jnet2)):
@@ -218,3 +240,12 @@ class test_StarSet(unittest.TestCase):
                     FS = crys_stars.mixedstates[jind[0][1]]
                     self.assertEqual(IS,jpair.state1-jpair.state1.R_s,msg="{} not equal to {}".format(IS,jpair.state1))
                     self.assertEqual(FS,jpair.state2-jpair.state2.R_s,msg="{} not equal to {}".format(FS,jpair.state2))
+
+            for jlist,initdict in zip(jnet2stateindex,crys_stars.jtags2):
+                for IS,jtag in omega3tag:
+                    #go through the rows of the jtag:
+                    for row in range(len(jtag)):
+                        self.assertTrue(jtag[row][IS]==1)
+                        for column in range(len(crys_stars.purestates) + len(crys_stars.mixedstates)):
+                            if jtag[row][column] == -1:
+                                self.assertTrue(any(i==IS-len(crys_stars.purestates) and j==column for (i,j),dx in jlist))

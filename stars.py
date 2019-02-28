@@ -223,7 +223,8 @@ class StarSet(object):
         #Also, maintain a jumptype
         self.jnet2_indexed = []
         self.jnet2_types = []
-        self.jtags2 =[]
+        j2initlist =[]
+        self.
         for jt,jlist in enumerate(self.jumpnetwork_omega2):
             indlist=[]
             initindices = defaultdict(list)
@@ -233,11 +234,21 @@ class StarSet(object):
                         for k,st2 in enumerate(self.mixedstates):
                             if j.state2-j.state2.R_s==st2:
                                 indlist.append(((i,k),disp(self.crys,self.chem,st1,st2)))
-                                initindices[i].append(k)
+                                initindices[i+len(self.purestates)].append(k+len(self.purestates))
             self.jnet2_indexed.append(indlist)
-            self.jtags2.append(initindices)
+            j2initlist.append(initindices)
             self.jnet2_types.append(jt)
 
+        self.jtags2 = []
+        for initdict in j2initlist:
+            jtagdict = {}
+            for IS, lst in initdict:
+                jarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)),dtype=int)
+                for idx,FS in enumerate(lst):
+                    jarr[idx][IS]=1
+                    jarr[idx][FS]=-1
+                jtagdict[IS] = jarr.copy()
+            jtags2.append(jtagdict)
         #Next, we build up the jtags for omega2, using the indlist
 
         self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)
@@ -454,7 +465,7 @@ class StarSet(object):
         for initdict in omega4inits:
             jarrdict = {}
             for IS,lst in initdict:
-                jarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)))
+                jarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)),dtype=int)
                 for idx,fin in enumerate(lst):
                     jarr[idx][IS] = 1
                     jarr[idx][FS+len(self.purestates)] = -1
@@ -464,7 +475,7 @@ class StarSet(object):
         for initdict in omega3inits:
             jarrdict = {}
             for IS,lst in initdict:
-                jarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)))
+                jarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)),dtype=int)
                 for idx,fin in enumerate(lst):
                     jarr[idx][IS+len(self.purestates)] = 1
                     jarr[idx][FS] = -1
