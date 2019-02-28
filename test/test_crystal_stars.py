@@ -120,7 +120,16 @@ class test_StarSet(unittest.TestCase):
             crys_stars = StarSet(pdbcontainer,mdbcontainer,jset0,jset2,1)
 
             ##TEST omega_1
-            omega1_network,omega_1_indexed = crys_stars.jumpnetwork_omega1()[0]
+            omega1_network,omega1_indexed,omega1tag = crys_stars.jumpnetwork_omega1()[0]
+            for jlist,initdict in zip(omega1_indexed,omega1tag):
+                for IS,jtag in initdict.items():
+                    #go through the rows of the jtag:
+                    for row in range(len(jtag)):
+                        self.assertTrue(jtag[row][IS]==1)
+                        for column in range(len(crys_stars.purestates) + len(crys_stars.mixedstates)):
+                            if jtag[row][column] == -1:
+                                self.assertTrue(any(i==IS and j==column for (i,j),dx in jlist))
+                                #If any is true, then that means only one is true, since a jump b/w two states is present only once.
             #select a jump list in random
             x = np.random.randint(0,len(omega1_network))
             #select any jump from this list at random
@@ -195,7 +204,7 @@ class test_StarSet(unittest.TestCase):
 
             ##Test indexing of the jump networks
             #First, omega_1
-            for jlist, jindlist in zip(omega1_network,omega_1_indexed):
+            for jlist, jindlist in zip(omega1_network,omega1_indexed):
                 for jmp, indjmp in zip(jlist,jindlist):
                     self.assertTrue(jmp.state1==crys_stars.purestates[indjmp[0][0]])
                     self.assertTrue(jmp.state2==crys_stars.purestates[indjmp[0][1]])
@@ -215,22 +224,22 @@ class test_StarSet(unittest.TestCase):
             #testing the tags
             #First, omega4
             for jlist,initdict in zip(omega4_network_indexed,omega4tag):
-                for IS,jtag in omega4tag:
+                for IS,jtag in initdict.items():
                     #go through the rows of the jtag:
                     for row in range(len(jtag)):
                         self.assertTrue(jtag[row][IS]==1)
                         for column in range(len(crys_stars.purestates) + len(crys_stars.mixedstates)):
                             if jtag[row][column] == -1:
                                 self.assertTrue(any(i==IS and j==column-len(crys_stars.purestates) for (i,j),dx in jlist))
-
+            #Next, omega3
             for jlist,initdict in zip(omega3_network_indexed,omega3tag):
-                for IS,jtag in omega3tag:
+                for IS,jtag in initdict.items():
                     #go through the rows of the jtag:
                     for row in range(len(jtag)):
-                        self.assertTrue(jtag[row][IS]==1)
+                        self.assertTrue(jtag[row][IS+len(crys_stars.purestates)]==1)
                         for column in range(len(crys_stars.purestates) + len(crys_stars.mixedstates)):
                             if jtag[row][column] == -1:
-                                self.assertTrue(any(i==IS-len(crys_stars.purestates) and j==column for (i,j),dx in jlist))
+                                self.assertTrue(any(i==IS and j==column for (i,j),dx in jlist))
             #Next, omega2 to mixedstates
             jnet2,jnet2stateindex = crys_stars.jumpnetwork_omega2,crys_stars.jnet2_indexed
             for i in range(len(jnet2)):
@@ -242,10 +251,12 @@ class test_StarSet(unittest.TestCase):
                     self.assertEqual(FS,jpair.state2-jpair.state2.R_s,msg="{} not equal to {}".format(FS,jpair.state2))
 
             for jlist,initdict in zip(jnet2stateindex,crys_stars.jtags2):
-                for IS,jtag in omega3tag:
+                for IS,jtag in initdict.items():
                     #go through the rows of the jtag:
                     for row in range(len(jtag)):
-                        self.assertTrue(jtag[row][IS]==1)
+                        #The column corresponding to the intial state must have 1.
+                        self.assertTrue(jtag[row][IS+len(crys_stars.purestates)]==1 or jtag[row][IS+len(crys_stars.purestates)]==0,msg="{}".format(jtag[row][IS+len(crys_stars.purestates)]))
+                        #the zero appears when the intial and final states are the same (but just translated in the lattice) so that they have the same periodic eta vector 
                         for column in range(len(crys_stars.purestates) + len(crys_stars.mixedstates)):
                             if jtag[row][column] == -1:
-                                self.assertTrue(any(i==IS-len(crys_stars.purestates) and j==column for (i,j),dx in jlist))
+                                self.assertTrue(any(i==IS and j==column-len(crys_stars.purestates) for (i,j),dx in jlist))
