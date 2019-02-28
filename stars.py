@@ -3,6 +3,7 @@ import onsager.crystal as crystal
 # from jumpnet3 import *
 from states import *
 import itertools
+from collections import defaultdict
 from representations import *
 
 def calc_dx_species(crys,jnet,jnet_indexed,type='bare'):
@@ -277,6 +278,7 @@ class StarSet(object):
     def jumpnetwork_omega1(self):
         jumpnetwork= []
         jumpindexed = []
+        jtags=[] #list of dicitionaries that store numpy arrays of the form +1 for initial state, -1 for final state
         jumptype=[]
         starpair=[]
         jumpset=set([])#set where newly produced jumps will be stored
@@ -297,6 +299,7 @@ class StarSet(object):
                     if not jpair in jumpset and not -jpair in jumpset: #see if the jump has not already been considered
                         newlist=[]
                         indices=[]
+                        initdict =  defaultdict(list)
                         for g in self.crys.G:
                             jnew = jpair.gop(self.crys,self.chem,g)
                             db1new = self.pdbcontainer.gdumb(g,jpair.state1.db)
@@ -326,11 +329,25 @@ class StarSet(object):
                             initial = self.pureindexdict[jmp.state1][0]
                             final = self.pureindexdict[jmp.state2][0]
                             indices.append(((initial,final),disp(self.crys, self.chem, jmp.state1, jmp.state2)))
+                            initdict[initial].append(final)
                         jumpnetwork.append(newlist)
                         jumpindexed.append(indices)
+                        initstates.append(initdict)
+                        #so, initdict contains all the initial states as keys, and the values as the lists final states from the initial states.
                         jumptype.append(jt)
+        jtags = []
+        for initdict in initstates:
+            arrdict = {}
+            for IS,lst in initdict:
+                jtagarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)),dtype=int)
+                for jnum,FS in enumerate(lst):
+                    jtagarr[num][IS] = 1
+                    jtagarr[num][FS] = -1
+                arrdict[IS] = jtagarr.copy()
+            jtags.append(arrdict)
 
-        return (jumpnetwork,jumpindexed), jumptype
+
+        return (jumpnetwork,jumpindexed), jumptype, jtags
 
     def jumpnetwork_omega34(self,cutoff,solv_solv_cut,solt_solv_cut,closestdistance):
         #building omega_4 -> association - c2=-1 -> since solvent movement is tracked
