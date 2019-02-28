@@ -271,11 +271,12 @@ class dumbbellMediated(VacancyMediated):
 
         #first omega0 and omega2 - indexed to purestates and mixed states
         self.jnet2_indexed = self.vkinetic.starset.jnet2_indexed
+        self.jtags2 = self.vkinetic.starset.jtags
         #Next - omega1 - indexed to purestates
-        (self.jnet_1,self.jnet1_indexed), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
+        (self.jnet_1,self.jnet1_indexed,self.jtags1), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
 
         #next, omega3 and omega_4, indexed to pure and mixed states
-        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed),(self.symjumplist_omega3,self.symjumplist_omega3_indexed)=self.vkinetic.starset.jumpnetwork_omega34(cutoff,solv_solv_cut,solt_solv_cut,closestdistance)
+        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed,self.jtags4),(self.symjumplist_omega3,self.symjumplist_omega3_indexed,self.jtags3)=self.vkinetic.starset.jumpnetwork_omega34(cutoff,solv_solv_cut,solt_solv_cut,closestdistance)
 
     def generate(self,Nthermo,cutoff,solt_solv_cut,solv_solv_cut,closestdistance):
 

@@ -223,16 +223,22 @@ class StarSet(object):
         #Also, maintain a jumptype
         self.jnet2_indexed = []
         self.jnet2_types = []
+        self.jtags2 =[]
         for jt,jlist in enumerate(self.jumpnetwork_omega2):
             indlist=[]
+            initindices = defaultdict(list)
             for j in jlist:
                 for i,st1 in enumerate(self.mixedstates):
                     if j.state1-j.state1.R_s==st1:
                         for k,st2 in enumerate(self.mixedstates):
                             if j.state2-j.state2.R_s==st2:
                                 indlist.append(((i,k),disp(self.crys,self.chem,st1,st2)))
+                                initindices[i].append(k)
             self.jnet2_indexed.append(indlist)
+            self.jtags2.append(initindices)
             self.jnet2_types.append(jt)
+
+        #Next, we build up the jtags for omega2, using the indlist
 
         self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)
         #generate an indexed version of the starset to the iorlists in the container objects - seperate for mixed and pure stars
@@ -444,6 +450,7 @@ class StarSet(object):
         #Now build the jtags
         jtags4=[]
         jtags3=[]
+
         for initdict in omega4inits:
             jarrdict = {}
             for IS,lst in initdict:
