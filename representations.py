@@ -85,6 +85,11 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
         zero = np.zeros(len(self.db.o))
         R_s_new, (ch,i_s_new) = crys.g_pos(g,self.R_s,(chem,self.i_s))
         dbnew = self.db.gop(crys,chem,g)
+        #db.gop for reference
+        # def gop(self,crys,chem,g):
+        #     r1, (ch,i1) = crys.g_pos(g,self.R,(chem,self.i))
+        #     o1 = crys.g_direc(g,self.o)
+        #     return self.__class__(i1,o1,r1)
         return self.__class__(i_s_new,R_s_new,dbnew)
 
     def is_zero(self):
