@@ -328,10 +328,10 @@ class dumbbellMediated(VacancyMediated):
         for st in self.vkinetic.starset.purestates:
             indlist = self.vkinetic.stateToVecStar_pure[st]
             if len(indlist)!=0:
-                self.NlsoluteBias1[self.vkinetic.starset.stToPureStates[st]][:]=\
+                self.NlsoluteBias1[self.vkinetic.starset.pureindexdict[st][0]][:]=\
                 sum([bias1SoluteTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
-                self.NlsolventBias1[self.vkinetic.starset.stToPureStates[st]][:]=\
+                self.NlsolventBias1[self.vkinetic.starset.pureindexdict[st][0]][:]=\
                 sum([bias1SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
         #Next, we do this for omega2
@@ -342,11 +342,11 @@ class dumbbellMediated(VacancyMediated):
         for st in self.vkinetic.starset.mixedstates:
             indlist = self.vkinetic.stateToVecStar_mixed[st]
             if len(indlist)!=0:
-                self.NlsoluteBias2[self.vkinetic.starset.stToMixedStates[st]][:]=\
+                self.NlsoluteBias2[self.vkinetic.starset.mixedindexdict[st][0]][:]=\
                 sum([bias2SoluteTotNonLoc[tup[0]-self.vkinetic.Nvstars_pure]*\
                 self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
-                self.NlsolventBias2[self.vkinetic.starset.stToMixedStates[st]][:]=\
+                self.NlsolventBias2[self.vkinetic.starset.mixedindexdict[st][0]][:]=\
                 sum([bias2SolventTotNonLoc[tup[0]-self.vkinetic.Nvstars_pure]*\
                 self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
@@ -384,7 +384,11 @@ class dumbbellMediated(VacancyMediated):
     def construct_new_expansion(self):
         """
         Function that allows us to construct new bias and bare expansions based on the eta vectors already calculated.
-        The goal is not having to repeat the construction of the jumpnetwork based on the recalculated displacements after
-        subtraction of the eta vectors (as in the variational principle)
-        """
-        pass
+
+        We don't want to repeat the construction of the jumpnetwork based on the recalculated displacements after
+        subtraction of the eta vectors (as in the variational principle).
+
+        First, we deal with the bias expansions
+        The goal is to keep a matrix pre-constructed, so that when we multiply with the total eta vector (which we find in calc_eta), we get
+        the term we need to subtract off the bias expansion
+        """f
