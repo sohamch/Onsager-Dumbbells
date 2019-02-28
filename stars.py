@@ -210,13 +210,14 @@ class StarSet(object):
         self.purestates = sorted(list(self.stateset),key=self._sortkey)
         self.mixedstates = sorted(list(self.mixedstateset),key=self._sortkey)
 
-        self.stToPureStates={}
-        for i,st in enumerate(self.purestates):
-             self.stToPureStates[st] = i
-
-        self.stToMixedStates={}
-        for i,st in enumerate(self.mixedstates):
-             self.stToMixedStates[st] = i
+        #This portion is no longer needed - generalized in (pure/mixed)indexdict
+        # self.stToPureStates={}
+        # for i,st in enumerate(self.purestates):
+        #      self.stToPureStates[st] = i
+        #
+        # self.stToMixedStates={}
+        # for i,st in enumerate(self.mixedstates):
+        #      self.stToMixedStates[st] = i
 
         #Now index the mixed jumpnetwork to the mixedstates
         #Also, maintain a jumptype
@@ -257,7 +258,7 @@ class StarSet(object):
 
         #now generate the index dicts
         # --starindex -> tells us which star (via it's index in the states list) a state belongs to.
-        # --indexdict -> tell us given a pair state, what is its index in the states list and the starset.
+        # --indexdict -> tell us given a pair state, what is its index in the states list and which star in the starset it belongs to.
         self.pureindex = np.zeros(len(self.purestates),dtype=int)
         self.mixedindex = np.zeros(len(self.mixedstates),dtype=int)
         self.pureindexdict = {}
@@ -347,7 +348,7 @@ class StarSet(object):
             jtags.append(arrdict)
 
 
-        return (jumpnetwork,jumpindexed), jumptype, jtags
+        return (jumpnetwork, jumpindexed, jtags), jumptype
 
     def jumpnetwork_omega34(self,cutoff,solv_solv_cut,solt_solv_cut,closestdistance):
         #building omega_4 -> association - c2=-1 -> since solvent movement is tracked
@@ -355,15 +356,18 @@ class StarSet(object):
         alljumpset_omega4=set([])
         symjumplist_omega4=[]
         symjumplist_omega4_indexed=[]
+        omega4inits = []
 
         # alljumpset_omega3=set([])
 
         symjumplist_omega3=[]
         symjumplist_omega3_indexed=[]
+        omega3inits = []
 
         symjumplist_omega43_all=[]
         symjumplist_omega43_all_indexed=[]
         alljumpset_omega43_all=set([])
+
         for p_pure in self.purestates:
             if p_pure.is_zero(): #Specator rotating into mixed does not make sense.
                 continue
@@ -413,22 +417,29 @@ class StarSet(object):
                                 new4index=[]
                                 new3index=[]
                                 newallindex=[]
+                                jarr3 = defaultdict(list)
+                                jarr4 = defaultdict(list)
 
                                 for jmp in newset:
                                     pure_ind = self.pureindexdict[jmp.state1][0]
                                     mixed_ind = self.mixedindexdict[jmp.state2][0]
+                                    jarr3[pure_ind].append(mixed_ind)
+                                    jarr4[mixed_ind].append(pure_ind)
                                     new4index.append(((pure_ind,mixed_ind),disp(self.crys, self.chem, jmp.state1, jmp.state2)))
                                     new3index.append(((mixed_ind,pure_ind),disp(self.crys, self.chem, jmp.state2, jmp.state1)))
                                     newallindex.append(((pure_ind,mixed_ind),disp(self.crys, self.chem, jmp.state1, jmp.state2)))
                                     newallindex.append(((mixed_ind,pure_ind),disp(self.crys, self.chem, jmp.state2, jmp.state1)))
 
                                 symjumplist_omega4.append(newset)
+                                omega4inits.append(jarr4)
                                 symjumplist_omega4_indexed.append(new4index)
 
                                 symjumplist_omega3.append(newnegset)
+                                omega3inits.append(jarr3)
                                 symjumplist_omega3_indexed.append(new3index)
 
                                 symjumplist_omega43_all.append(newallset)
                                 symjumplist_omega43_all_indexed.append(newallindex)
+
 
         return (symjumplist_omega43_all,symjumplist_omega43_all_indexed),(symjumplist_omega4,symjumplist_omega4_indexed),(symjumplist_omega3,symjumplist_omega3_indexed)
