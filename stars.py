@@ -441,5 +441,27 @@ class StarSet(object):
                                 symjumplist_omega43_all.append(newallset)
                                 symjumplist_omega43_all_indexed.append(newallindex)
 
+        #Now build the jtags
+        jtags4=[]
+        jtags3=[]
+        for initdict in omega4inits:
+            jarrdict = {}
+            for IS,lst in initdict:
+                jarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)))
+                for idx,fin in enumerate(lst):
+                    jarr[idx][IS] = 1
+                    jarr[idx][FS+len(self.purestates)] = -1
+                jarrdict[IS] = jarr.copy()
+            jtags4.append(jarrdict)
 
-        return (symjumplist_omega43_all,symjumplist_omega43_all_indexed),(symjumplist_omega4,symjumplist_omega4_indexed),(symjumplist_omega3,symjumplist_omega3_indexed)
+        for initdict in omega3inits:
+            jarrdict = {}
+            for IS,lst in initdict:
+                jarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)))
+                for idx,fin in enumerate(lst):
+                    jarr[idx][IS+len(self.purestates)] = 1
+                    jarr[idx][FS] = -1
+                jarrdict[IS] = jarr.copy()
+            jtags3.append(jarrdict)
+
+        return (symjumplist_omega43_all,symjumplist_omega43_all_indexed),(symjumplist_omega4,symjumplist_omega4_indexed,jtags4),(symjumplist_omega3,symjumplist_omega3_indexed,jtags3)
