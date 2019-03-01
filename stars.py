@@ -366,8 +366,7 @@ class StarSet(object):
                     jtagarr[jnum][FS] = -1
                 arrdict[IS] = jtagarr.copy()
             jtags.append(arrdict)
-
-
+            
         return (jumpnetwork, jumpindexed, jtags), jumptype
 
     def jumpnetwork_omega34(self,cutoff,solv_solv_cut,solt_solv_cut,closestdistance):

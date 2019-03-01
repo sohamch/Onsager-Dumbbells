@@ -107,7 +107,7 @@ class test_StarSet(unittest.TestCase):
         fcc_Ni = crystal.Crystal.FCC(0.352,chemistry=["Ni"])
         latt = np.array([[0.,0.5,0.5],[0.5,0.,0.5],[0.5,0.5,0.]])*0.55
         DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
-        crys_list=[hcp_Mg,fcc_Ni,DC_Si]
+        crys_list=[hcp_Mg]
         famp0 = [np.array([1.,0.,0.])*0.145]
         family = [famp0]
         for struct,crys in enumerate(crys_list):
@@ -120,7 +120,7 @@ class test_StarSet(unittest.TestCase):
             crys_stars = StarSet(pdbcontainer,mdbcontainer,jset0,jset2,1)
 
             ##TEST omega_1
-            omega1_network,omega1_indexed,omega1tag = crys_stars.jumpnetwork_omega1()[0]
+            (omega1_network,omega1_indexed,omega1tag), om1types = crys_stars.jumpnetwork_omega1()
             for jlist,initdict in zip(omega1_indexed,omega1tag):
                 for IS,jtag in initdict.items():
                     #go through the rows of the jtag:
@@ -159,6 +159,16 @@ class test_StarSet(unittest.TestCase):
                         count+=1
                         break
             self.assertEqual(count,len(jlist))
+
+            #See that irrespective of solute location, if the jumps of the dumbbells are the same, then the jump type is also the same
+            for i,jlist1 in enumerate(omega1_network):
+                for j,jlist2 in enumerate(omega1_network):
+                    if i==j: continue
+                    for j1 in jlist1:
+                        for j2 in jlist2:
+                            if j1.state1.db==j2.state1.db and j1.state2.db==j2.state2.db:
+                                if j1.c1==j2.c1 and j1.c2==j2.c2:
+                                    self.assertTrue(om1types[i]==om1types[j],msg="{},{}\n{}\n{}".format(i,j,j1,j2))
 
             omega43,omega4,omega3 = crys_stars.jumpnetwork_omega34(0.45,0.01,0.01,0.01)
             omega43_all,omega4_network,omega3_network = omega43[0],omega4[0],omega3[0]
@@ -256,7 +266,36 @@ class test_StarSet(unittest.TestCase):
                     for row in range(len(jtag)):
                         #The column corresponding to the intial state must have 1.
                         self.assertTrue(jtag[row][IS+len(crys_stars.purestates)]==1 or jtag[row][IS+len(crys_stars.purestates)]==0,msg="{}".format(jtag[row][IS+len(crys_stars.purestates)]))
-                        #the zero appears when the intial and final states are the same (but just translated in the lattice) so that they have the same periodic eta vector 
+                        #the zero appears when the intial and final states are the same (but just translated in the lattice) so that they have the same periodic eta vector
                         for column in range(len(crys_stars.purestates) + len(crys_stars.mixedstates)):
                             if jtag[row][column] == -1:
                                 self.assertTrue(any(i==IS and j==column-len(crys_stars.purestates) for (i,j),dx in jlist))
+
+    def test_om1types(self):
+        """
+        This is an expensive test, so did not include in previous section
+        """
+        # hcp_Mg=crystal.Crystal.HCP(0.3294,chemistry=["Mg"])
+        # fcc_Ni = crystal.Crystal.FCC(0.352,chemistry=["Ni"])
+        # latt = np.array([[0.,0.5,0.5],[0.5,0.,0.5],[0.5,0.5,0.]])*0.55
+        DC_Si = crystal.Crystal(np.array([[0.,0.5,0.5],[0.5,0.,0.5],[0.5,0.5,0.]])*0.55,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
+        famp0 = [np.array([1.,0.,0.])*0.145]
+        family = [famp0]
+        crys_list=[DC_Si]
+        for crys in crys_list:
+            pdbcontainer = dbStates(crys,0,family)
+            mdbcontainer = mStates(crys,0,family)
+            jset0 = pdbcontainer.jumpnetwork(0.24,0.01,0.01)
+            jset2 = mdbcontainer.jumpnetwork(0.24,0.01,0.01)
+            #4.5 angst should cover atleast the nn distance in all the crystals
+            #create starset
+            crys_stars = StarSet(pdbcontainer,mdbcontainer,jset0,jset2,1)
+            (omega1_network,omega1_indexed,omega1tag), om1types = crys_stars.jumpnetwork_omega1()
+            for i,jlist1 in enumerate(omega1_network):
+                for j,jlist2 in enumerate(omega1_network):
+                    if i==j: continue
+                    for j1 in jlist1:
+                        for j2 in jlist2:
+                            if j1.state1.db==j2.state1.db and j1.state2.db==j2.state2.db:
+                                if j1.c1==j2.c1 and j1.c2==j2.c2:
+                                    self.assertTrue(om1types[i]==om1types[j],msg="{},{}\n{}\n{}".format(i,j,j1,j2))
