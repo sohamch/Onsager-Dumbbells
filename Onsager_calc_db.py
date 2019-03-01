@@ -271,7 +271,7 @@ class dumbbellMediated(VacancyMediated):
 
         #first omega0 and omega2 - indexed to purestates and mixed states
         self.jnet2_indexed = self.vkinetic.starset.jnet2_indexed
-        self.jtags2 = self.vkinetic.starset.jtags
+        self.jtags2 = self.vkinetic.starset.jtags2
         #Next - omega1 - indexed to purestates
         (self.jnet_1,self.jnet1_indexed,self.jtags1), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
 
@@ -392,4 +392,5 @@ class dumbbellMediated(VacancyMediated):
         First, we deal with the bias expansions
         The goal is to keep a matrix pre-constructed, so that when we multiply with the total eta vector (which we find in calc_eta), we get
         the term we need to subtract off the bias expansion
-        """f
+        """
+        pass

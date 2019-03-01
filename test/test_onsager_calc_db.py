@@ -134,3 +134,14 @@ class test_dumbbell_mediated(unittest.TestCase):
                 # print(vlist)
                 self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solvent[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta02_solvent[i]))
                 self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solute[i]),msg="{} {}".format(eta_test_solute,self.onsagercalculator.eta02_solute[i]))
+
+        #test that the periodic eta vectors are same for dumbbells having the same orientation and lattice sites.
+        #For the pure states only - for the mixed states, the states are origin states anyway, so a dumbbell can't be repeated
+        for i,st1 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
+            for j,st2 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
+                #check if the dumbbells have the same orientation site vectors
+                if st1.db.i==st2.db.i and np.allclose(st.db.o,st2.db.o):
+                    self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i],self.onsagercalculator.eta00_solvent[j]),msg="{}\n{}".format(st1,st2))
+                    #eta00 for solute is suppose to be zero anyway, but still check if something funny is not going on.
+                    self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],self.onsagercalculator.eta00_solute[j]))
+                    self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],np.zeros(3)))
