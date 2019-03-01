@@ -389,8 +389,29 @@ class dumbbellMediated(VacancyMediated):
         We don't want to repeat the construction of the jumpnetwork based on the recalculated displacements after
         subtraction of the eta vectors (as in the variational principle).
 
-        First, we deal with the bias expansions
-        The goal is to keep a matrix pre-constructed, so that when we multiply with the total eta vector (which we find in calc_eta), we get
-        the term we need to subtract off the bias expansion
+        The steps are illustrated in the GM slides of Feb 25, 2019 - will include in the detailed documentation later on
         """
-        pass
+        #So what do we have up until now?
+        #We have constructed the Nstates x 3 eta0 vectors for pure and mixed states separately
+        #But the jtags assume all the eta vectors are in the same list.
+        #So, we need to first concatenate the mixed eta vectors into the pure eta vectors.
+        self.eta00total_solute = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
+        self.eta00total_solvent = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
+
+        self.eta02total_solute = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
+        self.eta02total_solvent = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
+
+        self.eta00total_solute[:len(self.vkinetic.starset.purestates),:]=self.eta00_solute.copy()
+        self.eta00total_solute[len(self.vkinetic.starset.purestates):,:]=self.eta02_solute.copy()
+
+        self.eta00total_solvent[:len(self.vkinetic.starset.purestates),:]=self.eta00_solvent.copy()
+        self.eta00total_solvent[len(self.vkinetic.starset.purestates):,:]=self.eta02_solvent.copy()
+
+        #create updated bias expansions
+        #to get warmed up, let's do it for bias1expansion
+        #Step 2 - construct the projection of eta vectors
+        for i in range(self.vkinetic.Nvstars_pure):
+            #get the representative state(its index in purestates) and vector
+            v0 = self.vkinetic.vecvec[i][0]
+            st0 = self.vkinetic.starset.pureindexdict[self.vkinetic.vecpos[i][0]][0]
+            #Now go through the omega1 jump network
