@@ -35,12 +35,15 @@ class test_dumbbell_mediated(unittest.TestCase):
         # self.W4list = np.ones(len(self.symjumplist_omega4))
 
         #generate all the bias expansions - will separate out later
+        #Previously, all the jumplists were created as arrays of ones.
+        #To make things more concrete, we initialize them with random numbers
         self.onsagercalculator=dumbbellMediated(self.pdbcontainer_si,self.mdbcontainer_si,0.4,0.01,0.01,0.01,NGFmax=4,Nthermo=1)
-        self.W1list = np.ones(len(self.onsagercalculator.jnet_1))
-        self.W2list = np.ones(len(self.onsagercalculator.jnet0))
-        self.W3list = np.ones(len(self.onsagercalculator.symjumplist_omega3))
-        self.W4list = np.ones(len(self.onsagercalculator.symjumplist_omega4))
-        self.biases = self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1,self.onsagercalculator.jnet2,self.onsagercalculator.om1types,self.onsagercalculator.symjumplist_omega43_all)
+        self.W1list = np.random.rand(len(self.onsagercalculator.jnet_1))
+        self.W2list = np.random.rand(len(self.onsagercalculator.jnet0))
+        self.W3list = np.random.rand(len(self.onsagercalculator.symjumplist_omega3))
+        self.W4list = np.random.rand(len(self.onsagercalculator.symjumplist_omega4))
+        self.biases =\
+        self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1,self.onsagercalculator.jnet2,self.onsagercalculator.om1types,self.onsagercalculator.symjumplist_omega43_all)
 
 #     def test_displacements(self):
 #
@@ -80,14 +83,14 @@ class test_dumbbell_mediated(unittest.TestCase):
 
     def test_calc_eta(self):
         #set up the pre-factors and energies for rate calculations
-        pre0 = np.ones(len(self.onsagercalculator.pdbcontainer.symorlist))
-        betaene0 = np.ones(len(self.onsagercalculator.pdbcontainer.symorlist))
-        pre0T = np.ones(len(self.onsagercalculator.jnet0))
-        betaene0T = np.ones(len(self.onsagercalculator.jnet0))
-        pre2 = np.ones(len(self.onsagercalculator.mdbcontainer.symorlist))
-        betaene2 = np.ones(len(self.onsagercalculator.mdbcontainer.symorlist))
-        pre2T = np.ones(len(self.onsagercalculator.jnet2))
-        betaene2T = np.ones(len(self.onsagercalculator.jnet2))
+        pre0 = np.random.rand(len(self.onsagercalculator.pdbcontainer.symorlist))
+        betaene0 = np.random.rand(len(self.onsagercalculator.pdbcontainer.symorlist))
+        pre0T = np.random.rand(len(self.onsagercalculator.jnet0))
+        betaene0T = np.random.rand(len(self.onsagercalculator.jnet0))
+        pre2 = np.random.rand(len(self.onsagercalculator.mdbcontainer.symorlist))
+        betaene2 = np.random.rand(len(self.onsagercalculator.mdbcontainer.symorlist))
+        pre2T = np.random.rand(len(self.onsagercalculator.jnet2))
+        betaene2T = np.random.rand(len(self.onsagercalculator.jnet2))
 
         # (eta00_solvent,eta00_solute), (eta02_solvent,eta02_solute) = \
         self.onsagercalculator.calc_eta(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
@@ -140,8 +143,24 @@ class test_dumbbell_mediated(unittest.TestCase):
         for i,st1 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
             for j,st2 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
                 #check if the dumbbells have the same orientation site vectors
-                if st1.db.i==st2.db.i and np.allclose(st.db.o,st2.db.o):
-                    self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i],self.onsagercalculator.eta00_solvent[j]),msg="{}\n{}".format(st1,st2))
+                if st1.db.i==st2.db.i and np.allclose(st1.db.o,st2.db.o):
+                    self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent[j,:]),msg="{}\n{}".format(st1,st2))
                     #eta00 for solute is suppose to be zero anyway, but still check if something funny is not going on.
                     self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],self.onsagercalculator.eta00_solute[j]))
                     self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],np.zeros(3)))
+
+    def test_bias_updates(self):
+        """
+        This is to check if the del_bias expansions are working fine.
+        """
+        pass
+        # pre0 = np.ones(len(self.onsagercalculator.pdbcontainer.symorlist))
+        # betaene0 = np.ones(len(self.onsagercalculator.pdbcontainer.symorlist))
+        # pre0T = np.ones(len(self.onsagercalculator.jnet0))
+        # betaene0T = np.ones(len(self.onsagercalculator.jnet0))
+        # pre2 = np.ones(len(self.onsagercalculator.mdbcontainer.symorlist))
+        # betaene2 = np.ones(len(self.onsagercalculator.mdbcontainer.symorlist))
+        # pre2T = np.ones(len(self.onsagercalculator.jnet2))
+        # betaene2T = np.ones(len(self.onsagercalculator.jnet2))
+        #
+        # self.onsagercalculator.calc_eta(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)

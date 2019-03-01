@@ -8,8 +8,8 @@ import vector_stars
 from functools import reduce
 from scipy.linalg import pinv2
 from onsager.OnsagerCalc import Interstitial, VacancyMediated
-#Making stateprob, ratelist and symmratelist universal functions so that I can also use them later on in the case of solutes.
 
+#Making stateprob, ratelist and symmratelist universal functions so that I can also use them later on in the case of solutes.
 def stateprob(pre, betaene, invmap):
     """Returns our (i,or) probabilities, normalized, as a vector.
        Straightforward extension from vacancy case.
@@ -234,6 +234,7 @@ class dumbbellMediated(VacancyMediated):
         self.mdbcontainer.jumpnetwork(cutoff,solt_solv_cut,closestdistance)
         self.crys = pdbcontainer.crys #we assume this is the same in both containers
         self.chem = pdbcontainer.chem
+        # self.jnet2_indexed = self.kinetic.starset.jnet2_indexed
         self.thermo = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList))
         self.kinetic = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList))
 
@@ -271,6 +272,7 @@ class dumbbellMediated(VacancyMediated):
 
         #first omega0 and omega2 - indexed to purestates and mixed states
         self.jnet2_indexed = self.vkinetic.starset.jnet2_indexed
+        # self.omeg2types = self.vkinetic.starset.jnet2_types
         self.jtags2 = self.vkinetic.starset.jtags2
         #Next - omega1 - indexed to purestates
         (self.jnet_1,self.jnet1_indexed,self.jtags1), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
@@ -338,8 +340,8 @@ class dumbbellMediated(VacancyMediated):
 
         #Next, we do this for omega2
         # rate2_nonloc = np.array([rate2list[self.om2types[i]] for i in len(self.jnet_1)])
-        bias2SoluteTotNonLoc = np.dot(bias2solute,np.array([rate2list[i][0] for i in range(len(self.jnet0_indexed))]))
-        bias2SolventTotNonLoc = np.dot(bias2solvent,np.array([rate2list[i][0] for i in range(len(self.jnet0_indexed))]))
+        bias2SoluteTotNonLoc = np.dot(bias2solute,np.array([rate2list[i][0] for i in range(len(self.jnet2_indexed))]))
+        bias2SolventTotNonLoc = np.dot(bias2solvent,np.array([rate2list[i][0] for i in range(len(self.jnet2_indexed))]))
         #Now go state by state
         for st in self.vkinetic.starset.mixedstates:
             indlist = self.vkinetic.stateToVecStar_mixed[st]
