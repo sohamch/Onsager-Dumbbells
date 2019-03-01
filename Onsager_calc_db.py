@@ -310,36 +310,55 @@ class dumbbellMediated(VacancyMediated):
         rate2list = ratelist(self.jnet2toIorList, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
         rate0list = ratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
         # symmrate2list = symmratelist(pre, betaene, preT, betaeneT, self.container.invmap)
-
+        #the non-local bias for the complex space has to be carried out based on the omega0 jumpnetwork, not the omega1 jumpnetwork.
+        #this is because all the jumps that are allowed by omega0 out of a given dumbbell state are not there in omega1
+        #That is because omega1 considers only those states that are in the kinetic shell. Not outside it.
+        #We need to build it up directly from the omega0 jumpnetwork.
+        ## TODO: Find a more efficient way to do this. Maybe build up a vector star separately for the omega0 space. Is it worth it though?
+        self.NlsoluteBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
+        self.NlsolventBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
+        calculated = set([])
+        for st in self.purestates:
+            if st in calculated:
+                continue
+            periodicStInds = []
+            vel=np.zeros(3)
+            for st2 in self.purestates:
+                #check if the new list state the same dumbbell configuration as the representer.
+                #If the states have the same dumbbell configuration, they should have the same periodic velocity vector.
+                if st2.db.i==st.db.i and np.allclose(st2.db.o,st.db.o):
+                    calculated.add(st2)
+                    periodicStInds.add(self.vkinetic.starset.pureindexdict[st2])
+            #Now calculate the velocity for the representative
+            for jt,jlist in self.jnet0:
+                for jmp in jlist:
+                    if jmp.state1 == st.db-st.db.R:
+                        dx = disp(crys,chem,j.state1,j.state2)
+                        vel += rate0list[jt]*dx
+            for ind in periodicStInds:
+                self.NlsolventBias1[ind,:] = vel.copy()
         #get the bias1 and bias2 expansions
         self.biases = self.vkinetic.biasexpansion(self.jnet_1,self.jnet2,self.om1types,self.symjumplist_omega43_all)
 
         #generate the non-local solute and solvent biases for initial states in pure and mixed stateset of vkinetic.
-        self.NlsoluteBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
-        self.NlsolventBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
+        #first,generate the solute bias in complex space.
+        # rate1_nonloc = np.array([rate0list[self.om1types[i]][0] for i in range(len(self.jnet_1))])
+        # #Get the total bias vector with components along basis vectors of states
+        # bias1SoluteTotNonLoc = np.dot(bias1solute,rate1_nonloc)
+        # bias1SolventTotNonLoc = np.dot(bias1solvent,rate1_nonloc)
+        #
+        # #Now go state by state - bring back bias vector to cartesian form.
+        # for st in self.vkinetic.starset.purestates:
+        #     indlist = self.vkinetic.stateToVecStar_pure[st]
+        #     if len(indlist)!=0:
+        #         self.NlsoluteBias1[self.vkinetic.starset.pureindexdict[st][0]][:]=\
+        #         sum([bias1SoluteTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+        #         self.NlsolventBias1[self.vkinetic.starset.pureindexdict[st][0]][:]=\
+        #         sum([bias1SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+
         self.NlsoluteBias2 = np.zeros((len(self.vkinetic.starset.mixedstates),3))
         self.NlsolventBias2 = np.zeros((len(self.vkinetic.starset.mixedstates),3))
-
-        bias1solute,bias1solvent = self.biases[1]
         bias2solute,bias2solvent = self.biases[2]
-        #first,generate the solute bias in complex space.
-        rate1_nonloc = np.array([rate0list[self.om1types[i]][0] for i in range(len(self.jnet_1))])
-        #Get the total bias vector with components along basis vectors of states
-        bias1SoluteTotNonLoc = np.dot(bias1solute,rate1_nonloc)
-        bias1SolventTotNonLoc = np.dot(bias1solvent,rate1_nonloc)
-
-        #Now go state by state - bring back bias vector to cartesian form.
-        for st in self.vkinetic.starset.purestates:
-            indlist = self.vkinetic.stateToVecStar_pure[st]
-            if len(indlist)!=0:
-                self.NlsoluteBias1[self.vkinetic.starset.pureindexdict[st][0]][:]=\
-                sum([bias1SoluteTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
-
-                self.NlsolventBias1[self.vkinetic.starset.pureindexdict[st][0]][:]=\
-                sum([bias1SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
-
-        #Next, we do this for omega2
-        # rate2_nonloc = np.array([rate2list[self.om2types[i]] for i in len(self.jnet_1)])
         bias2SoluteTotNonLoc = np.dot(bias2solute,np.array([rate2list[i][0] for i in range(len(self.jnet2_indexed))]))
         bias2SolventTotNonLoc = np.dot(bias2solvent,np.array([rate2list[i][0] for i in range(len(self.jnet2_indexed))]))
         #Now go state by state
@@ -353,8 +372,6 @@ class dumbbellMediated(VacancyMediated):
                 self.NlsolventBias2[self.vkinetic.starset.mixedindexdict[st][0]][:]=\
                 sum([bias2SolventTotNonLoc[tup[0]-self.vkinetic.Nvstars_pure]*\
                 self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
-
-        #Okay, so now we have the velocity vectors in cartesian coordinates, state by state.
 
         #generate the non-local complex-complex block w0
         omega1_nonloc = np.zeros((len(self.vkinetic.starset.purestates),len(self.vkinetic.starset.purestates)))
