@@ -276,7 +276,8 @@ class dumbbellMediated(VacancyMediated):
         (self.jnet_1,self.jnet1_indexed,self.jtags1), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
 
         #next, omega3 and omega_4, indexed to pure and mixed states
-        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed,self.jtags4),(self.symjumplist_omega3,self.symjumplist_omega3_indexed,self.jtags3)=self.vkinetic.starset.jumpnetwork_omega34(cutoff,solv_solv_cut,solt_solv_cut,closestdistance)
+        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed,self.jtags4),\
+        (self.symjumplist_omega3,self.symjumplist_omega3_indexed,self.jtags3)=self.vkinetic.starset.jumpnetwork_omega34(cutoff,solv_solv_cut,solt_solv_cut,closestdistance)
 
     def generate(self,Nthermo,cutoff,solt_solv_cut,solv_solv_cut,closestdistance):
 
@@ -401,17 +402,60 @@ class dumbbellMediated(VacancyMediated):
         self.eta02total_solute = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
         self.eta02total_solvent = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
 
-        self.eta00total_solute[:len(self.vkinetic.starset.purestates),:]=self.eta00_solute.copy()
-        self.eta00total_solute[len(self.vkinetic.starset.purestates):,:]=self.eta02_solute.copy()
+        self.eta0total_solute[:len(self.vkinetic.starset.purestates),:]=self.eta00_solute.copy()
+        self.eta0total_solute[len(self.vkinetic.starset.purestates):,:]=self.eta02_solute.copy()
 
-        self.eta00total_solvent[:len(self.vkinetic.starset.purestates),:]=self.eta00_solvent.copy()
-        self.eta00total_solvent[len(self.vkinetic.starset.purestates):,:]=self.eta02_solvent.copy()
+        self.eta0total_solvent[:len(self.vkinetic.starset.purestates),:]=self.eta00_solvent.copy()
+        self.eta0total_solvent[len(self.vkinetic.starset.purestates):,:]=self.eta02_solvent.copy()
 
         #create updated bias expansions
         #to get warmed up, let's do it for bias1expansion
         #Step 2 - construct the projection of eta vectors
+        self.delbias1expansion_solute = np.zeros_like(self.biases[1][0])
+        self.delbias1expansion_solvent = np.zeros_like(self.biases[1][0])
+
+        self.delbias4expansion_solute = np.zeros_like(self.biases[4][0])
+        self.delbias4expansion_solvent = np.zeros_like(self.biases[4][0])
         for i in range(self.vkinetic.Nvstars_pure):
             #get the representative state(its index in purestates) and vector
             v0 = self.vkinetic.vecvec[i][0]
             st0 = self.vkinetic.starset.pureindexdict[self.vkinetic.vecpos[i][0]][0]
-            #Now go through the omega1 jump network
+            #Now go through the omega1 jump network tags
+            for jt,initindexdict in self.jtags1:
+                #see if there's an array corresponding to the initial state
+                if not st0 in initindexdict:
+                    continue
+                self.delbias1expansion_solute[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],self.eta0total_solute))
+                self.delbias1expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],self.eta0total_solvent))
+            #Now let's build it for omega4
+            for jt,initindexdict in self.jtags4:
+                #see if there's an array corresponding to the initial state
+                if not st0 in initindexdict:
+                    continue
+                self.delbias4expansion_solute[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],self.eta0total_solute))
+                self.delbias4expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],self.eta0total_solvent))
+
+        self.delbias3expansion_solute = np.zeros_like(self.biases[3][0])
+        self.delbias3expansion_solvent = np.zeros_like(self.biases[3][0])
+
+        self.delbias2expansion_solute = np.zeros_like(self.biases[2][0])
+        self.delbias2expansion_solvent = np.zeros_like(self.biases[2][0])
+
+        for i in range(self.vkinetic.Nvstars-self.vkinetic.Nvstars_pure):
+            #get the representative state(its index in purestates) and vector
+            v0 = self.vkinetic.vecvec[i][0]
+            st0 = self.vkinetic.starset.mixedindexdict[self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure][0]][0]
+            #Now go through the omega1 jump network tags
+            for jt,initindexdict in self.jtags2:
+                #see if there's an array corresponding to the initial state
+                if not st0 in initindexdict:
+                    continue
+                self.delbias2expansion_solute[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],self.eta0total_solute))
+                self.delbias2expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],self.eta0total_solvent))
+            #Now let's build it for omega4
+            for jt,initindexdict in self.jtags3:
+                #see if there's an array corresponding to the initial state
+                if not st0 in initindexdict:
+                    continue
+                self.delbias3expansion_solute[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],self.eta0total_solute))
+                self.delbias3expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],self.eta0total_solvent))
