@@ -161,6 +161,17 @@ class vectorStars(VectorStarSet):
                     if state==st:
                         indlist.append((IndOfStar+self.Nvstars_pure,IndOfState))
             self.stateToVecStar_mixed[st] = indlist
+
+        self.bareStTobareStar = {}
+        if len(self.vecpos_bare)>0:
+            for st in self.starset.bareStates:
+                indlist=[]
+                for IndOfStar,crStar in enumerate(self.vecpos_bare):
+                    for IndOfState,state in enumerate(crStar):
+                        if state == st:
+                            indlist.append((IndOfStar,IndOfState))
+                self.bareStTobareStar[st] = indlist
+
     # We must produce two expansions. One for pure dumbbell states pointing to pure dumbbell state
     # and the other from mixed dumbbell states to mixed states.
 

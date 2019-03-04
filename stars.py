@@ -209,6 +209,7 @@ class StarSet(object):
             self.stars.append(newlist)
         self.purestates = sorted(list(self.stateset),key=self._sortkey)
         self.mixedstates = sorted(list(self.mixedstateset),key=self._sortkey)
+        self.bareStates = [dumbbell(tup[0],tup[1],np.zeros(3)) for tup in self.pdbcontainer.iorlist]
 
         #This portion is no longer needed - generalized in (pure/mixed)indexdict
         # self.stToPureStates={}
@@ -280,6 +281,7 @@ class StarSet(object):
         # --starindex -> tells us which star (via it's index in the states list) a state belongs to.
         # --indexdict -> tell us given a pair state, what is its index in the states list and which star in the starset it belongs to.
         self.pureindex = np.zeros(len(self.purestates),dtype=int)
+        self.bareindex = np.zeros(len(self.bareStates),dtype=int)
         self.mixedindex = np.zeros(len(self.mixedstates),dtype=int)
         self.pureindexdict = {}
         self.mixedindexdict = {}
@@ -298,6 +300,21 @@ class StarSet(object):
 
         #create the starset for the bare dumbbell space
         self.barePeriodicStars = [[dumbbell(tup[0],tup[1],np.zeros(3,dtype=int)) for tup in tuplist] for tuplist in self.pdbcontainer.symorlist]
+
+        self.bareStarindexed = []
+        for star in self.barePeriodicStars:
+            indlist=[]
+            for state in star:
+                for j,st in enumerate(self.bareStates):
+                    if st==state:
+                        indlist.append(j)
+            self.bareStarindexed.append(indlist)
+
+        for si, star, starind in zip(itertools.count(),self.barePeriodicStars,self.bareStarindexed):
+            for state,ind in zip(star,starind):
+                self.bareindex[ind] = si
+                self.bareindexdict[state] = (ind, si)
+
 
     def jumpnetwork_omega1(self):
         jumpnetwork= []
