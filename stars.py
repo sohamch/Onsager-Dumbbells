@@ -296,6 +296,9 @@ class StarSet(object):
                 self.mixedindex[ind] = si+self.mixedstartindex
                 self.mixedindexdict[state] = (ind, si+self.mixedstartindex)
 
+        #create the starset for the bare dumbbell space
+        self.barePeriodicStars = [[dumbbell(tup[0],tup[1],np.zeros(3,dtype=int)) for tup in tuplist] for tuplist in self.pdbcontainer.symorlist]
+
     def jumpnetwork_omega1(self):
         jumpnetwork= []
         jumpindexed = []
@@ -366,7 +369,7 @@ class StarSet(object):
                     jtagarr[jnum][FS] = -1
                 arrdict[IS] = jtagarr.copy()
             jtags.append(arrdict)
-            
+
         return (jumpnetwork, jumpindexed, jtags), jumptype
 
     def jumpnetwork_omega34(self,cutoff,solv_solv_cut,solt_solv_cut,closestdistance):

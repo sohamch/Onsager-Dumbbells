@@ -22,14 +22,14 @@ class test_vecstars(unittest.TestCase):
         self.pdbcontainer_si = dbStates(self.DC_Si,0,family)
         self.mdbcontainer_si = mStates(self.DC_Si,0,family)
 
-        self.jset0,self.jset2 = self.pdbcontainer_si.jumpnetwork(0.4,0.01,0.01), self.mdbcontainer_si.jumpnetwork(0.4,0.01,0.01)
+        self.jset0,self.jset2 = self.pdbcontainer_si.jumpnetwork(0.3,0.01,0.01), self.mdbcontainer_si.jumpnetwork(0.3,0.01,0.01)
 
         self.crys_stars = StarSet(self.pdbcontainer_si,self.mdbcontainer_si,self.jset0,self.jset2, Nshells=1)
         self.vec_stars = vectorStars(self.crys_stars)
 
         #generate 1, 3 and 4 jumpnetworks
-        (self.jnet_1,self.jnet_1_indexed), self.jtype = self.crys_stars.jumpnetwork_omega1()
-        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed),(self.symjumplist_omega3,self.symjumplist_omega3_indexed)=self.crys_stars.jumpnetwork_omega34(0.4,0.01,0.01,0.01)
+        (self.jnet_1,self.jnet_1_indexed,self.j1tags), self.jtype = self.crys_stars.jumpnetwork_omega1()
+        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed,self.om4tags),(self.symjumplist_omega3,self.symjumplist_omega3_indexed,self.om3tags)=self.crys_stars.jumpnetwork_omega34(0.4,0.01,0.01,0.01)
 
         self.W1list = np.ones(len(self.jnet_1))
         self.W2list = np.ones(len(self.jset2[0]))
@@ -41,34 +41,60 @@ class test_vecstars(unittest.TestCase):
 
     def test_basis(self):
         self.assertEqual(len(self.vec_stars.vecpos),len(self.vec_stars.vecvec))
+        self.assertEqual(len(self.vec_stars.vecpos_bare),len(self.vec_stars.vecvec_bare))
         #choose a random vector star
-        vecstarind = np.random.randint(0,len(self.vec_stars.vecpos))
-        #get the representative state of the star
-        testvecstate = self.vec_stars.vecpos[vecstarind][0]
-        count=0
-        for i in range(len(self.vec_stars.vecpos)):
-            if self.vec_stars.vecpos[vecstarind][0] == self.vec_stars.vecpos[i][0]:
-                count += 1
-                #The number of times the position list is repeated is also the dimensionality of the basis.
+        for vecstarind in range(len(self.vec_stars.vecpos)):
+            #get the representative state of the star
+            testvecstate = self.vec_stars.vecpos[vecstarind][0]
+            count=0
+            for i in range(len(self.vec_stars.vecpos)):
+                if self.vec_stars.vecpos[vecstarind][0] == self.vec_stars.vecpos[i][0]:
+                    count += 1
+                    #The number of times the position list is repeated is also the dimensionality of the basis.
 
-        #Next see what is the algaebric multiplicity of the eigenvalue 1.
-        glist=[]
-        for g in self.crys_stars.crys.G:
-            pairnew = testvecstate.gop(self.crys_stars.crys, self.crys_stars.chem, g)
-            pairnew = pairnew - pairnew.R_s
-            if vecstarind < self.vec_stars.Nvstars_pure:
-                if pairnew == testvecstate or pairnew==-testvecstate:
+            #Next see what is the algaebric multiplicity of the eigenvalue 1.
+            glist=[]
+            for g in self.crys_stars.crys.G:
+                pairnew = testvecstate.gop(self.crys_stars.crys, self.crys_stars.chem, g)
+                pairnew = pairnew - pairnew.R_s
+                if vecstarind < self.vec_stars.Nvstars_pure:
+                    if pairnew == testvecstate or pairnew==-testvecstate:
+                        glist.append(g)
+                else:
+                    if pairnew == testvecstate:
+                        glist.append(g)
+            sumg = sum([g.cartrot for g in glist])/len(glist)
+            vals,vecs = np.linalg.eig(sumg)
+            count_eigs=0
+            for val in vals:
+                if np.allclose(val,1.0,atol=1e-8):
+                    count_eigs+=1
+            self.assertEqual(count,count_eigs,msg="{}".format(testvecstate))
+
+        #Let's also do this for the bare vector stars
+        for vecstarind in range(len(self.vec_stars.vecpos_bare)):
+            #get the representative state of the star
+            testvecstate = self.vec_stars.vecpos_bare[vecstarind][0]
+            count=0
+            for i in range(len(self.vec_stars.vecpos_bare)):
+                if self.vec_stars.vecpos_bare[vecstarind][0] == self.vec_stars.vecpos_bare[i][0]:
+                    count += 1
+                    #The number of times the position list is repeated is also the dimensionality of the basis.
+
+            #Next see what is the algaebric multiplicity of the eigenvalue 1.
+            glist=[]
+            for g in self.crys_stars.crys.G:
+                dbnew = testvecstate.gop(self.crys_stars.crys, self.crys_stars.chem, g)
+                dbnew = dbnew - dbnew.R
+                if dbnew == testvecstate or dbnew==-testvecstate:
                     glist.append(g)
-            else:
-                if pairnew == testvecstate:
-                    glist.append(g)
-        sumg = sum([g.cartrot for g in glist])/len(glist)
-        vals,vecs = np.linalg.eig(sumg)
-        count_eigs=0
-        for val in vals:
-            if np.allclose(val,1.0,atol=1e-8):
-                count_eigs+=1
-        self.assertEqual(count,count_eigs,msg="{}".format(testvecstate))
+            sumg = sum([g.cartrot for g in glist])/len(glist)
+            vals,vecs = np.linalg.eig(sumg)
+            count_eigs=0
+            for val in vals:
+                if np.allclose(val,1.0,atol=1e-8):
+                    count_eigs+=1
+            self.assertEqual(count,count_eigs,msg="{}".format(testvecstate))
 
     def test_state_indexing(self):
         for st in self.vec_stars.starset.purestates:

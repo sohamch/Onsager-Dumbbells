@@ -110,6 +110,36 @@ class vectorStars(VectorStarSet):
                     self.vecvec.append(veclist)
             self.Nvstars = len(self.vecpos)
 
+        #build the vector star for the bare pure dumbbell state
+        self.vecpos_bare = []
+        self.vecvec_bare = []
+        for star in starset.barePeriodicStars:
+            db0 = star[0]
+            glist=[]
+            for g in starset.crys.G:
+                dbnew = db0.gop(starset.crys,starset.chem,g)
+                dbnew = dbnew - dbnew.R #cancel out the translation
+                if dbnew == db0 or dbnew==-db0:#Dealing with pure dumbbells, need to account for negative orientations
+                    glist.append(g)
+            vb=reduce(crystal.CombineVectorBasis,[crystal.VectorBasis(*g.eigen()) for g in glist])
+            #Get orthonormal vectors
+            vlist = starset.crys.vectlist(vb) #This also nomalizes with respect to length of the vectors.
+            scale = 1./np.sqrt(len(star))
+            vlist = [v * scale for v in vlist]
+            Nvect = len(vlist)
+            if Nvect > 0:
+                for v in vlist:
+                    veclist = []
+                    self.vecpos_bare.append(star)
+                    for st in star:
+                        for g in starset.crys.G:
+                            dbnew = db0.gop(starset.crys,starset.chem,g)
+                            dbnew = dbnew - dbnew.R
+                            if dbnew == st or dbnew == -st:
+                                veclist.append(starset.crys.g_direc(g,v))
+                                break
+                    self.vecvec_bare.append(veclist)
+
     #index the states into the vector stars - required in OnsagerCalc
         self.stateToVecStar_pure = {}
         for st in self.starset.purestates:
