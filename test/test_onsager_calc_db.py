@@ -136,15 +136,16 @@ class test_dumbbell_mediated(unittest.TestCase):
                     if self.onsagercalculator.vkinetic.starset.purestates[i].db.i == self.onsagercalculator.vkinetic.starset.purestates[j].db.i:
                         if np.allclose(self.onsagercalculator.vkinetic.starset.purestates[i].db.o,self.onsagercalculator.vkinetic.starset.purestates[j].db.o):
                             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent[j,:]))
+                            self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent_bare[self.onsagercalculator.vkinetic.starset.bareindexdict[self.onsagercalculator.vkinetic.starset.purestates[i].db - self.onsagercalculator.vkinetic.starset.purestates[i].db.R][0]]))
 
-            #Just for the sake of it, check that we get the correct non-local bias vector
+            #Check that we get the correct non-local bias vector
             for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
-                bias_calc = self.onsagercalculator.NlsolventBias_bare[i,:]
-                bias_true = np.zeros(3)
+                bias_true = self.onsagercalculator.NlsolventBias_bare[i,:]
+                bias_calc = np.zeros(3)
                 for jt,jlist in enumerate(self.onsagercalculator.jnet0_indexed):
                     for (IS,FS),dx in jlist:
                         if i==IS:
-                            bias_true += rate0list[jt][0]*dx
+                            bias_calc += rate0list[jt][0]*dx
                 self.assertTrue(np.allclose(bias_calc,bias_true))
 
             #Now we check if the eta vectors are okay.
@@ -198,16 +199,20 @@ class test_dumbbell_mediated(unittest.TestCase):
                 self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solvent[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta02_solvent[i]))
                 self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solute[i]),msg="{} {}".format(eta_test_solute,self.onsagercalculator.eta02_solute[i]))
 
-        # #test that the periodic eta vectors are same for dumbbells having the same orientation and lattice sites.
-        # #For the pure states only - for the mixed states, the states are origin states anyway, so a dumbbell can't be repeated
-        # for i,st1 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
-        #     for j,st2 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
-        #         #check if the dumbbells have the same orientation site vectors
-        #         if st1.db.i==st2.db.i and np.allclose(st1.db.o,st2.db.o):
-        #             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent[j,:]),msg="{}\n{}".format(st1,st2))
-        #             #eta00 for solute is suppose to be zero anyway, but still check if something funny is not going on.
-        #             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],self.onsagercalculator.eta00_solute[j]))
-        #             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],np.zeros(3)))
+        # for i in range(len(self.onsagercalculator.eta02_solvent)):
+        #     bias_test = np.zeros(3)
+        #     db = self.onsagercalculator.vkinetic.starset.mixedStates[i]
+        #     #First, let's check the indexing
+        #     self.assertEqual(i,self.onsagercalculator.vkinetic.starset.bareindexdict[db][0])
+        #     bias_true = self.onsagercalculator.NlsolventBias_bare[i,:]
+        #     print(len(self.onsagercalculator.vkinetic.vecpos_bare[self.onsagercalculator.vkinetic.bareStTobareStar[db][0][0]]))
+        #     # eta_true *= len(self.onsagercalculator.vkinetic.vecpos_bare[self.onsagercalculator.vkinetic.bareStTobareStar[db][0][0]])
+        #     for jt,jindlist,jlist in zip(itertools.count(),self.onsagercalculator.jnet0_indexed,self.onsagercalculator.jnet0):
+        #         for ((IS,FS),dx),jmp in zip(jindlist,jlist):
+        #             if i==IS:
+        #                 self.assertTrue(db==jmp.state1)
+        #                 bias_test += rate0list[jt][0]*(self.onsagercalculator.eta00_solvent_bare[FS,:]-self.onsagercalculator.eta00_solvent_bare[IS,:])
+        #     self.assertTrue(np.allclose(bias_test,bias_true),msg="{}{}".format(bias_test,bias_true))
 
     def test_bias_updates(self):
         """
