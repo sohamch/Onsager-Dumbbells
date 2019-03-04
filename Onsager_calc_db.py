@@ -315,8 +315,8 @@ class dumbbellMediated(VacancyMediated):
         #That is because omega1 considers only those states that are in the kinetic shell. Not outside it.
         #We need to build it up directly from the omega0 jumpnetwork.
         ## TODO: Find a more efficient way to do this. Maybe build up a vector star separately for the omega0 space. Is it worth it though?
-        self.NlsoluteBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
-        self.NlsolventBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
+        # self.NlsoluteBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
+        # self.NlsolventBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
 
         #get the bias1 and bias2 expansions
         self.biases = self.vkinetic.biasexpansion(self.jnet_1,self.jnet2,self.om1types,self.symjumplist_omega43_all)
@@ -345,41 +345,44 @@ class dumbbellMediated(VacancyMediated):
         else:
             #First we build up for just the bare starset
             biasBareExpansion = self.biases[-1]
-            self.NlsolventBias0 = np.zeros((len(self.vkinetic.starset.bareStates),3))
-            bias0SolventTotNonLoc = np.dot(biasBareExpansion,rate0list)
+            self.NlsolventBias_bare = np.zeros((len(self.vkinetic.starset.bareStates),3))
+            bias0SolventTotNonLoc = np.dot(biasBareExpansion,np.array([rate0list[i][0] for i in range(len(self.jnet0))]))
             for st in self.vkinetic.starset.bareStates:
                 indlist = self.vkinetic.bareStTobareStar[st]
                 if len(indlist)!=0:
-                    self.NlsolventBias0[self.vkinetic.starset.bareindexdict[st][0]][:]=\
+                    self.NlsolventBias_bare[self.vkinetic.starset.bareindexdict[st][0]][:]=\
                     sum([bias0SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
 
             #Next build up W0_ij
             omega0_nonloc = np.zeros((len(self.vkinetic.starset.bareStates),len(self.vkinetic.starset.bareStates)))
             #use the indexed omega2 to fill this up - need omega2 indexed to mixed subspace of starset
-            for rate0,jlist in zip(rate0list,self.vkinetic.starset.jumpnetwork_omega0):
+            for rate0,jlist in zip(rate0list,self.vkinetic.starset.jumpnetwork_omega0_indexed):
                 for (i,j),dx in jlist:
                     omega0_nonloc[i,j] += rate0[0]
                     omega0_nonloc[i,i] -= rate0[0]
 
             g0 = pinv2(omega0_nonloc)
 
-            self.eta00_solvent_bare=np.tensordot(g0,self.NlsolventBias0,axes=(1,0))
-            self.eta00_solute_bare = np.zeros_like(self.eta00_solvent)
+            self.eta00_solvent_bare = np.tensordot(g0,self.NlsolventBias_bare,axes=(1,0))
+            self.eta00_solute_bare = np.zeros_like(self.eta00_solvent_bare)
 
             #Now match the non-local biases for complex states to the pure states
-            self.eta00_solute = np.zeros((len(self.vkinetic.statset.purestates),3))
+            self.eta00_solute = np.zeros((len(self.vkinetic.starset.purestates),3))
             self.eta00_solvent = np.zeros((len(self.vkinetic.starset.purestates),3))
+            self.NlsolventBias0 = np.zeros((len(self.vkinetic.starset.purestates),3))
 
             for i in range(len(self.vkinetic.starset.purestates)):
-                db = self.vkinetic.purestates[i].db
-                db -= db.R
+                db = self.vkinetic.starset.purestates[i].db
+                db = db - db.R
                 for j in range(len(self.vkinetic.starset.bareStates)):
                     count=0
                     if db == self.vkinetic.starset.bareStates[j]:
                         count+=1
                         self.eta00_solvent[i,:] = self.eta00_solvent_bare[j,:].copy()
-                    if count !=1:
-                        raise ValueError("The dumbbell is not present in the iorlist?")
+                        self.NlsolventBias0[i,:] = self.NlsolventBias_bare[j,:].copy()
+                        break
+                if count !=1:
+                    raise ValueError("The dumbbell is not present in the iorlist?count={}".format(count))
 
         self.NlsoluteBias2 = np.zeros((len(self.vkinetic.starset.mixedstates),3))
         self.NlsolventBias2 = np.zeros((len(self.vkinetic.starset.mixedstates),3))
