@@ -312,6 +312,7 @@ class vectorStars(VectorStarSet):
             Note - bias0 for solute makes no sense, so we return only for solvent.
         """
         z=np.zeros(3,dtype=float)
+
         biasBareExpansion = np.zeros((len(self.vecpos_bare),len(self.starset.jumpnetwork_omega0)))
         #Expansion of pure dumbbell initial state bias vectors and complex state bias vectors
         bias0expansion = np.zeros((self.Nvstars_pure,len(self.starset.jumpindices)))
@@ -329,6 +330,14 @@ class vectorStars(VectorStarSet):
         bias3expansion_solute = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
 
         #First, let's build the periodic bias expansions
+        for i, star, vectors in zip(itertools.count(),self.vecpos_bare,self.vecvec_bare):
+            for k, jumplist in zip(itertools.count(),self.starset.jumpnetwork_omega0):
+                for j in jumplist:
+                    IS = j.state1
+                    if star[0]==IS:
+                        dx = disp(self.starset.crys,self.starset.chem,j.state1,j.state2)
+                        geom_bias_solvent = np.dot(vectors[0],dx)*len(star)
+                        biasBareExpansion[i,k] += geom_bias_solvent
 
         for i, purestar, vectors in zip(itertools.count(),self.vecpos[:self.Nvstars_pure],self.vecvec[:self.Nvstars_pure]):
             #iterates over the rows of the matrix
@@ -408,9 +417,12 @@ class vectorStars(VectorStarSet):
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent)*len(mixedstar)
                         bias3expansion_solute[i, k] += geom_bias_solute
                         bias3expansion_solvent[i, k] += geom_bias_solvent
-
-        return zeroclean(bias0expansion),(zeroclean(bias1expansion_solute),zeroclean(bias1expansion_solvent)),(zeroclean(bias2expansion_solute),zeroclean(bias2expansion_solvent)),\
-               (zeroclean(bias3expansion_solute),zeroclean(bias3expansion_solvent)),(zeroclean(bias4expansion_solute),zeroclean(bias4expansion_solvent))
+        if (len(self.vecpos_bare)==0):
+            return zeroclean(bias0expansion),(zeroclean(bias1expansion_solute),zeroclean(bias1expansion_solvent)),(zeroclean(bias2expansion_solute),zeroclean(bias2expansion_solvent)),\
+                   (zeroclean(bias3expansion_solute),zeroclean(bias3expansion_solvent)),(zeroclean(bias4expansion_solute),zeroclean(bias4expansion_solvent)),biasBareExpansion
+        else:
+            return zeroclean(bias0expansion),(zeroclean(bias1expansion_solute),zeroclean(bias1expansion_solvent)),(zeroclean(bias2expansion_solute),zeroclean(bias2expansion_solvent)),\
+                   (zeroclean(bias3expansion_solute),zeroclean(bias3expansion_solvent)),(zeroclean(bias4expansion_solute),zeroclean(bias4expansion_solvent)),zeroclean(biasBareExpansion)
 
     def rateexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega34):
         """

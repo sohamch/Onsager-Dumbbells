@@ -31,10 +31,11 @@ class test_vecstars(unittest.TestCase):
         (self.jnet_1,self.jnet_1_indexed,self.j1tags), self.jtype = self.crys_stars.jumpnetwork_omega1()
         (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed,self.om4tags),(self.symjumplist_omega3,self.symjumplist_omega3_indexed,self.om3tags)=self.crys_stars.jumpnetwork_omega34(0.4,0.01,0.01,0.01)
 
-        self.W1list = np.ones(len(self.jnet_1))
-        self.W2list = np.ones(len(self.jset2[0]))
-        self.W3list = np.ones(len(self.symjumplist_omega3))
-        self.W4list = np.ones(len(self.symjumplist_omega4))
+        self.W0list = np.random.rand(len(self.vec_stars.starset.jumpnetwork_omega0))
+        self.W1list = np.random.rand(len(self.jnet_1))
+        self.W2list = np.random.rand(len(self.jset2[0]))
+        self.W3list = np.random.rand(len(self.symjumplist_omega3))
+        self.W4list = np.random.rand(len(self.symjumplist_omega4))
 
         #generate all the bias expansions - will separate out later
         self.biases = self.vec_stars.biasexpansion(self.jnet_1,self.jset2[0],self.jtype,self.symjumplist_omega43_all)
@@ -107,12 +108,76 @@ class test_vecstars(unittest.TestCase):
             for tup in indToVecStars:
                 self.assertEqual(st,self.vec_stars.vecpos[tup[0]][tup[1]])
 
+    def test_bare_bias_expansion(self):
+        latt = np.array([[0.,0.1,0.5],[0.3,0.,0.5],[0.5,0.5,0.]])*0.55
+        self.DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
+        self.cube = cube
+        #keep it simple with [1.,0.,0.] type orientations for now
+        o = np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126
+        famp0 = [o.copy()]
+        family = [famp0]
+
+        self.pdbcontainer_si = dbStates(self.DC_Si,0,family)
+        self.mdbcontainer_si = mStates(self.DC_Si,0,family)
+
+        self.jset0,self.jset2 = self.pdbcontainer_si.jumpnetwork(0.3,0.01,0.01), self.mdbcontainer_si.jumpnetwork(0.3,0.01,0.01)
+
+        self.crys_stars = StarSet(self.pdbcontainer_si,self.mdbcontainer_si,self.jset0,self.jset2, Nshells=1)
+        self.vec_stars = vectorStars(self.crys_stars)
+        self.W0list = np.random.rand(len(self.vec_stars.starset.jumpnetwork_omega0))
+        self.biases = self.vec_stars.biasexpansion(self.jnet_1,self.jset2[0],self.jtype,self.symjumplist_omega43_all)
+        if(len(self.vec_stars.vecpos_bare)>0):
+            for i in range(len(self.vec_stars.vecpos_bare)):
+                starind = i
+                st = self.vec_stars.vecpos_bare[starind][0]
+                n = np.random.randint(0,len(self.vec_stars.vecpos_bare[starind]))
+                st2 = self.vec_stars.vecpos_bare[starind][n]
+                bias_st = np.zeros(3)
+                bias_st2 = np.zeros(3)
+                count=0
+                for jt,jumplist in enumerate(self.vec_stars.starset.jumpnetwork_omega0):
+                    for j in jumplist:
+                        if st==j.state1:
+                            count+=1
+                            dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
+                            bias_st += dx*self.W0list[jt]
+                        if st2==j.state1:
+                            dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
+                            bias_st2 += dx*self.W0list[jt]
+
+                biasBareExp = self.biases[-1]
+                self.assertTrue(count>=1)
+                tot_bias_bare = np.dot(biasBareExp,self.W0list)
+                indlist = []
+                for ind,starlist in enumerate(self.vec_stars.vecpos_bare):
+                    if starlist[0] == st:
+                        indlist.append(ind)
+                bias_bare_cartesian = sum([tot_bias_bare[i]*self.vec_stars.vecvec[i][0] for i in indlist])
+                bias_bare_cartesian2 = sum([tot_bias_bare[i]*self.vec_stars.vecvec[i][n] for i in indlist])
+                self.assertTrue(np.allclose(bias_bare_cartesian,bias_st))
+                self.assertTrue(np.allclose(bias_bare_cartesian2,bias_st2))
+
+        else: #we have to check the non-local bias vectors coming out are zero
+            print("checking zero non-local")
+            for star in self.vec_stars.starset.barePeriodicStars:
+                for st in star:
+                    bias_st = np.zeros(3)
+                    count=0
+                    for jt,jumplist in enumerate(self.vec_stars.starset.jumpnetwork_omega0):
+                        for j in jumplist:
+                            if st==j.state1:
+                                count+=1
+                                dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
+                                bias_st += dx*self.W0list[jt]
+                                # print(bias_st)
+                    self.assertTrue(np.allclose(bias_st,np.zeros(3)))
+                    self.assertTrue(count>=1)
     def test_bias1expansions(self):
-        for i in range(10):
+        for i in range(len(self.vec_stars.Nvstars_pure)):
             #test bias_1
             #select a representative state and another state in the same star at random
             #from complex state space
-            starind = np.random.randint(0,self.vec_stars.Nvstars_pure)
+            starind = i
             st = self.vec_stars.vecpos[starind][0] #get the representative state.
             n = np.random.randint(0,len(self.vec_stars.vecpos[starind]))
             st2 = self.vec_stars.vecpos[starind][n]
@@ -134,7 +199,6 @@ class test_vecstars(unittest.TestCase):
             self.assertTrue(count>=1)
             self.assertTrue(np.allclose(bias1expansion_solute,np.zeros_like(bias1expansion_solute)),msg="{}\n{}".format(bias1expansion_solute,bias1expansion_solute))
             self.assertEqual(bias1expansion_solvent.shape[1],len(self.W1list))
-            # self.assertEqual(bias1expansion_solvent.shape[0],len(self.vec_stars.vecpos)
 
             #get the total bias vector
             bias1expansion_solute,bias1expansion_solvent = self.biases[1]
