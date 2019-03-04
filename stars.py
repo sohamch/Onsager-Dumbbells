@@ -285,6 +285,7 @@ class StarSet(object):
         self.mixedindex = np.zeros(len(self.mixedstates),dtype=int)
         self.pureindexdict = {}
         self.mixedindexdict = {}
+        self.bareindexdict = {}
 
         for si, star, starind in zip(itertools.count(),self.stars[:self.mixedstartindex],\
         self.starindexed[:self.mixedstartindex]):
