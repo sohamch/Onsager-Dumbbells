@@ -101,13 +101,13 @@ class StarSet(object):
         self.mdbcontainer = mdbcontainer
         self.mixedset = mdbcontainer.iorlist
 
-        self.jumpnetwork = jumpnetwork_omega0[0]
-        self.jumpnetwork_indexed = jumpnetwork_omega0[1]
+        self.jumpnetwork_omega0 = jumpnetwork_omega0[0]
+        self.jumpnetwork_omega0_indexed = jumpnetwork_omega0[1]
 
         self.jumpnetwork_omega2 = jumpnetwork_omega2[0]
         self.jumpnetwork_omega2_indexed = jumpnetwork_omega2[1]
 
-        self.jumplist = [j for l in self.jumpnetwork for j in l]
+        self.jumplist = [j for l in self.jumpnetwork_omega0 for j in l]
         self.jumpset = set(self.jumplist)
 
         self.jumpindices = [] #what is this? contain a symmetry grouped omega0 jumpnetwork
@@ -116,7 +116,7 @@ class StarSet(object):
 
         self.Nshells = Nshells
         count=0
-        for l in self.jumpnetwork:
+        for l in self.jumpnetwork_omega0:
             self.jumpindices.append([])
             for j in l:
                 self.jumpindices[-1].append(count)

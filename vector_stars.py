@@ -74,7 +74,9 @@ class vectorStars(VectorStarSet):
                                 veclist.append(starset.crys.g_direc(g, v))
                                 break
                     self.vecvec.append(veclist)
-            self.Nvstars_pure = len(self.vecpos)
+
+        self.Nvstars_pure = len(self.vecpos)
+
         #Now do it for the mixed dumbbells - all negative checks dissappear
         for star, indstar in zip(starset.stars[starset.mixedstartindex:],starset.starindexed[starset.mixedstartindex:]):
             pair0 = star[0]
@@ -108,7 +110,8 @@ class vectorStars(VectorStarSet):
                                 veclist.append(starset.crys.g_direc(g, v))
                                 break
                     self.vecvec.append(veclist)
-            self.Nvstars = len(self.vecpos)
+
+        self.Nvstars = len(self.vecpos)
 
         #build the vector star for the bare pure dumbbell state
         self.vecpos_bare = []
@@ -140,7 +143,7 @@ class vectorStars(VectorStarSet):
                                 break
                     self.vecvec_bare.append(veclist)
 
-    #index the states into the vector stars - required in OnsagerCalc
+        #index the states into the vector stars - required in OnsagerCalc
         self.stateToVecStar_pure = {}
         for st in self.starset.purestates:
             indlist=[]
@@ -309,6 +312,7 @@ class vectorStars(VectorStarSet):
             Note - bias0 for solute makes no sense, so we return only for solvent.
         """
         z=np.zeros(3,dtype=float)
+        biasBareExpansion = np.zeros((len(self.vecpos_bare),len(self.starset.jumpnetwork_omega0)))
         #Expansion of pure dumbbell initial state bias vectors and complex state bias vectors
         bias0expansion = np.zeros((self.Nvstars_pure,len(self.starset.jumpindices)))
         bias1expansion_solvent = np.zeros((self.Nvstars_pure,len(jumpnetwork_omega1)))
@@ -324,7 +328,8 @@ class vectorStars(VectorStarSet):
         bias3expansion_solvent = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
         bias3expansion_solute = np.zeros((self.Nvstars-self.Nvstars_pure,len(jumpnetwork_omega34)))
 
-        #First, bias1 and bias0
+        #First, let's build the periodic bias expansions
+
         for i, purestar, vectors in zip(itertools.count(),self.vecpos[:self.Nvstars_pure],self.vecvec[:self.Nvstars_pure]):
             #iterates over the rows of the matrix
             #First construct bias1expansion and bias0expansion
