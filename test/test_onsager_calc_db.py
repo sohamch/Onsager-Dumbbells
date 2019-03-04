@@ -37,7 +37,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         #generate all the bias expansions - will separate out later
         #Previously, all the jumplists were created as arrays of ones.
         #To make things more concrete, we initialize them with random numbers
-        self.onsagercalculator=dumbbellMediated(self.pdbcontainer_si,self.mdbcontainer_si,0.4,0.01,0.01,0.01,NGFmax=4,Nthermo=1)
+        self.onsagercalculator=dumbbellMediated(self.pdbcontainer_si,self.mdbcontainer_si,0.3,0.01,0.01,0.01,NGFmax=4,Nthermo=1)
         self.W1list = np.random.rand(len(self.onsagercalculator.jnet_1))
         self.W2list = np.random.rand(len(self.onsagercalculator.jnet0))
         self.W3list = np.random.rand(len(self.onsagercalculator.symjumplist_omega3))
@@ -101,25 +101,18 @@ class test_dumbbell_mediated(unittest.TestCase):
         self.assertEqual(len(self.onsagercalculator.eta02_solvent),len(self.onsagercalculator.vkinetic.starset.mixedstates))
         self.assertEqual(len(self.onsagercalculator.eta02_solute),len(self.onsagercalculator.vkinetic.starset.mixedstates))
 
-        for i in range(len(self.onsagercalculator.eta00_solvent)):
-            #get the indices of the state
-            st = self.onsagercalculator.vkinetic.starset.purestates[i]
-            indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[st]
-            if len(indlist)==0:
-                continue
-            # print(st)
-            #next get the vectorstar,state indices
-            # indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[st]
-            # print(indlist)
-            #try to reconstruct the eta vector.
-            vlist=[]
-            for tup in indlist:
-                vlist.append(self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]])
-            eta_test_solvent = sum([np.dot(self.onsagercalculator.eta00_solvent[i,:],v)*v for v in vlist])
-            eta_test_solute = sum([np.dot(self.onsagercalculator.eta00_solute[i,:],v)*v for v in vlist])
-            # print(vlist)
-            self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta00_solvent[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta00_solvent[i]))
-            self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta00_solute[i]),msg="{} {}".format(eta_test_solute,self.onsagercalculator.eta00_solute[i]))
+        if len(self.onsagercalculator.vkinetic.vecpos_bare)==0:
+            self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent,np.zeros((len(self.onsagercalculator.vkinetic.starset.purestates),3))))
+            self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute,np.zeros((len(self.onsagercalculator.vkinetic.starset.purestates),3))))
+
+        else:
+            #The non-local pure dumbbell biases have been tested in test_vecstars.
+            #Here, we check if for periodic dumbbells, we have the same solvent bias.
+            for i in range(len(self.onsagercalculator.vkinetic.starset.purestates)):
+                for j in range(len(self.onsagercalculator.vkinetic.starset.purestates)):
+                    if self.onsagercalculator.vkinetic.starset.purestates[i].db.i == self.onsagercalculator.vkinetic.starset.purestates[j].db.i:
+                        if np.allclose(self.onsagercalculator.vkinetic.starset.purestates[i].o,self.onsagercalculator.vkinetic.starset.purestates[j].o):
+                            self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:]),np.allclose(self.onsagercalculator.eta00_solvent[j,:]))
 
         Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
         for i in range(len(self.onsagercalculator.eta02_solvent)):
@@ -138,16 +131,16 @@ class test_dumbbell_mediated(unittest.TestCase):
                 self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solvent[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta02_solvent[i]))
                 self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solute[i]),msg="{} {}".format(eta_test_solute,self.onsagercalculator.eta02_solute[i]))
 
-        #test that the periodic eta vectors are same for dumbbells having the same orientation and lattice sites.
-        #For the pure states only - for the mixed states, the states are origin states anyway, so a dumbbell can't be repeated
-        for i,st1 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
-            for j,st2 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
-                #check if the dumbbells have the same orientation site vectors
-                if st1.db.i==st2.db.i and np.allclose(st1.db.o,st2.db.o):
-                    self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent[j,:]),msg="{}\n{}".format(st1,st2))
-                    #eta00 for solute is suppose to be zero anyway, but still check if something funny is not going on.
-                    self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],self.onsagercalculator.eta00_solute[j]))
-                    self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],np.zeros(3)))
+        # #test that the periodic eta vectors are same for dumbbells having the same orientation and lattice sites.
+        # #For the pure states only - for the mixed states, the states are origin states anyway, so a dumbbell can't be repeated
+        # for i,st1 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
+        #     for j,st2 in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
+        #         #check if the dumbbells have the same orientation site vectors
+        #         if st1.db.i==st2.db.i and np.allclose(st1.db.o,st2.db.o):
+        #             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent[j,:]),msg="{}\n{}".format(st1,st2))
+        #             #eta00 for solute is suppose to be zero anyway, but still check if something funny is not going on.
+        #             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],self.onsagercalculator.eta00_solute[j]))
+        #             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute[i],np.zeros(3)))
 
     def test_bias_updates(self):
         """

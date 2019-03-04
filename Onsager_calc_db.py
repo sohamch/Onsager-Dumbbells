@@ -129,7 +129,7 @@ class BareDumbbell(Interstitial):
         list.
         """
         glist=[]
-        for jlist in jumpnetwork:
+        for jlist in self.jumpnetwork:
             tup=jlist[0]
             lis=[]
             for j in jlist:
@@ -317,26 +317,7 @@ class dumbbellMediated(VacancyMediated):
         ## TODO: Find a more efficient way to do this. Maybe build up a vector star separately for the omega0 space. Is it worth it though?
         self.NlsoluteBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
         self.NlsolventBias1 = np.zeros((len(self.vkinetic.starset.purestates),3))
-        calculated = set([])
-        for st in self.purestates:
-            if st in calculated:
-                continue
-            periodicStInds = []
-            vel=np.zeros(3)
-            for st2 in self.purestates:
-                #check if the new list state the same dumbbell configuration as the representer.
-                #If the states have the same dumbbell configuration, they should have the same periodic velocity vector.
-                if st2.db.i==st.db.i and np.allclose(st2.db.o,st.db.o):
-                    calculated.add(st2)
-                    periodicStInds.add(self.vkinetic.starset.pureindexdict[st2])
-            #Now calculate the velocity for the representative
-            for jt,jlist in self.jnet0:
-                for jmp in jlist:
-                    if jmp.state1 == st.db-st.db.R:
-                        dx = disp(crys,chem,j.state1,j.state2)
-                        vel += rate0list[jt]*dx
-            for ind in periodicStInds:
-                self.NlsolventBias1[ind,:] = vel.copy()
+
         #get the bias1 and bias2 expansions
         self.biases = self.vkinetic.biasexpansion(self.jnet_1,self.jnet2,self.om1types,self.symjumplist_omega43_all)
 
@@ -356,6 +337,50 @@ class dumbbellMediated(VacancyMediated):
         #         self.NlsolventBias1[self.vkinetic.starset.pureindexdict[st][0]][:]=\
         #         sum([bias1SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
+        #First check if non-local biases should be zero anyway (as is the case with highly symmetric lattice - in that case vecpos_bare should be zero)
+        if len(self.vkinetic.vecpos_bare)==0:
+            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.purestates),3))
+            self.eta00_solute = np.zeros((len(self.vkinetic.starset.purestates),3))
+        #otherwise, we need to build the bare bias expansion
+        else:
+            #First we build up for just the bare starset
+            biasBareExpansion = self.biases[-1]
+            self.NlsolventBias0 = np.zeros((len(self.vkinetic.starset.bareStates),3))
+            bias0SolventTotNonLoc = np.dot(biasBareExpansion,rate0list)
+            for st in self.vkinetic.starset.bareStates:
+                indlist = self.vkinetic.bareStTobareStar[st]
+                if len(indlist)!=0:
+                    self.NlsolventBias0[self.vkinetic.starset.bareindexdict[st][0]][:]=\
+                    sum([bias0SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
+
+            #Next build up W0_ij
+            omega0_nonloc = np.zeros((len(self.vkinetic.starset.bareStates),len(self.vkinetic.starset.bareStates)))
+            #use the indexed omega2 to fill this up - need omega2 indexed to mixed subspace of starset
+            for rate0,jlist in zip(rate0list,self.vkinetic.starset.jumpnetwork_omega0):
+                for (i,j),dx in jlist:
+                    omega0_nonloc[i,j] += rate0[0]
+                    omega0_nonloc[i,i] -= rate0[0]
+
+            g0 = pinv2(omega0_nonloc)
+
+            self.eta00_solvent_bare=np.tensordot(g0,self.NlsolventBias0,axes=(1,0))
+            self.eta00_solute_bare = np.zeros_like(self.eta00_solvent)
+
+            #Now match the non-local biases for complex states to the pure states
+            self.eta00_solute = np.zeros((len(self.vkinetic.statset.purestates),3))
+            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.purestates),3))
+
+            for i in range(len(self.vkinetic.starset.purestates)):
+                db = self.vkinetic.purestates[i].db
+                db -= db.R
+                for j in range(len(self.vkinetic.starset.bareStates)):
+                    count=0
+                    if db == self.vkinetic.starset.bareStates[j]:
+                        count+=1
+                        self.eta00_solvent[i,:] = self.eta00_solvent_bare[j,:].copy()
+                    if count !=1:
+                        raise ValueError("The dumbbell is not present in the iorlist?")
+
         self.NlsoluteBias2 = np.zeros((len(self.vkinetic.starset.mixedstates),3))
         self.NlsolventBias2 = np.zeros((len(self.vkinetic.starset.mixedstates),3))
         bias2solute,bias2solvent = self.biases[2]
@@ -373,18 +398,18 @@ class dumbbellMediated(VacancyMediated):
                 sum([bias2SolventTotNonLoc[tup[0]-self.vkinetic.Nvstars_pure]*\
                 self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
-        #generate the non-local complex-complex block w0
-        omega1_nonloc = np.zeros((len(self.vkinetic.starset.purestates),len(self.vkinetic.starset.purestates)))
-        #use the indexed omega1 to fill up the elements
-        for om0rate,jlist in zip(rate1_nonloc,self.jnet1_indexed):
-            for (i,j),dx in jlist:
-                omega1_nonloc[i,j] += om0rate
-                omega1_nonloc[i,i] -= om0rate #"add" the escapes
-        #invert it with pinv2
-        g0_per = pinv2(omega1_nonloc)
-        #tensordot with the cartesian bias to get the eta0 for each state
-        self.eta00_solvent = np.tensordot(g0_per,self.NlsolventBias1,axes=(1,0))
-        self.eta00_solute = np.tensordot(g0_per,self.NlsoluteBias1,axes=(1,0))
+        # #generate the non-local complex-complex block w0
+        # omega1_nonloc = np.zeros((len(self.vkinetic.starset.purestates),len(self.vkinetic.starset.purestates)))
+        # #use the indexed omega1 to fill up the elements
+        # for om0rate,jlist in zip(rate1_nonloc,self.jnet1_indexed):
+        #     for (i,j),dx in jlist:
+        #         omega1_nonloc[i,j] += om0rate
+        #         omega1_nonloc[i,i] -= om0rate #"add" the escapes
+        # #invert it with pinv2
+        # g0_per = pinv2(omega1_nonloc)
+        # #tensordot with the cartesian bias to get the eta0 for each state
+        # self.eta00_solvent = np.tensordot(g0_per,self.NlsolventBias1,axes=(1,0))
+        # self.eta00_solute = np.tensordot(g0_per,self.NlsoluteBias1,axes=(1,0))
         #Now for omega2
         omega2_nonloc = np.zeros((len(self.vkinetic.starset.mixedstates),len(self.vkinetic.starset.mixedstates)))
         #use the indexed omega2 to fill this up - need omega2 indexed to mixed subspace of starset
@@ -415,6 +440,7 @@ class dumbbellMediated(VacancyMediated):
         #We have constructed the Nstates x 3 eta0 vectors for pure and mixed states separately
         #But the jtags assume all the eta vectors are in the same list.
         #So, we need to first concatenate the mixed eta vectors into the pure eta vectors.
+
         self.eta00total_solute = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
         self.eta00total_solvent = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
 
