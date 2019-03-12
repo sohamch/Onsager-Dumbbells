@@ -30,7 +30,7 @@ class dbStates(object):
 
         self.crys = crys
         self.chem = chem
-        self.family=family
+        self.family = family
         self.iorlist = self.genpuresets()
         self.symorlist = self.gensymset()
         #Store both iorlist and symorlist so that we can compare them later if needed.
