@@ -27,9 +27,10 @@ class test_vecstars(unittest.TestCase):
         self.crys_stars = StarSet(self.pdbcontainer_si,self.mdbcontainer_si,self.jset0,self.jset2, Nshells=1)
         self.vec_stars = vectorStars(self.crys_stars)
 
+        self.om2tags = self.vec_stars.starset.j2tags
         #generate 1, 3 and 4 jumpnetworks
-        (self.jnet_1,self.jnet_1_indexed,self.j1tags), self.jtype = self.crys_stars.jumpnetwork_omega1()
-        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed,self.om4tags),(self.symjumplist_omega3,self.symjumplist_omega3_indexed,self.om3tags)=self.crys_stars.jumpnetwork_omega34(0.4,0.01,0.01,0.01)
+        (self.jnet_1,self.jnet_1_indexed,self.om1tags), self.jtype = self.crys_stars.jumpnetwork_omega1()
+        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed,self.om4tags),(self.symjumplist_omega3,self.symjumplist_omega3_indexed,self.om3tags)=self.crys_stars.jumpnetwork_omega34(0.3,0.01,0.01,0.01)
 
         self.W0list = np.random.rand(len(self.vec_stars.starset.jumpnetwork_omega0))
         self.W1list = np.random.rand(len(self.jnet_1))
@@ -394,4 +395,20 @@ class test_vecstars(unittest.TestCase):
         """
         See that the arrays tagging the jumps are produced properly
         """
-        pass
+        #First let us go through the omega1 jump network.
+        for jt,jlist,jindlist in zip(itertools.count(),self.jnet_1,self.jnet_1_indexed):
+            # indDictlist = self.om1tags[jt]
+            for (i,j),dx in jindlist:
+                test_arr = None
+                for key, arr in self.om1tags[jt].items():
+                    if key==i:
+                        test_arr = arr.copy()
+                # self.assertFalse(test_arr==None)
+                count=0
+                rowlist=[]
+                for rowind,row in enumerate(test_arr):
+                    if row[j] == -1:
+                        rowlist.append(rowind)
+                        count+=1
+                        # break
+                self.assertTrue(count==1,msg="\n{}\n{}\n{}\n{}".format(test_arr,((i,j),dx),count,rowlist))

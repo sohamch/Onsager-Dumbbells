@@ -221,7 +221,7 @@ class StarSet(object):
             j2initlist.append(initindices)
 
 
-        self.jtags2 = []
+        self.j2tags = []
         for initdict in j2initlist:
             jtagdict = {}
             for IS, lst in initdict.items():
@@ -230,10 +230,10 @@ class StarSet(object):
                     if IS == FS:
                         # jarr[idx][IS+len(self.purestates)]= 1
                         continue
-                    jarr[idx][IS+len(self.purestates)]= 1
-                    jarr[idx][FS+len(self.purestates)]=-1
+                    jarr[idx][IS+len(self.purestates)] += 1
+                    jarr[idx][FS+len(self.purestates)] -= 1
                 jtagdict[IS] = jarr.copy()
-            self.jtags2.append(jtagdict)
+            self.j2tags.append(jtagdict)
 
         #generate an indexed version of the starset to the iorlists in the container objects - seperate for mixed and pure stars
         self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)
@@ -363,8 +363,8 @@ class StarSet(object):
             for IS,lst in initdict.items():
                 jtagarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)),dtype=int)
                 for jnum,FS in enumerate(lst):
-                    jtagarr[jnum][IS] = 1
-                    jtagarr[jnum][FS] = -1
+                    jtagarr[jnum][IS] += 1
+                    jtagarr[jnum][FS] -= 1
                 arrdict[IS] = jtagarr.copy()
             jtags.append(arrdict)
 
@@ -480,8 +480,8 @@ class StarSet(object):
             for IS,lst in initdict.items():
                 jarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)),dtype=int)
                 for idx,FS in enumerate(lst):
-                    jarr[idx][IS] = 1
-                    jarr[idx][FS+len(self.purestates)] = -1
+                    jarr[idx][IS] += 1
+                    jarr[idx][FS+len(self.purestates)] -= 1
                 jarrdict[IS] = jarr.copy()
             jtags4.append(jarrdict)
 
@@ -490,8 +490,8 @@ class StarSet(object):
             for IS,lst in initdict.items():
                 jarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)),dtype=int)
                 for idx,FS in enumerate(lst):
-                    jarr[idx][IS+len(self.purestates)] = 1
-                    jarr[idx][FS] = -1
+                    jarr[idx][IS+len(self.purestates)] += 1
+                    jarr[idx][FS] -= 1
                 jarrdict[IS] = jarr.copy()
             jtags3.append(jarrdict)
 
