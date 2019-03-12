@@ -8,6 +8,7 @@ from functools import reduce
 from vector_stars import *
 from test_structs import *
 import unittest
+from collections import defaultdict
 
 class test_vecstars(unittest.TestCase):
     def setUp(self):
@@ -398,17 +399,32 @@ class test_vecstars(unittest.TestCase):
         #First let us go through the omega1 jump network.
         for jt,jlist,jindlist in zip(itertools.count(),self.jnet_1,self.jnet_1_indexed):
             # indDictlist = self.om1tags[jt]
+            count_dict = defaultdict(int)
             for (i,j),dx in jindlist:
-                test_arr = None
-                for key, arr in self.om1tags[jt].items():
-                    if key==i:
-                        test_arr = arr.copy()
-                # self.assertFalse(test_arr==None)
-                count=0
-                rowlist=[]
-                for rowind,row in enumerate(test_arr):
-                    if row[j] == -1:
-                        rowlist.append(rowind)
-                        count+=1
-                        # break
-                self.assertTrue(count==1,msg="\n{}\n{}\n{}\n{}".format(test_arr,((i,j),dx),count,rowlist))
+                count_dict[i]+=1
+            for key,arr in self.om1tags[jt].items():
+                self.assertEqual(len(arr),count_dict[key])
+
+        for jt,jlist,jindlist in zip(itertools.count(),self.vec_stars.starset.jumpnetwork_omega2,self.vec_stars.starset.jumpnetwork_omega2_indexed):
+            # indDictlist = self.om1tags[jt]
+            count_dict = defaultdict(int)
+            for (i,j),dx in jindlist:
+                count_dict[i]+=1
+            for key,arr in self.om2tags[jt].items():
+                self.assertEqual(len(arr),count_dict[key])
+
+        for jt,jlist,jindlist in zip(itertools.count(),self.symjumplist_omega4,self.symjumplist_omega4_indexed):
+            # indDictlist = self.om1tags[jt]
+            count_dict = defaultdict(int)
+            for (i,j),dx in jindlist:
+                count_dict[i]+=1
+            for key,arr in self.om4tags[jt].items():
+                self.assertEqual(len(arr),count_dict[key])
+
+        for jt,jlist,jindlist in zip(itertools.count(),self.symjumplist_omega3,self.symjumplist_omega3_indexed):
+            # indDictlist = self.om1tags[jt]
+            count_dict = defaultdict(int)
+            for (i,j),dx in jindlist:
+                count_dict[i]+=1
+            for key,arr in self.om3tags[jt].items():
+                self.assertEqual(len(arr),count_dict[key])
