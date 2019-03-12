@@ -239,16 +239,35 @@ class test_dumbbell_mediated(unittest.TestCase):
 
     def test_bias_updates(self):
         """
-        This is to check if the del_bias expansions are working fine.
+        This is to check if the del_bias expansions are working fine, prod.
         """
-        pass
-        # pre0 = np.ones(len(self.onsagercalculator.pdbcontainer.symorlist))
-        # betaene0 = np.ones(len(self.onsagercalculator.pdbcontainer.symorlist))
-        # pre0T = np.ones(len(self.onsagercalculator.jnet0))
-        # betaene0T = np.ones(len(self.onsagercalculator.jnet0))
-        # pre2 = np.ones(len(self.onsagercalculator.mdbcontainer.symorlist))
-        # betaene2 = np.ones(len(self.onsagercalculator.mdbcontainer.symorlist))
-        # pre2T = np.ones(len(self.onsagercalculator.jnet2))
-        # betaene2T = np.ones(len(self.onsagercalculator.jnet2))
-        #
-        # self.onsagercalculator.calc_eta(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
+
+        latt = np.array([[0.,0.1,0.5],[0.3,0.,0.5],[0.5,0.5,0.]])*0.55
+        self.DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
+        self.cube = cube
+        #keep it simple with [1.,0.,0.] type orientations for now
+        o = np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126
+        famp0 = [o.copy()]
+        family = [famp0]
+
+        self.pdbcontainer_si = dbStates(self.DC_Si,0,family)
+        self.mdbcontainer_si = mStates(self.DC_Si,0,family)
+
+        self.onsagercalculator=dumbbellMediated(self.pdbcontainer_si,self.mdbcontainer_si,0.3,0.01,0.01,0.01,NGFmax=4,Nthermo=1)
+
+        self.biases =\
+        self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1,self.onsagercalculator.jnet2,self.onsagercalculator.om1types,self.onsagercalculator.symjumplist_omega43_all)
+
+        pre0 = np.random.rand(len(self.onsagercalculator.pdbcontainer.symorlist))
+        betaene0 = np.random.rand(len(self.onsagercalculator.pdbcontainer.symorlist))
+        pre0T = np.random.rand(len(self.onsagercalculator.jnet0))
+        betaene0T = np.random.rand(len(self.onsagercalculator.jnet0))
+        pre2 = np.random.rand(len(self.onsagercalculator.mdbcontainer.symorlist))
+        betaene2 = np.random.rand(len(self.onsagercalculator.mdbcontainer.symorlist))
+        pre2T = np.random.rand(len(self.onsagercalculator.jnet2))
+        betaene2T = np.random.rand(len(self.onsagercalculator.jnet2))
+
+        rate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
+        rate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
+
+        self.onsagercalculator.update_bias_expansions(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
