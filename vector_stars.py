@@ -113,7 +113,7 @@ class vectorStars(VectorStarSet):
 
         self.Nvstars = len(self.vecpos)
 
-        #build the vector star for the bare pure dumbbell state
+        #build the vector star for the bare bare dumbbell state
         self.vecpos_bare = []
         self.vecvec_bare = []
         for star in starset.barePeriodicStars:

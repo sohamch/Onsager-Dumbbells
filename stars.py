@@ -208,38 +208,19 @@ class StarSet(object):
                 self.mixedstateset.add(mdb)
             self.stars.append(newlist)
         self.purestates = sorted(list(self.stateset),key=self._sortkey)
-        self.mixedstates = sorted(list(self.mixedstateset),key=self._sortkey)
+        self.mixedstates = list(self.mixedstateset)#No use sorting - every state is origin state, the mixed state space is periodic.
         self.bareStates = [dumbbell(tup[0],tup[1],np.zeros(3)) for tup in self.pdbcontainer.iorlist]
 
-        #This portion is no longer needed - generalized in (pure/mixed)indexdict
-        # self.stToPureStates={}
-        # for i,st in enumerate(self.purestates):
-        #      self.stToPureStates[st] = i
-        #
-        # self.stToMixedStates={}
-        # for i,st in enumerate(self.mixedstates):
-        #      self.stToMixedStates[st] = i
-
-        #Now index the mixed jumpnetwork to the mixedstates
-        #Also, maintain a jumptype
-        self.jnet2_indexed = []
-        self.jnet2_types = []
-        j2initlist =[]
-        for jt,jlist in enumerate(self.jumpnetwork_omega2):
-            indlist=[]
-            initindices = defaultdict(list)
-            for j in jlist:
-                for i,st1 in enumerate(self.mixedstates):
-                    if j.state1-j.state1.R_s==st1:
-                        for k,st2 in enumerate(self.mixedstates):
-                            if j.state2-j.state2.R_s==st2:
-                                indlist.append(((i,k),disp(self.crys,self.chem,j.state1,j.state2)))
-                                initindices[i].append(k)
-            self.jnet2_indexed.append(indlist)
-            j2initlist.append(initindices)
-            self.jnet2_types.append(jt)
 
         #Next, we build up the jtags for omega2, using the indlist
+        j2initlist =[]
+        for jt,jlist in enumerate(self.jumpnetwork_omega2_indexed):
+            initindices = defaultdict(list)
+            for (i,j),dx in jlist:
+                 initindices[i].append(j)
+            j2initlist.append(initindices)
+
+
         self.jtags2 = []
         for initdict in j2initlist:
             jtagdict = {}
@@ -254,9 +235,8 @@ class StarSet(object):
                 jtagdict[IS] = jarr.copy()
             self.jtags2.append(jtagdict)
 
-
-        self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)
         #generate an indexed version of the starset to the iorlists in the container objects - seperate for mixed and pure stars
+        self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)
         starindexed = []
         for star in self.stars[:self.mixedstartindex]:
             indlist=[]
@@ -275,7 +255,7 @@ class StarSet(object):
             starindexed.append(indlist)
 
         self.starindexed = starindexed
-        #self.starindexed -> gives the indices to the states list of the states stored in the starset
+        #self.starindexed -> gives the indices into the purestates and mixedstates, of the states stored in the starset, i.e, an indexed version of the starset.
 
         #now generate the index dicts
         # --starindex -> tells us which star (via it's index in the states list) a state belongs to.
