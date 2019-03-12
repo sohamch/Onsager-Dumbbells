@@ -115,6 +115,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         betaene2T = np.random.rand(len(self.onsagercalculator.jnet2))
 
         rate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
+        rate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
         # (eta00_solvent,eta00_solute), (eta02_solvent,eta02_solute) = \
         self.onsagercalculator.calc_eta(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
 
@@ -156,7 +157,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 #First, let's check the indexing
                 self.assertEqual(i,self.onsagercalculator.vkinetic.starset.bareindexdict[db][0])
                 bias_true = self.onsagercalculator.NlsolventBias_bare[i,:]
-                print(len(self.onsagercalculator.vkinetic.vecpos_bare[self.onsagercalculator.vkinetic.bareStTobareStar[db][0][0]]))
+                # print(len(self.onsagercalculator.vkinetic.vecpos_bare[self.onsagercalculator.vkinetic.bareStTobareStar[db][0][0]]))
                 # eta_true *= len(self.onsagercalculator.vkinetic.vecpos_bare[self.onsagercalculator.vkinetic.bareStTobareStar[db][0][0]])
                 for jt,jindlist,jlist in zip(itertools.count(),self.onsagercalculator.jnet0_indexed,self.onsagercalculator.jnet0):
                     for ((IS,FS),dx),jmp in zip(jindlist,jlist):
@@ -181,6 +182,28 @@ class test_dumbbell_mediated(unittest.TestCase):
                     # print(vlist)
                     self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec_bare[indlist[0][0]]),self.onsagercalculator.eta00_solvent_bare[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta00_solvent_bare[i]))
                     # self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solute[i]),msg="{} {}".format(eta_test_solute,self.onsagercalculator.eta02_solute[i]))
+
+
+        #Repeat the above tests for mixed dumbbells
+        #First check if we have the correct bias vectors
+        bias_calc_list_solute = []
+        bias_calc_list_solvent = []
+        for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
+            bias_true_solute = self.onsagercalculator.NlsoluteBias2[i]
+            bias_true_solvent = self.onsagercalculator.NlsolventBias2[i]
+            bias_calc_solute = np.zeros(3)
+            bias_calc_solvent = np.zeros(3)
+            for jt,jlist,jindlist in zip(itertools.count(),self.onsagercalculator.jnet2,self.onsagercalculator.jnet2_indexed):
+                for ((IS,FS),dx),jmp in zip(jindlist,jlist):
+                    self.assertEqual(jmp.state1,self.onsagercalculator.vkinetic.starset.mixedstates[IS])
+                    self.assertEqual(jmp.state2-jmp.state2.R_s,self.onsagercalculator.vkinetic.starset.mixedstates[FS],msg="\n{}\n{}".format(jmp.state2,self.onsagercalculator.vkinetic.starset.mixedstates[FS]))
+                    if i==IS:
+                        dx_solute = dx + jmp.state2.db.o/2. - jmp.state1.db.o/2.
+                        dx_solvent = dx - jmp.state2.db.o/2. + jmp.state1.db.o/2.
+                        bias_calc_solute += rate2list[jt][0]*dx_solute
+                        bias_calc_solvent += rate2list[jt][0]*dx_solvent
+            self.assertTrue(np.allclose(bias_calc_solute,bias_true_solute))
+            self.assertTrue(np.allclose(bias_calc_solvent,bias_true_solvent))
 
         Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
         for i in range(len(self.onsagercalculator.eta02_solvent)):

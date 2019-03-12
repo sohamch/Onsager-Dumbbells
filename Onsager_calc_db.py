@@ -229,17 +229,17 @@ class dumbbellMediated(VacancyMediated):
         #All the required quantities will be extracted from the containers as we move along
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
-        (self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList)=\
+        (self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2_indexed)=\
         self.pdbcontainer.jumpnetwork(cutoff,solv_solv_cut,closestdistance),\
         self.mdbcontainer.jumpnetwork(cutoff,solt_solv_cut,closestdistance)
         self.crys = pdbcontainer.crys #we assume this is the same in both containers
         self.chem = pdbcontainer.chem
         # self.jnet2_indexed = self.kinetic.starset.jnet2_indexed
-        self.thermo = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList))
-        self.kinetic = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList))
+        self.thermo = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2_indexed))
+        self.kinetic = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2_indexed))
 
         #Note - even if empty, our starsets go out to atleast the NNstar - later we'll have to keep this in mind
-        self.NNstar = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2toIorList),2)
+        self.NNstar = stars.StarSet(pdbcontainer,mdbcontainer,(self.jnet0,self.jnet0_indexed),(self.jnet2,self.jnet2_indexed),2)
         self.vkinetic = vector_stars.vectorStars()
 
         #Generate the initialized crystal and vector stars and the jumpnetworks with the kinetic shell
@@ -259,7 +259,7 @@ class dumbbellMediated(VacancyMediated):
         self.clearcache(pdb)#make all precalculated lists empty
         if pdb:
             return GFcalc_dumbbells.GF_dumbbells(self.pdbcontainer,self.jnet0_indexed,NGFmax)
-        return GFcalc_dumbbells.GF_dumbbells(self.mdbcontainer,self.jnet2toIorList,NGFmax)
+        return GFcalc_dumbbells.GF_dumbbells(self.mdbcontainer,self.jnet2_indexed,NGFmax)
 
     def clearcache(self):
         """
@@ -269,9 +269,12 @@ class dumbbellMediated(VacancyMediated):
         self.GFvalues_mdb, self.LvvValues_mdb, self.etav_mdb = {}, {}, {}
 
     def generate_jnets(self,cutoff,solt_solv_cut,solv_solv_cut,closestdistance):
-
+        """
+        Note - for mixed dumbbells, indexing to the iorlist is the same as indexing to mixedstates, as the latter is just the former in the form of SdPair objects,
+        all of which are origin states
+        """
         #first omega0 and omega2 - indexed to purestates and mixed states
-        self.jnet2_indexed = self.vkinetic.starset.jnet2_indexed
+        # self.jnet2_indexed = self.vkinetic.starset.jnet2_indexed
         # self.omeg2types = self.vkinetic.starset.jnet2_types
         self.jtags2 = self.vkinetic.starset.jtags2
         #Next - omega1 - indexed to purestates
@@ -307,7 +310,7 @@ class dumbbellMediated(VacancyMediated):
         """
         Function to calculate the periodic eta vectors.
         """
-        rate2list = ratelist(self.jnet2toIorList, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
+        rate2list = ratelist(self.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
         rate0list = ratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
         # symmrate2list = symmratelist(pre, betaene, preT, betaeneT, self.container.invmap)
         #the non-local bias for the complex space has to be carried out based on the omega0 jumpnetwork, not the omega1 jumpnetwork.
