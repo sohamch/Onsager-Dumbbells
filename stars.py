@@ -221,7 +221,7 @@ class StarSet(object):
             j2initlist.append(initindices)
 
 
-        self.j2tags = []
+        self.jtags2 = []
         for initdict in j2initlist:
             jtagdict = {}
             for IS, lst in initdict.items():
@@ -233,7 +233,7 @@ class StarSet(object):
                     jarr[idx][IS+len(self.purestates)] += 1
                     jarr[idx][FS+len(self.purestates)] -= 1
                 jtagdict[IS] = jarr.copy()
-            self.j2tags.append(jtagdict)
+            self.jtags2.append(jtagdict)
 
         #generate an indexed version of the starset to the iorlists in the container objects - seperate for mixed and pure stars
         self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)

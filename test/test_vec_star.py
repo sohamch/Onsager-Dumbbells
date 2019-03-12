@@ -28,7 +28,7 @@ class test_vecstars(unittest.TestCase):
         self.crys_stars = StarSet(self.pdbcontainer_si,self.mdbcontainer_si,self.jset0,self.jset2, Nshells=1)
         self.vec_stars = vectorStars(self.crys_stars)
 
-        self.om2tags = self.vec_stars.starset.j2tags
+        self.om2tags = self.vec_stars.starset.jtags2
         #generate 1, 3 and 4 jumpnetworks
         (self.jnet_1,self.jnet_1_indexed,self.om1tags), self.jtype = self.crys_stars.jumpnetwork_omega1()
         (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed,self.om4tags),(self.symjumplist_omega3,self.symjumplist_omega3_indexed,self.om3tags)=self.crys_stars.jumpnetwork_omega34(0.3,0.01,0.01,0.01)
