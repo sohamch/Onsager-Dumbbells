@@ -233,7 +233,7 @@ class StarSet(object):
                     if j.state1-j.state1.R_s==st1:
                         for k,st2 in enumerate(self.mixedstates):
                             if j.state2-j.state2.R_s==st2:
-                                indlist.append(((i,k),disp(self.crys,self.chem,st1,st2)))
+                                indlist.append(((i,k),disp(self.crys,self.chem,j.state1,j.state2)))
                                 initindices[i].append(k)
             self.jnet2_indexed.append(indlist)
             j2initlist.append(initindices)
