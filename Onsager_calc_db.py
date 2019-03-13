@@ -496,8 +496,8 @@ class dumbbellMediated(VacancyMediated):
         self.delbias2expansion_solvent = np.zeros_like(self.biases[2][0])
 
         for i in range(self.vkinetic.Nvstars-self.vkinetic.Nvstars_pure):
-            #get the representative state(its index in purestates) and vector
-            v0 = self.vkinetic.vecvec[i][0]
+            #get the representative state(its index in mixedstates) and vector
+            v0 = self.vkinetic.vecvec[i+self.vkinetic.Nvstars_pure][0]
             st0 = self.vkinetic.starset.mixedindexdict[self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure][0]][0]
             #Form the projection of the eta vectors on v0
             eta_proj_solute = np.dot(self.eta0total_solute,v0)
@@ -507,15 +507,15 @@ class dumbbellMediated(VacancyMediated):
                 #see if there's an array corresponding to the initial state
                 if not st0 in initindexdict:
                     continue
-                self.delbias2expansion_solute[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],eta_proj_solute))
-                self.delbias2expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],eta_proj_solvent))
+                self.delbias2expansion_solute[i,jt] += len(self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure])*np.sum(np.dot(initindexdict[st0],eta_proj_solute))
+                self.delbias2expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure])*np.sum(np.dot(initindexdict[st0],eta_proj_solvent))
             #Now let's build it for omega4
             for jt,initindexdict in enumerate(self.jtags3):
                 #see if there's an array corresponding to the initial state
                 if not st0 in initindexdict:
                     continue
-                self.delbias3expansion_solute[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],eta_proj_solute))
-                self.delbias3expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i])*np.sum(np.dot(initindexdict[st0],eta_proj_solvent))
+                self.delbias3expansion_solute[i,jt] += len(self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure])*np.sum(np.dot(initindexdict[st0],eta_proj_solute))
+                self.delbias3expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure])*np.sum(np.dot(initindexdict[st0],eta_proj_solvent))
 
     def update_bias_expansions(self, pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T):
         self.calc_eta(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
