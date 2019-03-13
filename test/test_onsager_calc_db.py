@@ -313,3 +313,40 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         self.assertTrue(np.allclose(solute_bias_1,solute_bias_1_new))
         self.assertTrue(np.allclose(solute_bias_1,np.zeros_like(solute_bias_1)))
+        self.assertTrue(np.allclose(solvent_bias_1,solvent_bias_1_new))
+
+        # #Now, do it for omega2
+        # bias2solute,bias2solvent = self.biases[2]
+        # bias2_solute_total = np.dot(bias2solute,W2list)
+        # bias2_solvent_total = np.dot(bias2solvent,W2list)
+        # #Now, convert this into the Nstates x 3 form in the mixed state space - write a function to generalize this later on
+        # solute_bias_2 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates),3))
+        # solvent_bias_2 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates),3))
+        # for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
+        #     indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[self.onsagercalculator.vkinetic.starset.mixedstates[i]]
+        #     #We have indlist as (IndOfStar, IndOfState)
+        #     for tup in indlist:
+        #         solute_bias_2[i,:] = sum([bias2_solute_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+        #         solvent_bias_2[i,:] = sum([bias2_solvent_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+        # #Next, manually update with the eta0 vectors
+        # for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
+        #     for jt,jlist in enumerate(self.onsagercalculator.jnet2_indexed):
+        #         for ((IS,FS),dx) in jlist:
+        #             if i==IS:
+        #                 solute_bias_1[i,:] += W2list[jt]*(self.onsagercalculator.eta02_solute[IS] - self.onsagercalculator.eta02_solute[FS])
+        #                 solvent_bias_1[i,:] += W2list[jt]*(self.onsagercalculator.eta02_solvent[IS] - self.onsagercalculator.eta02_solvent[FS])
+        #
+        # #Now, get the version from the updated expansion
+        # bias2_solute_new_total,bias2_solvent_new_total = np.dot(self.onsagercalculator.bias2_solute_new,W2list),np.dot(self.onsagercalculator.bias2_solvent_new,W2list)
+        # solute_bias_2_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.purestates),3))
+        # solvent_bias_2_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.purestates),3))
+        # for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
+        #     indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[self.onsagercalculator.vkinetic.starset.mixedstates[i]]
+        #     #We have indlist as (IndOfStar, IndOfState)
+        #     for tup in indlist:
+        #         solute_bias_2_new[i,:] = sum([bias2_solute_new_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+        #         solvent_bias_2_new[i,:] = sum([bias2_solvent_new_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+        #
+        # self.assertTrue(np.allclose(solute_bias_2,solute_bias_2_new))
+        # self.assertTrue(np.allclose(solvent_bias_2,solvent_bias_2_new))
+        # # self.assertTrue(np.allclose(solute_bias_2,np.zeros_like(solute_bias_1)))
