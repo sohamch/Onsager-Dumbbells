@@ -212,7 +212,7 @@ class StarSet(object):
         self.bareStates = [dumbbell(tup[0],tup[1],np.zeros(3)) for tup in self.pdbcontainer.iorlist]
 
 
-        #Next, we build up the jtags for omega2, using the indlist
+        #Next, we build up the jtags for omega2 (see Onsager_calc_db module).
         j2initlist =[]
         for jt,jlist in enumerate(self.jumpnetwork_omega2_indexed):
             initindices = defaultdict(list)
