@@ -17,7 +17,7 @@ class dumbbell(namedtuple('dumbbell','i o R')):
     def __eq__(self,other):
         # zero=np.zeros(len(self.o))
         true_class = isinstance(other,self.__class__)
-        c1 = true_class and (self.i==other.i and np.allclose(self.o,other.o,atol=1e-6) and np.allclose(self.R,other.R,atol=1e-8))
+        c1 = true_class and (self.i==other.i and np.allclose(self.o,other.o,atol=1e-8) and np.allclose(self.R,other.R,atol=1e-8))
         return c1
     def __ne__(self,other):
         return not self.__eq__(other)
