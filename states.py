@@ -205,11 +205,12 @@ class dbStates(object):
                 # jnew = j.gop(crys,chem,g)
                 db1new,mul1 = self.gdumb(g,j.state1)
                 db2new,mul2 = self.gdumb(g,j.state2)
-                db2new = db2new-db1new.R
-                db1new = db1new-db1new.R
+                trans = db1new.R.copy()
+                db2new = db2new-trans
+                db1new = db1new-trans
                 jnew = jump(db1new,db2new,j.c1*mul1,j.c2*mul2)#Check this part
                 db1newneg = dumbbell(jnew.state2.i,jnew.state2.o,jnew.state1.R)
-                db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,-jnew.state2.R+0)
+                db2newneg = dumbbell(jnew.state1.i,jnew.state1.o,-jnew.state2.R)
                 jnewneg = jump(db1newneg,db2newneg,jnew.c2,jnew.c1)
                 if not np.allclose(db1newneg.R,np.zeros(3),atol=1e-8):
                     raise RuntimeError("Intial state not at origin")
