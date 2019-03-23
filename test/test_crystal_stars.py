@@ -171,7 +171,7 @@ class test_StarSet(unittest.TestCase):
                 db2new = pdbcontainer.gdumb(g,jmp.state2.db)
                 #shift the states back to the origin unit cell
                 state1new = SdPair(jnew1.state1.i_s,jnew1.state1.R_s,db1new[0])-jnew1.state1.R_s
-                state2new = SdPair(jnew1.state2.i_s,jnew1.state2.R_s,db2new[0])-jnew1.state2.R_s
+                state2new = SdPair(jnew1.state2.i_s,jnew1.state2.R_s,db2new[0])-jnew1.state1.R_s
                 jnew = jump(state1new,state2new,jnew1.c1*db1new[1],jnew1.c2*db2new[1])
                 if not inlist(jnew,jlist):
                     jlist.append(jnew)
@@ -279,14 +279,14 @@ class test_StarSet(unittest.TestCase):
                             if jtag[row][column] == -1:
                                 self.assertTrue(any(i==IS and j==column for (i,j),dx in jlist))
             #Next, omega2 to mixedstates
-            jnet2,jnet2stateindex = crys_stars.jumpnetwork_omega2,crys_stars.jnet2_indexed
+            jnet2,jnet2stateindex = crys_stars.jumpnetwork_omega2,crys_stars.jumpnetwork_omega2_indexed
             for i in range(len(jnet2)):
                 self.assertEqual(len(jnet2[i]),len(jnet2stateindex[i]))
                 for jpair,jind in zip(jnet2[i],jnet2stateindex[i]):
                     IS = crys_stars.mixedstates[jind[0][0]]
                     FS = crys_stars.mixedstates[jind[0][1]]
-                    self.assertEqual(IS,jpair.state1-jpair.state1.R_s,msg="{} not equal to {}".format(IS,jpair.state1))
-                    self.assertEqual(FS,jpair.state2-jpair.state2.R_s,msg="{} not equal to {}".format(FS,jpair.state2))
+                    self.assertEqual(IS,jpair.state1-jpair.state1.R_s,msg="\n{} not equal to {}".format(IS,jpair.state1))
+                    self.assertEqual(FS,jpair.state2-jpair.state2.R_s,msg="\n{} not equal to {}".format(FS,jpair.state2))
 
             for jlist,initdict in zip(jnet2stateindex,crys_stars.jtags2):
                 for IS,jtag in initdict.items():

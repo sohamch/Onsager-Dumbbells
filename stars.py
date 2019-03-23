@@ -202,6 +202,11 @@ class StarSet(object):
         self.mixedstartindex = len(self.stars)
         #Now add in the mixed states
         self.mixedstates=[]
+        for tup in self.mdbcontainer.iorlist:
+            db=dumbbell(tup[0],tup[1],z)
+            mdb = SdPair(tup[0],z,db)
+            self.mixedstates.append(mdb)
+
         for l in self.mdbcontainer.symorlist:
             #The sites and orientations are already grouped - convert them into SdPairs
             newlist=[]
@@ -209,7 +214,6 @@ class StarSet(object):
                 db=dumbbell(tup[0],tup[1],z)
                 mdb = SdPair(tup[0],z,db)
                 newlist.append(mdb)
-                self.mixedstates.append(mdb)
             self.stars.append(newlist)
         self.purestates = sorted(list(self.stateset),key=self._sortkey)
         # self.mixedstates = list(self.mixedstateset)#No use sorting - every state is origin state, the mixed state space is periodic.
