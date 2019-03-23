@@ -286,7 +286,6 @@ class test_dumbbell_mediated(unittest.TestCase):
         W4list = np.random.rand(len(self.onsagercalculator.symjumplist_omega4))
 
         #First, we verify that the non-local bias out of all the bare dumbbell states dissappear
-
         bias0_solvent_nonloc = np.dot(self.onsagercalculator.biasBareExpansion,W0list)
         # solute_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
         solvent_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
@@ -335,9 +334,55 @@ class test_dumbbell_mediated(unittest.TestCase):
             solute_bias_1_new[i,:] = sum([bias1_solute_new_total[tup[0]]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
             solvent_bias_1_new[i,:] = sum([bias1_solvent_new_total[tup[0]]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
+        #Check that they are the same
         self.assertTrue(np.allclose(solute_bias_1,solute_bias_1_new))
         self.assertTrue(np.allclose(solute_bias_1,np.zeros_like(solute_bias_1)))
         self.assertTrue(np.allclose(solvent_bias_1,solvent_bias_1_new))
+
+        #For the kinetic shell, we check that for those states, out of which every (omega0-allowed) jump leads
+        #to another state in the kinetic shell, the non-local bias becomes zero, using omega1 jumps.
+        #For those states, out of which not every omega0-allowed jump is also there in omega1, since it leads to
+        #a state outside the shell, the corresponding non-local bias using just the jumps in omega1 should be non-zero.
+        elim_list=np.zeros(len(self.onsagercalculator.vkinetic.starset.purestates))
+        #This array stores how many omega0 jumps are not considered in omega1, for each state
+        for stindex,st in enumerate(self.onsagercalculator.vkinetic.starset.purestates):
+            for jlist in self.onsagercalculator.jnet0:
+                for jmp in jlist:
+                    try:
+                        stnew = st.addjump(jmp)
+                    except:
+                        continue
+                    if not stnew in self.onsagercalculator.vkinetic.starset.stateset:
+                        elim_list[stindex] += 1
+        #Get the non-local rates corresponding to a omega1 jump
+        W01list = [rate0list[i][0] for i in self.onsagercalculator.om1types]
+        #Get the omega1 contribution to the non-local bias vectors
+        bias1_solvent_new_total = np.dot(self.onsagercalculator.bias1_solvent_new,W01list)
+        solvent_bias_1_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.purestates),3))
+        for i in range(len(self.onsagercalculator.vkinetic.starset.purestates)):
+            indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[self.onsagercalculator.vkinetic.starset.purestates[i]]
+            #We have indlist as (IndOfStar, IndOfState)
+            solvent_bias_1_new[i,:] = sum([bias1_solvent_new_total[tup[0]]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+
+        #Calculate the updated bias explicitly
+        bias10solvent = np.zeros((len(self.onsagercalculator.vkinetic.starset.purestates),3))
+        for jt,jlist,jindlist in zip(itertools.count(),self.onsagercalculator.jnet_1,self.onsagercalculator.jnet1_indexed):
+            for ((IS,FS),dx), jmp in zip(jindlist,jlist):
+                bias10solvent[IS,:] += W01list[jt]*dx
+
+        #Now, update with eta vectors
+        for jt,jlist,jindlist in zip(itertools.count(),self.onsagercalculator.jnet_1,self.onsagercalculator.jnet1_indexed):
+            for ((IS,FS),dx), jmp in zip(jindlist,jlist):
+                bias10solvent[IS,:] += W01list[jt]*(self.onsagercalculator.eta00_solvent[IS]-self.onsagercalculator.eta00_solvent[FS])
+        #Check that we have the same vectors using the W01list as well
+        self.assertTrue(np.allclose(bias10solvent,solvent_bias_1_new))
+
+        #Now, check that the proper states leave zero non-local bias vectors.
+        for i in range(len(self.onsagercalculator.vkinetic.starset.purestates)):
+            if elim_list[i]==0: #if no omega0 jumps have been eliminated
+                self.assertTrue(np.allclose(bias10solvent[i],0))
+            if elim_list[i]!=0:
+                self.assertFalse(np.allclose(bias10solvent[i],0))
 
         #Now, do it for omega2
         bias2solute,bias2solvent = self.biases[2]
@@ -375,6 +420,10 @@ class test_dumbbell_mediated(unittest.TestCase):
         #The following tests must hold - the non-local biases in omega2_space must become zero after eta updates
         self.assertTrue(np.allclose(solute_bias_2_new,np.zeros_like(solute_bias_2)),msg="\n{}\n".format(solute_bias_2))
         self.assertTrue(np.allclose(solvent_bias_2_new,np.zeros_like(solvent_bias_2)))
+
+
+
+
 
         #Now, do it for omega3
         bias3solute,bias3solvent = self.biases[3]
