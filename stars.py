@@ -152,43 +152,47 @@ class StarSet(object):
         stateset=set([])
         #build the starting shell
         for j in self.jumplist:
+            for tup in self.pdbcontainer.iorlist:
             #Build the first shell from the jumpnetwork- The initial dumbbell is in the origin, so assign it as the solute location.
-            pair = SdPair(j.state1.i,j.state1.R,j.state2)
-            startshell.add(pair)
-            stateset.add(pair)
-        lastshell=startshell
-        nextshell=set([])
+                    pair = SdPair(j.state1.i,np.zeros(3,dtype=int),dumbbell(j.state2.i,tup[1],j.state2.R))
+            # startshell.add(pair)
+                    stateset.add(pair)
+        lastshell=stateset.copy()
+        # nextshell=set([])
         #Now build the next shells:
-        for step in range(Nshells):
+        for step in range(Nshells-1):
+            nextshell=set([])
             for j in self.jumplist:
                 for pair in lastshell:
                     if not np.allclose(pair.R_s,0,atol=self.crys.threshold):
-                        raise RuntimeError("The solute is not at the origin")
+                        raise ValueError("The solute is not at the origin")
                     try:
                         pairnew = pair.addjump(j)
-                        if not (pair.i_s==pairnew.i_s and np.allclose(pairnew.R_s,pairs.R_s,atol=self.crys.threshold)):
-                            raise ArithmeticError("Solute shifted from a complex!(?)")
                     except:
                         continue
+                    if not (pair.i_s==pairnew.i_s and np.allclose(pairnew.R_s,pair.R_s,atol=self.crys.threshold)):
+                        raise ArithmeticError("Solute shifted from a complex!(?)")
                     nextshell.add(pairnew)
                     stateset.add(pairnew)
-            lastshell = nextshell
-            nextshell=set([])
+            lastshell = nextshell.copy()
+
         self.stateset = stateset
         #group the states by symmetry - form the stars
-        self.stars=[]
-        hashset=set([])
+        stars=[]
+        allset=set([])
         for state in self.stateset:
-            if not state in hashset:
+            if not(state in allset):
                 newstar=[]
                 for g in self.crys.G:
                     newstate = state.gop(self.crys,self.chem,g)
                     newdb = self.pdbcontainer.gdumb(g,state.db)[0] - newstate.R_s
                     newstate = SdPair(newstate.i_s,np.zeros(3,dtype=int),newdb)
-                    if not newstate in hashset and newstate in self.stateset:
-                        newstar.append(newstate)
-                        hashset.add(newstate)
-                self.stars.append(newstar)
+                    if newstate in self.stateset:
+                        if not newstate in allset:
+                            newstar.append(newstate)
+                            allset.add(newstate)
+                stars.append(newstar)
+        self.stars = stars
 
         for sl in self.stars:
             for s in sl:
@@ -197,7 +201,7 @@ class StarSet(object):
 
         self.mixedstartindex = len(self.stars)
         #Now add in the mixed states
-        self.mixedstateset=set([])
+        self.mixedstates=[]
         for l in self.mdbcontainer.symorlist:
             #The sites and orientations are already grouped - convert them into SdPairs
             newlist=[]
@@ -205,10 +209,10 @@ class StarSet(object):
                 db=dumbbell(tup[0],tup[1],z)
                 mdb = SdPair(tup[0],z,db)
                 newlist.append(mdb)
-                self.mixedstateset.add(mdb)
+                self.mixedstates.append(mdb)
             self.stars.append(newlist)
         self.purestates = sorted(list(self.stateset),key=self._sortkey)
-        self.mixedstates = list(self.mixedstateset)#No use sorting - every state is origin state, the mixed state space is periodic.
+        # self.mixedstates = list(self.mixedstateset)#No use sorting - every state is origin state, the mixed state space is periodic.
         self.bareStates = [dumbbell(tup[0],tup[1],np.zeros(3)) for tup in self.pdbcontainer.iorlist]
 
 
@@ -329,6 +333,8 @@ class StarSet(object):
                             #The solute must be at the origin unit cell - shift it
                             state1new = SdPair(jnew.state1.i_s,jnew.state1.R_s,db1new[0])-jnew.state1.R_s
                             state2new = SdPair(jnew.state2.i_s,jnew.state2.R_s,db2new[0])-jnew.state2.R_s
+                            if (not state1new in self.stateset) or (not state2new in self.stateset):
+                                raise ValueError("symmetrically obtained complex state not found in stateset(?)")
                             jnew = jump(state1new,state2new,jnew.c1*db1new[1],jnew.c2*db2new[1])
                             if not jnew in jumpset:
                                 if not (np.allclose(jnew.state1.R_s,0.,atol=self.crys.threshold) and np.allclose(jnew.state2.R_s,0.,atol=self.crys.threshold)):
@@ -348,8 +354,12 @@ class StarSet(object):
                                     newnewlist.add(j)
                             newlist=list(newnewlist)
                         for jmp in newlist:
+                            if not(jmp.state1 in self.stateset):
+                                raise ValueError("state not found in stateset?\n{}".format(jmp.state1))
+                            if not(jmp.state2 in self.stateset):
+                                raise ValueError("state not found in stateset?\n{}".format(jmp.state2))
                             initial = self.pureindexdict[jmp.state1][0]
-                            final = self.pureindexdict[jmp.state2][0]
+                            final = self.pureindexdict[jmp.state2][0] #key Error
                             indices.append(((initial,final),disp(self.crys, self.chem, jmp.state1, jmp.state2)))
                             initdict[initial].append(final)
                         jumpnetwork.append(newlist)

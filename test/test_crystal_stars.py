@@ -19,13 +19,41 @@ class test_StarSet(unittest.TestCase):
 
     def test_generate(self):
         #test if the starset is generated correctly
+        tot_st = 0
+        for l in (self.crys_stars.stars[:self.crys_stars.mixedstartindex]):
+            tot_st += len(l)
+        self.assertEqual(tot_st,len(self.crys_stars.stateset))
+
         o = np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126
         db = dumbbell(0,o,np.array([1,0,0]))
-        for l in self.crys_stars.stars:
+        pair_test = SdPair(0,np.zeros(3,dtype=int),db)
+        idxlist=[]
+        for idx,l in enumerate(self.crys_stars.stars):
             for state in l:
-                if state.db==db or state.db==-db:
-                    test_list = l.copy()
-        self.assertEqual(len(test_list),6)
+                if state==pair_test or state==-pair_test:
+                    idxlist.append(idx)
+        self.assertEqual(len(idxlist),1)
+        self.assertEqual(len(self.crys_stars.stars[idxlist[0]]),6)
+        #
+        #if a state is present in the stateset, then all it's symmetric states should also be present in the stateset
+        latt = np.array([[0.,0.5,0.5],[0.5,0.,0.5],[0.5,0.5,0.]])*0.55
+        DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
+        famp0 = [np.array([1.,0.,0.])*0.145]
+        family = [famp0]
+        pdbcontainer = dbStates(DC_Si,0,family)
+        mdbcontainer = mStates(DC_Si,0,family)
+        jset0 = pdbcontainer.jumpnetwork(0.3,0.01,0.01)
+        jset2 = mdbcontainer.jumpnetwork(0.3,0.01,0.01)
+        crys_stars = StarSet(pdbcontainer,mdbcontainer,jset0,jset2,1)
+        for st in crys_stars.stateset:
+            for g in DC_Si.G:
+                db1new = crys_stars.pdbcontainer.gdumb(g,st.db)
+                R_s_new, (ch,i_s_new) = crys_stars.crys.g_pos(g,st.R_s,(0,st.i_s))
+                # db2new = self.pdbcontainer.gdumb(g,jpair.state2.db)
+                #The solute must be at the origin unit cell - shift it
+                stnew = SdPair(i_s_new,R_s_new,db1new[0]) - R_s_new
+                self.assertTrue(stnew in crys_stars.stateset)
+                # state2new = SdPair(jnew.state2.i_s,jnew.state2.R_s,db2new[0])-jnew.state2.R_s
 
     def test_indexing_stars(self):
         famp0 = [np.array([1.,0.,0.])*0.145]
@@ -107,14 +135,14 @@ class test_StarSet(unittest.TestCase):
         fcc_Ni = crystal.Crystal.FCC(0.352,chemistry=["Ni"])
         latt = np.array([[0.,0.5,0.5],[0.5,0.,0.5],[0.5,0.5,0.]])*0.55
         DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
-        crys_list=[hcp_Mg]
+        crys_list=[DC_Si]
         famp0 = [np.array([1.,0.,0.])*0.145]
         family = [famp0]
         for struct,crys in enumerate(crys_list):
             pdbcontainer = dbStates(crys,0,family)
             mdbcontainer = mStates(crys,0,family)
-            jset0 = pdbcontainer.jumpnetwork(0.45,0.01,0.01)
-            jset2 = mdbcontainer.jumpnetwork(0.45,0.01,0.01)
+            jset0 = pdbcontainer.jumpnetwork(0.3,0.01,0.01)
+            jset2 = mdbcontainer.jumpnetwork(0.3,0.01,0.01)
             #4.5 angst should cover atleast the nn distance in all the crystals
             #create starset
             crys_stars = StarSet(pdbcontainer,mdbcontainer,jset0,jset2,1)
