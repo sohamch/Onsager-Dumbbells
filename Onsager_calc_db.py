@@ -347,11 +347,11 @@ class dumbbellMediated(VacancyMediated):
         #otherwise, we need to build the bare bias expansion
         else:
             #First we build up for just the bare starset
-            biasBareExpansion = self.biases[-1]
+            self.biasBareExpansion = self.biases[-1]
             self.NlsolventBias_bare = np.zeros((len(self.vkinetic.starset.bareStates),3))
-            bias0SolventTotNonLoc = np.dot(biasBareExpansion,np.array([rate0list[i][0] for i in range(len(self.jnet0))]))
+            bias0SolventTotNonLoc = np.dot(self.biasBareExpansion,np.array([rate0list[i][0] for i in range(len(self.jnet0))]))
             for st in self.vkinetic.starset.bareStates:
-                indlist = self.vkinetic.bareStTobareStar[st]
+                indlist = self.vkinetic.stateToVecStar_bare[st]
                 if len(indlist)!=0:
                     self.NlsolventBias_bare[self.vkinetic.starset.bareindexdict[st][0]][:]=\
                     sum([bias0SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
