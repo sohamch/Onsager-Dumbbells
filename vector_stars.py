@@ -294,7 +294,7 @@ class vectorStars(VectorStarSet):
                         if ind1==None or ind2==None:
                             raise KeyError("enpoint subtraction within starset not found in iorlist")
                         # k = getstar(((ind1,ind2),dx),self.GFstarset_pure)
-                        k = self.GFPureStarInd((ind1,ind2,dR[0],dR[1],dR[2]))
+                        k = self.GFPureStarInd[(ind1,ind2,dR[0],dR[1],dR[2])]
                         if k is None:
                             raise ArithmeticError("complex GF starset not big enough to accomodate state pair {}".format(tup))
                         GFexpansion_pure[i, j, k] += np.dot(vi, vj)
@@ -315,7 +315,7 @@ class vectorStars(VectorStarSet):
                         if ind1==None or ind2==None:
                             raise KeyError("enpoint subtraction within starset not found in iorlist")
                         # k = getstar(((ind1,ind2),dx),self.GFstarset_mixed)
-                        k = self.GFMixedStarInd((ind1,ind2,dR[0],dR[1],dR[2]))
+                        k = self.GFMixedStarInd[(ind1,ind2,dR[0],dR[1],dR[2])]
                         if k is None:
                             raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}".format(tup))
                         GFexpansion_pure[i, j, k] += np.dot(vi, vj)
