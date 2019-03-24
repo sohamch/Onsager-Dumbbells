@@ -428,3 +428,38 @@ class test_vecstars(unittest.TestCase):
                 count_dict[i]+=1
             for key,arr in self.om3tags[jt].items():
                 self.assertEqual(len(arr),count_dict[key])
+
+    def test_GFstars(self):
+        #Check that every possible pair has been considered in the gfstarsets
+        GFstarset_pure,GFstarset_mixed = self.vec_stars.genGFstarset()
+
+        #First for the complex states
+        for st1 in self.vec_stars.starset.purestates:
+            for st2 in self.vec_stars.starset.purestates:
+                try:
+                    s = st1^st2
+                except:
+                    continue
+                dx = disp(self.vec_stars.starset.crys,self.vec_stars.starset.chem,s.state1,s.state2)
+                ind1 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state1-s.state1.R)
+                ind2 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state2-s.state2.R)
+                found =\
+                any(ind1==tup[0][0] and ind2==tup[0][1] and np.allclose(tup[1],dx,atol=self.vec_stars.starset.crys.threshold)for tlist in GFstarset_pure for tup in tlist)
+
+                self.assertTrue(found,msg = "\n{}\n{}".format(s.state1,s.state2))
+
+        for st1 in self.vec_stars.starset.mixedstates:
+            for st2 in self.vec_stars.starset.mixedstates:
+                try:
+                    s = st1^st2
+                except:
+                    continue
+                dx = disp(self.vec_stars.starset.crys,self.vec_stars.starset.chem,s.state1,s.state2)
+                ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state1-s.state1.R)
+                ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state2-s.state2.R)
+                found =\
+                any(ind1==tup[0][0] and ind2==tup[0][1] and np.allclose(tup[1],dx,atol=self.vec_stars.starset.crys.threshold)for tlist in GFstarset_mixed for tup in tlist)
+
+                self.assertTrue(found,msg = "\n{}\n{}".format(s.state1,s.state2))
+        self.assertFalse(len(GFstarset_pure)==0)
+        self.assertFalse(len(GFstarset_mixed)==0)

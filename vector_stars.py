@@ -1,6 +1,6 @@
 import numpy as np
 import onsager.crystal as crystal
-from onsager.crystalStars import zeroclean,VectorStarSet
+from onsager.crystalStars import zeroclean,VectorStarSet, PairState
 from states import *
 from representations import *
 from stars import *
@@ -184,79 +184,88 @@ class vectorStars(VectorStarSet):
         """
         def inTotalList(conn,totlist,mixed=False):
             if not mixed:
-                ind1 = self.starset.pdbcontainer.iorindex.get(conn.state1)
-                ind2 = self.starset.pdbcontainer.iorindex.get(conn.state2)
+                ind1 = self.starset.pdbcontainer.iorindex.get(conn.state1-conn.state1.R)
+                ind2 = self.starset.pdbcontainer.iorindex.get(conn.state2-conn.state2.R)
             else:
-                ind1 = self.starset.mdbcontainer.iorindex.get(conn.state1)
-                ind2 = self.starset.mdbcontainer.iorindex.get(conn.state2)
+                ind1 = self.starset.mdbcontainer.iorindex.get(conn.state1-conn.state1.R)
+                ind2 = self.starset.mdbcontainer.iorindex.get(conn.state2-conn.state2.R)
 
             dx = disp(self.starset.crys,self.starset.chem,conn.state1,conn.state2)
-            return any(ind1==t[0][0] and ind2==t[0][1] and np.allclose(t[2],dx,threshold=self.kinetic.crys.threshold) for tlist in totlist for t in tlist)
+            return any(ind1==t[0][0] and ind2==t[0][1] and np.allclose(t[1],dx,atol=self.starset.crys.threshold) for tlist in totlist for t in tlist)
 
         purestates = self.starset.purestates
         mixedstates = self.starset.mixedstates
         #Connect the states
         GFstarset_pure = []
-        GFstarset_pure_starind = {}
         for st1 in purestates:
             for st2 in purestates:
+
                 try:
-                    s = s1^s2 #check XOR, if it is the same as the original code - yes, it is, but our sense of the operation is opposite
+                    s = st1^st2
                 except:
                     continue
-                if inTotalList(s,GFstarset):#?
+
+                if inTotalList(s,GFstarset_pure):
                     continue
+
                 connectlist=[]
                 for g in self.starset.crys.G:
                     db1new = self.starset.pdbcontainer.gdumb(g,s.state1)[0]
                     db2new = self.starset.pdbcontainer.gdumb(g,s.state2)[0]
-                    dx=disp(self.starset.crys,self.kinetic.chem,db1new,db2new)
+                    dx=disp(self.starset.crys,self.starset.chem,db1new,db2new)
                     db1new = db1new - db1new.R
                     db2new = db2new - db2new.R
+                    # snew=connector(db1new,db2new)
                     ind1 = self.starset.pdbcontainer.iorindex.get(db1new)
                     ind2 = self.starset.pdbcontainer.iorindex.get(db2new)
                     if ind1==None or ind2==None:
                         raise KeyError("dumbbell not found in iorlist")
                     tup = ((ind1,ind2),dx.copy())
-                    if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],threshold=self.starset.crys.threshold) for t in connectlist):
+                    if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],atol=self.starset.crys.threshold) for t in connectlist):
                         connectlist.append(tup)
-                for tup in connectlist:
-                    GFstarset_pure_starind[tup] = len(GFstarset_pure)
                 GFstarset_pure.append(connectlist)
 
         GFstarset_mixed = []
-        GFstarset_mixed_starind = {}
         for st1 in mixedstates:
-            for st2 in purestates:
+            for st2 in mixedstates:
+
                 try:
-                    s = s1^s2 #check XOR, if it is the same as the original code - yes, it is, but our sense of the operation is opposite
+                    s = st1^st2 #check XOR, if it is the same as the original code - yes, it is, but our sense of the operation is opposite
                 except:
                     continue
-                if inTotalList(s,GFstarset,mixed=True):
+
+                if inTotalList(s,GFstarset_mixed,mixed=True):
                     continue
+
                 connectlist=[]
                 for g in self.starset.crys.G:
                     snew = s.gop(self.starset.crys,self.starset.chem,g)
                     dx=disp(self.starset.crys,self.starset.chem,snew.state1,snew.state2)
-                    snew = connector(snew.state1-snew.state1.R,snew.state2-snew.state2.R)
-                    ind1 = self.starset.mdbcontainer.iorindex.get(snew.state1)
-                    ind2 = self.starset.mdbcontainer.iorindex.get(snew.state2)
+                    #Bring the dumbbells to the origin
+                    # snew = connector(snew.state1-snew.state1.R,snew.state2-snew.state2.R)
+                    ind1 = self.starset.mdbcontainer.iorindex.get(snew.state1-snew.state1.R)
+                    ind2 = self.starset.mdbcontainer.iorindex.get(snew.state2-snew.state2.R)
                     if ind1==None or ind2==None:
                         raise KeyError("dumbbell not found in iorlist")
                     tup = ((ind1,ind2),dx.copy())
-                    if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],threshold=self.starset.crys.threshold) for t in connectlist):
+                    if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],atol=self.starset.crys.threshold) for t in connectlist):
                         connectlist.append(tup)
-                for tup in connectlist:
-                    GFstarset_mixed_starind[tup] = len(GFstarset_mixed)
                 GFstarset_mixed.append(connectlist)
 
-        return GFstarset_pure,GFstarset_pure_starind,GFstarset_mixed,GFstarset_mixed_starind
+        return GFstarset_pure,GFstarset_mixed
 
     def GFexpansion(self):
         """
-        carries out the expansion of the Green's function in the vector basis of the states.
+        carries out the expansion of the Green's function in the basis of the vector stars.
         """
-        self.GFstarset_pure,self.GFPureStarInd,self.GFstarset_mixed,self.GFMixedStarInd = self.genGFstarset()
+        def getstar(tup,star):
+            for starind,list in star:
+                for t in list:
+                    if (t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(t[1],tup[1],atol = self.starset.crys.threshold)):
+                        return starind
+            return None
+
+        self.GFstarset_pure,self.GFstarset_mixed = self.genGFstarset()
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
         GFexpansion_pure = np.zeros((Nvstars_pure,Nvstars_pure,len(self.GFstarset_pure)))
@@ -276,9 +285,9 @@ class vectorStars(VectorStarSet):
                             ind2 = self.starset.pdbcontainer.iorindex.get(ds.state2)
                             if ind1==None or ind2==None:
                                 raise KeyError("enpoint subtraction within starset not found in iorlist")
-                            k = GFPureStarInd.get(((ind1,ind2),dx))
+                            k = getstar(((ind1,ind2),dx),self.GFstarset_pure)
                             if k is None:
-                                raise ArithmeticError("GF starset not big enough to accomodate state state pair {}".format(tup))
+                                raise ArithmeticError("complex GF starset not big enough to accomodate state pair {}".format(tup))
                             GFexpansion_pure[i, j, k] += np.dot(vi, vj)
 
         #Build up the mixed GF expansion
@@ -295,9 +304,9 @@ class vectorStars(VectorStarSet):
                             ind2 = self.starset.mdbcontainer.iorindex.get(ds.state2)
                             if ind1==None or ind2==None:
                                 raise KeyError("enpoint subtraction within starset not found in iorlist")
-                            k = GFMixedStarInd.get(((ind1,ind2),dx))
+                            k = getstar(((ind1,ind2),dx),self.GFstarset_mixed)
                             if k is None:
-                                raise ArithmeticError("GF starset not big enough to accomodate state state pair {}".format(tup))
+                                raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}".format(tup))
                             GFexpansion_pure[i, j, k] += np.dot(vi, vj)
 
         #symmetrize
@@ -309,7 +318,7 @@ class vectorStars(VectorStarSet):
             for j in range(0,i):
                 GFexpansion_mixed[i,j,:] = GFexpansion_mixed[j,i,:]
         print(GFexpansion_pure.shape,GFexpansion_mixed.shape)
-        return (zeroclean(GFexpansion_pure),self.GFstarset_pure,self.GFPureStarInd), (zeroclean(GFexpansion_mixed),self.GFstarset_mixed,self.GFMixedStarInd)
+        return zeroclean(GFexpansion_pure), zeroclean(GFexpansion_mixed)
 
     #See group meeting update slides of sept 10th to see how this works.
     def biasexpansion(self,jumpnetwork_omega1,jumpnetwork_omega2,jumptype,jumpnetwork_omega34):
