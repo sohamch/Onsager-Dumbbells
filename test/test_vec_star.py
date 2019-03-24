@@ -431,7 +431,7 @@ class test_vecstars(unittest.TestCase):
 
     def test_GFstars(self):
         #Check that every possible pair has been considered in the gfstarsets
-        GFstarset_pure,GFstarset_mixed = self.vec_stars.genGFstarset()
+        GFstarset_pure,GFPureStarInd,GFstarset_mixed,GFMixedStarInd = self.vec_stars.genGFstarset()
 
         #First for the complex states
         for st1 in self.vec_stars.starset.purestates:

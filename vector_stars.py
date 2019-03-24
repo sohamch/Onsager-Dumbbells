@@ -197,6 +197,7 @@ class vectorStars(VectorStarSet):
         mixedstates = self.starset.mixedstates
         #Connect the states
         GFstarset_pure = []
+        GFPureStarInd = {}
         for st1 in purestates:
             for st2 in purestates:
 
@@ -213,6 +214,7 @@ class vectorStars(VectorStarSet):
                     db1new = self.starset.pdbcontainer.gdumb(g,s.state1)[0]
                     db2new = self.starset.pdbcontainer.gdumb(g,s.state2)[0]
                     dx=disp(self.starset.crys,self.starset.chem,db1new,db2new)
+                    dR = db2new.R - db1new.R
                     db1new = db1new - db1new.R
                     db2new = db2new - db2new.R
                     # snew=connector(db1new,db2new)
@@ -223,9 +225,11 @@ class vectorStars(VectorStarSet):
                     tup = ((ind1,ind2),dx.copy())
                     if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],atol=self.starset.crys.threshold) for t in connectlist):
                         connectlist.append(tup)
+                        GFPureStarInd[(ind1,ind2,dR[0],dR[1],dR[2])] = len(GFstarset_pure)
                 GFstarset_pure.append(connectlist)
 
         GFstarset_mixed = []
+        GFMixedStarInd = {}
         for st1 in mixedstates:
             for st2 in mixedstates:
 
@@ -240,6 +244,7 @@ class vectorStars(VectorStarSet):
                 connectlist=[]
                 for g in self.starset.crys.G:
                     snew = s.gop(self.starset.crys,self.starset.chem,g)
+                    dR = snew.state2.R - snew.state1.R
                     dx=disp(self.starset.crys,self.starset.chem,snew.state1,snew.state2)
                     #Bring the dumbbells to the origin
                     # snew = connector(snew.state1-snew.state1.R,snew.state2-snew.state2.R)
@@ -250,22 +255,23 @@ class vectorStars(VectorStarSet):
                     tup = ((ind1,ind2),dx.copy())
                     if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],atol=self.starset.crys.threshold) for t in connectlist):
                         connectlist.append(tup)
+                        GFPureStarInd[(ind1,ind2,dR[0],dR[1],dR[2])] = len(GFstarset_mixed)
                 GFstarset_mixed.append(connectlist)
 
-        return GFstarset_pure,GFstarset_mixed
+        return GFstarset_pure,GFPureStarInd,GFstarset_mixed,GFMixedStarInd
 
     def GFexpansion(self):
         """
         carries out the expansion of the Green's function in the basis of the vector stars.
         """
-        def getstar(tup,star):
-            for starind,list in star:
-                for t in list:
-                    if (t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(t[1],tup[1],atol = self.starset.crys.threshold)):
-                        return starind
-            return None
+        # def getstar(tup,star):
+        #     for starind,list in enumerate(star):
+        #         for t in list:
+        #             if (t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(t[1],tup[1],atol = self.starset.crys.threshold)):
+        #                 return starind
+        #     return None
 
-        self.GFstarset_pure,self.GFstarset_mixed = self.genGFstarset()
+        self.GFstarset_pure,self.GFPureStarInd,self.GFstarset_mixed,self.GFMixedStarInd = self.genGFstarset()
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
         GFexpansion_pure = np.zeros((Nvstars_pure,Nvstars_pure,len(self.GFstarset_pure)))
@@ -280,15 +286,18 @@ class vectorStars(VectorStarSet):
                             ds = si^sj
                         except:
                             continue
-                            dx=disp(self.starset.crys,self.starset.chem,ds.state1,ds.state2)
-                            ind1 = self.starset.pdbcontainer.iorindex.get(ds.state1)
-                            ind2 = self.starset.pdbcontainer.iorindex.get(ds.state2)
-                            if ind1==None or ind2==None:
-                                raise KeyError("enpoint subtraction within starset not found in iorlist")
-                            k = getstar(((ind1,ind2),dx),self.GFstarset_pure)
-                            if k is None:
-                                raise ArithmeticError("complex GF starset not big enough to accomodate state pair {}".format(tup))
-                            GFexpansion_pure[i, j, k] += np.dot(vi, vj)
+                        # print(ds)
+                        dx=disp(self.starset.crys,self.starset.chem,ds.state1,ds.state2)
+                        dR = ds.state2.R - ds.state1.R
+                        ind1 = self.starset.pdbcontainer.iorindex.get(ds.state1-ds.state1.R)
+                        ind2 = self.starset.pdbcontainer.iorindex.get(ds.state2-ds.state2.R)
+                        if ind1==None or ind2==None:
+                            raise KeyError("enpoint subtraction within starset not found in iorlist")
+                        # k = getstar(((ind1,ind2),dx),self.GFstarset_pure)
+                        k = self.GFPureStarInd((ind1,ind2,dR[0],dR[1],dR[2]))
+                        if k is None:
+                            raise ArithmeticError("complex GF starset not big enough to accomodate state pair {}".format(tup))
+                        GFexpansion_pure[i, j, k] += np.dot(vi, vj)
 
         #Build up the mixed GF expansion
         for i in range(Nvstars_mixed):
@@ -299,15 +308,17 @@ class vectorStars(VectorStarSet):
                             ds = si^sj
                         except:
                             continue
-                            dx=disp(self.starset.crys,self.starset.chem,ds.state1,ds.state2)
-                            ind1 = self.starset.mdbcontainer.iorindex.get(ds.state1)
-                            ind2 = self.starset.mdbcontainer.iorindex.get(ds.state2)
-                            if ind1==None or ind2==None:
-                                raise KeyError("enpoint subtraction within starset not found in iorlist")
-                            k = getstar(((ind1,ind2),dx),self.GFstarset_mixed)
-                            if k is None:
-                                raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}".format(tup))
-                            GFexpansion_pure[i, j, k] += np.dot(vi, vj)
+                        dx=disp(self.starset.crys,self.starset.chem,ds.state1,ds.state2)
+                        dR = ds.state2.R - ds.state1.R
+                        ind1 = self.starset.mdbcontainer.iorindex.get(ds.state1-ds.state1.R)
+                        ind2 = self.starset.mdbcontainer.iorindex.get(ds.state2-ds.state2.R)
+                        if ind1==None or ind2==None:
+                            raise KeyError("enpoint subtraction within starset not found in iorlist")
+                        # k = getstar(((ind1,ind2),dx),self.GFstarset_mixed)
+                        k = self.GFMixedStarInd((ind1,ind2,dR[0],dR[1],dR[2]))
+                        if k is None:
+                            raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}".format(tup))
+                        GFexpansion_pure[i, j, k] += np.dot(vi, vj)
 
         #symmetrize
         for i in range(Nvstars_pure):
@@ -317,7 +328,7 @@ class vectorStars(VectorStarSet):
         for i in range(Nvstars_mixed):
             for j in range(0,i):
                 GFexpansion_mixed[i,j,:] = GFexpansion_mixed[j,i,:]
-        print(GFexpansion_pure.shape,GFexpansion_mixed.shape)
+        # print(GFexpansion_pure.shape,GFexpansion_mixed.shape)
         return zeroclean(GFexpansion_pure), zeroclean(GFexpansion_mixed)
 
     #See group meeting update slides of sept 10th to see how this works.
