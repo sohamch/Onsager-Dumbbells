@@ -144,13 +144,15 @@ class SdPair(namedtuple('SdPair',"i_s R_s db")):
         """
         Creates a connector object, from dumbbell state of self to dumbbell state of other.
         """
-        if self.state1.i_s != self.state.R_s or not(np.allclose(self.state1.R_s,self.state2.R_s)):
+        if not type(self)==type(other):
+            raise ValueError("Can only xor between two SdPair objects")
+
+        if self.i_s != other.i_s or not(np.allclose(self.R_s,other.R_s)):
             raise ArithmeticError("can only connect states with same solute location.")
 
         return connector(self.db,other.db)
 
 # Jump obects are rather simple, contain just initial and final orientations
-# Also adding a jump to a dumbbell is now done here.
 # dumbell/pair obects are not aware of jump dbects.
 class jump(namedtuple('jump','state1 state2 c1 c2')):
     def __init__(self,state1,state2,c1,c2):
@@ -162,19 +164,6 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
             if not (self.state1.i_s==self.state1.db.i and np.allclose(self.state1.R_s,self.state1.db.R)):
                 if not (self.state1.i_s==self.state2.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
                     raise ArithmeticError("Solute atom cannot jump unless part of mixed dumbell")
-            #If a mixed dumbbell, then initial and final states must indicate the position of the same atom.
-            # elif not np.allclose(self.state1.db.R,self.state2.db.R):
-                #Rotations can involve pure as well as mixed dumbbells.
-                #For now, in mixed dumbbell rotations, c1=1->c2=1 will have to be verified in star generation manually.
-                # if not self.c1==self.c2:
-                #     raise ArithmeticError("The same active atom must transition between state1 and state2 (must have same c values) for a mixed dumbbell")
-                # if self.c1==1:
-                #     if not (self.state2.i_s==self.state2.db.i and np.allclose(self.state2.R_s,self.state2.db.R) and self.c2==1):
-                #         print(self)
-                #         raise ArithmeticError("Solute atom jumping from mixed dumbbell must lead to another mixed dumbbell")
-                # if self.c1==-1:
-                #     if not (self.state2.i_s==self.state1.i_s and np.allclose(self.state1.R_s,self.state2.R_s)):
-                #         raise ArithmeticError("Solvent atom jumping from mixed dumbbell means solute must remain fixed.")
 
     def __eq__(self,other):
         return(self.state1==other.state1 and self.state2==other.state2 and self.c1==other.c1 and self.c2==other.c2)
@@ -193,37 +182,7 @@ class jump(namedtuple('jump','state1 state2 c1 c2')):
           if not (self.state1.i==other.i and np.allclose(self.state1.o,other.o)):
               raise ArithmeticError("Operand dumbbell and initial dumbbell of jump must have same configuration.")
           return dumbbell(self.state2.i,self.state2.o,self.state2.R+other.R)
-        # if not (isinstance(self.state1,other.__class__) and isinstance(self.state2,other.__class__)):
-        #     raise TypeError("Incompatible operand and jump states.")
-        # if isinstance(other,dumbbell):
-        #   #check that the initial dumbbell state of the jump and the input dumbbell
-        #   #have the same configuration
-        #     if not (np.allclose(self.state1.o,other.o) and self.state1.i==other.i):
-        #         raise ArithmeticError("Operand dumbbell and initial dumbbell of jump must have same configuration (basis site coordinate and orientation")
-        #     return (dumbbell(self.state2.i,self.state2.o,other.R+self.state2.R))
-        # if isinstance(other,SdPair):
-        #   #Check arithmetic compatibility of dumbbells
-        #     if not (np.allclose(self.state1.db.o,other.db.o) and self.state1.db.i==other.db.i):
-        #         raise ArithmeticError("Operand pair's dumbbell and initial pair's dumbell of jump must have same configuration (basis site coordinate and orientation")
-        #       #check that the pair is translated with the same pair configuration.
-        #     if not (self.state1.i_s == other.i_s and np.allclose(-self.state1.R_s+self.state1.db.R,-other.R_s+other.db.R)):
-        #         raise ArithmeticError("Operand pair and initial pair of jump must have same relative configurations")
-        #       #if not a mixed dumbbell, solute stays fixed
-        #     if not (other.i_s==other.db.i and np.allclose(other.R_s,other.db.R)):
-        #         dbnew = dumbbell(self.state2.db.i,self.state2.db.o,self.state2.db.R+other.R_s-self.state1.R_s)
-        #         return SdPair(other.i_s,other.R_s,dbnew)
-        #      #if a mixed dumbbell, check that the correct final state has been reached
-        #     if self.c1==1:
-        #         dbnew = dumbbell(self.state2.db.i,self.state2.db.o,self.state2.db.R+other.R_s-self.state1.R_s)
-        #         return SdPair(dbnew.i,dbnew.R,dbnew)
-        #     if self.c1==-1:
-        #         dbnew = dumbbell(self.state2.db.i,self.state2.db.o,self.state2.db.R+other.R_s-self.state1.R_s)
-        #         return SdPair(dbnew.i,dbnew.R,dbnew)
-        # if isinstance(other,self.__class__):
-        #     #Add two jumps
-        #     if not(self.state2==other.state1 and self.c2==other.c1):
-        #         raise ArithmeticError("Initial state of second jump must be the same as the final state of the first jump")
-        #         return self.__class__(self.state1,other.state2,self.c1,other.c2)
+
 
     def __radd__(self,other):
         return self.__add__(other)
@@ -259,7 +218,7 @@ class connector(namedtuple('connector','state1 state2')):
     Similar to the jump object, but does not contain information regarding connecting path.
     Checks compatibility of connections as well.
     """
-    def __init__(self):
+    def __init__(self,state1,state2):
         if not (isinstance(self.state1,dumbbell) and isinstance(self.state2,dumbbell)):
             raise TypeError("Incompatible Initial and final states. They must be of the dumbbell type.")
         #Check compatibility
