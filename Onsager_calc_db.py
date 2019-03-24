@@ -517,7 +517,7 @@ class dumbbellMediated(VacancyMediated):
                 self.delbias3expansion_solute[i,jt] += len(self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure])*np.sum(np.dot(initindexdict[st0],eta_proj_solute))
                 self.delbias3expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure])*np.sum(np.dot(initindexdict[st0],eta_proj_solvent))
 
-    def update_bias_expansions(self, pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T):
+    def update_bias_expansions(self, rate0list,rate2list):
         self.calc_eta(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
         self.bias_changes()
         self.bias1_solute_new = self.biases[1][0] + self.delbias1expansion_solute
@@ -532,14 +532,11 @@ class dumbbellMediated(VacancyMediated):
         self.bias2_solute_new = self.biases[2][0] + self.delbias2expansion_solute
         self.bias2_solvent_new =self.biases[2][1] + self.delbias2expansion_solvent
 
-    def uncorrelated(self, pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T):
-        #get the updated bias vectors by calculating the eta vectors
-        self.update_bias_expansions(self, pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
-        symmratelist0 = symmratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
-        symmratelist2 = symmratelist(self.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
-        # rate2list = ratelist(self.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
-        # rate0list = ratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
-        omega1, omega3, omega4 = self.
+    def uncorrelated(self,rate0list,rate2list,omega1,omega3,omega4):
+
+        """
+        get the updated bias vectors by calculating the eta vectors
+        """
         #Solvent-solvent
         #We first have to combine the bias vectors
         #bias1expansion - Nvstars_pure x len(onega1)
@@ -548,12 +545,47 @@ class dumbbellMediated(VacancyMediated):
         #bias4expansion - Nvstars - Nvstars_pure x len(omega4)
         #Next, construct an array that contains N_states_i*(bias_st0_i dot v_st0_i) for the ith vector star, where
         # "i" runs over all vector stars, pure and mixed
-        repr_biases_solute = np.zeros(self.vkinetic.Nvstars)
-        repr_biases_solute = np.zeros(self.vkinetic.Nvstars)
+        bias_solute_vs = np.zeros(self.vkinetic.Nvstars)
+        bias_solvent_vs = np.zeros(self.vkinetic.Nvstars)
+        #The i_th component of these arrays will give us the projection of the total bias vectors (of solutes and solvents) onto the i_th vector star
 
-        repr_
+        #Get the different parts of the representative bias vector array
+        #For the complex states, the local biases arise out of omega1 and omega4 rates only
+        #First for the solutes
+        biases_solute_vs[self.vkinetic.Nvstars-self.vkinetic.Nvstars_pure:] = np.dot(self.bias4_solute_new,omega4) # + np.dot(self.bias1_solute_new,omega1) - for solutes this part is zero anyway
+        biases_solute_vs[:self.vkinetic.Nvstars-self.vkinetic.Nvstars_pure] = np.dot(self.bias3_solute_new,omega3)
+
+        #Then the solvents
+        biases_solvent_vs[self.vkinetic.Nvstars-self.vkinetic.Nvstars_pure:] = np.dot(self.bias1_solvent_new,omega1) + np.dot(self.bias4_solvent_new,omega4)
+        biases_solvent_vs[:self.vkinetic.Nvstars-self.vkinetic.Nvstars_pure] = np.dot(self.bias3_solvent_new,omega3)
+
+        GF  = self.makeGF(rate0list,rate2list,omega1,omega3,omega4) #This is where we will build up the Green's function using rate0list and rate2list and the rateexpansions
+
+        #make the gamma vectors
+        gamma_solute_vs = np.dot(GF,bias_solute_vs)
+        gamma_solvent_vs = np.dot(GF,bias_solvent_vs)
+
+        #get the outer product tensor between the vectors in vector stars.
+        outer = self.vkinetic.outer()
+
+        #Now, make the uncorrelated parts
+        #a=solute, b=solvent
+        L_uc_aa = np.dot(np.dot(outer,gamma_solute_vs),bias_solute_vs)
+        L_uc_bb = np.dot(np.dot(outer,gamma_solvent_vs),bias_solvent_vs)
+        L_uc_ab = np.dot(np.dot(outer,gamma_solvent_vs),bias_solute_vs)
+
+        return L_uc_aa, L_uc_bb, L_uc_ab
 
     def L_ij(self, pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T, bFSdb, bFT0, bFT1, bFT3, bFT4):
         #Comapare with L_ij for vacancies. Is bFV redundant, because betaene0 and betaene2 already give us the site energies and pre0 and pre2, the prefactors?
         #Read the paper and Alnatt Lidiard or something to understand where the pre-factor comes from.
         pass
+        rate0list = ratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
+        rate2list = ratelist(self.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
+
+        self.update_bias_expansions(self,rate0list,rate2list)
+
+        omega1,omega3,omega4 = self.getsymmrates(bFS, bFdb, bbFT0, bFT1, bFT3, bFT4)
+        #Might need to have bFdb_bare and bFdb_mixed as separate - check later when implementing G calc
+        #a = solute, b = solvent
+        self.L_uc_aa, self.L_uc_bb, self.L_uc_ab = self.uncorrelated(rate0list,rate2list,omega1,omega3,omega4)
