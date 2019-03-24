@@ -162,7 +162,7 @@ class vectorStars(VectorStarSet):
                         indlist.append((IndOfStar+self.Nvstars_pure,IndOfState))
             self.stateToVecStar_mixed[st] = indlist
 
-        self.bareStTobareStar = {}
+        self.stateToVecStar_bare = {}
         if len(self.vecpos_bare)>0:
             for st in self.starset.bareStates:
                 indlist=[]
@@ -170,10 +170,11 @@ class vectorStars(VectorStarSet):
                     for IndOfState,state in enumerate(crStar):
                         if state == st:
                             indlist.append((IndOfStar,IndOfState))
-                self.bareStTobareStar[st] = indlist
+                self.stateToVecStar_bare[st] = indlist
 
     # We must produce two expansions. One for pure dumbbell states pointing to pure dumbbell state
     # and the other from mixed dumbbell states to mixed states.
+        self.outers = self.outer()
 
     def genGFstarset(self):
         """
@@ -203,7 +204,7 @@ class vectorStars(VectorStarSet):
                     s = s1^s2 #check XOR, if it is the same as the original code - yes, it is, but our sense of the operation is opposite
                 except:
                     continue
-                if inTotalList(s,GFstarset):
+                if inTotalList(s,GFstarset):#?
                     continue
                 connectlist=[]
                 for g in self.starset.crys.G:
@@ -306,7 +307,7 @@ class vectorStars(VectorStarSet):
 
         for i in range(Nvstars_mixed):
             for j in range(0,i):
-                GFexpansion_mixed[i,j,:] = GFexpansion_pure[j,i,:]
+                GFexpansion_mixed[i,j,:] = GFexpansion_mixed[j,i,:]
         print(GFexpansion_pure.shape,GFexpansion_mixed.shape)
         return (zeroclean(GFexpansion_pure),self.GFstarset_pure,self.GFPureStarInd), (zeroclean(GFexpansion_mixed),self.GFstarset_mixed,self.GFMixedStarInd)
 
@@ -543,3 +544,13 @@ class vectorStars(VectorStarSet):
             D4expansion[:, :, jt] += d0
 
         return zeroclean(D0expansion), zeroclean(D1expansion), zeroclean(D2expansion), zeroclean(D3expansion), zeroclean(D4expansion)
+
+    def outer(self):
+        outerprods = np.zeros((3,3,len(self.Nvstars),len(self.Nvstars)))
+        for i in range(self.Nvstars):
+            for j in range(self.Nvstars):
+                for st_i,v_i in zip(self.vecpos[i],self.vecvec[i]):
+                    for st_j,v_j in zip(self.vecpos[j],self.vecvec[j]):
+                        if st_i == st_j:
+                            outerprods[:,:,i,j] = np.outer(v_i,v_j)
+        return outerprods
