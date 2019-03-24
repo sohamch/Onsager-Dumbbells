@@ -553,4 +553,4 @@ class vectorStars(VectorStarSet):
                     for st_j,v_j in zip(self.vecpos[j],self.vecvec[j]):
                         if st_i == st_j:
                             outerprods[:,:,i,j] = np.outer(v_i,v_j)
-        return outerprods
+        return zeroclean(outerprods)
