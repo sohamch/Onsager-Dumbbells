@@ -113,7 +113,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         rate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
         rate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
         # (eta00_solvent,eta00_solute), (eta02_solvent,eta02_solute) = \
-        self.onsagercalculator.calc_eta(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
+        self.onsagercalculator.calc_eta(rate0list,rate2list)
 
         self.assertEqual(len(self.onsagercalculator.eta00_solvent),len(self.onsagercalculator.vkinetic.starset.purestates))
         self.assertEqual(len(self.onsagercalculator.eta00_solute),len(self.onsagercalculator.vkinetic.starset.purestates))
@@ -176,13 +176,10 @@ class test_dumbbell_mediated(unittest.TestCase):
                     # eta_test_solute = sum([np.dot(self.onsagercalculator.eta02_solute[i,:],v)*v for v in vlist])
                     # print(vlist)
                     self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec_bare[indlist[0][0]]),self.onsagercalculator.eta00_solvent_bare[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta00_solvent_bare[i]))
-                    # self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solute[i]),msg="{} {}".format(eta_test_solute,self.onsagercalculator.eta02_solute[i]))
 
 
         #Repeat the above tests for mixed dumbbells
         #First check if we have the correct bias vectors
-        # bias_calc_list_solute = []
-        # bias_calc_list_solvent = []
         for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
             bias_calc_solute = self.onsagercalculator.NlsoluteBias2[i]
             bias_calc_solvent = self.onsagercalculator.NlsolventBias2[i]
@@ -222,24 +219,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                         bias_test_solvent += rate2list[jt][0]*(self.onsagercalculator.eta02_solvent[FS,:]-self.onsagercalculator.eta02_solvent[IS,:])
             self.assertTrue(np.allclose(bias_test_solute,bias_true_solute))
             self.assertTrue(np.allclose(bias_test_solvent,bias_true_solvent))
-        #
-        # Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
-        # for i in range(len(self.onsagercalculator.eta02_solvent)):
-        #     #get the indices of the state
-        #     st = self.onsagercalculator.vkinetic.starset.mixedstates[i]
-        #     #next get the vectorstar,state indices
-        #     indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[st]
-        #     #The IndOfStar in indlist for the mixed case is already shifted by the number of pure vector stars.
-        #     if len(indlist)!=0:
-        #         vlist=[]
-        #         for tup in indlist:
-        #             vlist.append(self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]])
-        #         eta_test_solvent = sum([np.dot(self.onsagercalculator.eta02_solvent[i,:],v)*v for v in vlist])
-        #         eta_test_solute = sum([np.dot(self.onsagercalculator.eta02_solute[i,:],v)*v for v in vlist])
-        #         # print(vlist)
-        #         self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solvent[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta02_solvent[i]))
-        #         self.assertTrue(np.allclose(eta_test_solute*len(self.onsagercalculator.vkinetic.vecvec[indlist[0][0]]),self.onsagercalculator.eta02_solute[i]),msg="{} {}".format(eta_test_solute,self.onsagercalculator.eta02_solute[i]))
-        #
+        
     def test_bias_updates(self):
         """
         This is to check if the del_bias expansions are working fine, prod.
@@ -273,7 +253,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         rate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
         rate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
 
-        self.onsagercalculator.update_bias_expansions(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
+        self.onsagercalculator.update_bias_expansions(rate0list,rate2list)
 
         #Next, we calculate the bias updates explicitly
         #First, we make lists to test against

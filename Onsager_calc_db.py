@@ -306,12 +306,12 @@ class dumbbellMediated(VacancyMediated):
         #clear the cache of GFcalcs
         self.clearcache()
 
-    def calc_eta(self, pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T):
+    def calc_eta(self,rate0list,rate2list):
         """
         Function to calculate the periodic eta vectors.
         """
-        rate2list = ratelist(self.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
-        rate0list = ratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
+        # rate2list = ratelist(self.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
+        # rate0list = ratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
         # symmrate2list = symmratelist(pre, betaene, preT, betaeneT, self.container.invmap)
         #the non-local bias for the complex space has to be carried out based on the omega0 jumpnetwork, not the omega1 jumpnetwork.
         #this is because all the jumps that are allowed by omega0 out of a given dumbbell state are not there in omega1
@@ -323,23 +323,6 @@ class dumbbellMediated(VacancyMediated):
 
         #get the bias1 and bias2 expansions
         self.biases = self.vkinetic.biasexpansion(self.jnet_1,self.jnet2,self.om1types,self.symjumplist_omega43_all)
-
-        #generate the non-local solute and solvent biases for initial states in pure and mixed stateset of vkinetic.
-        #first,generate the solute bias in complex space.
-        # rate1_nonloc = np.array([rate0list[self.om1types[i]][0] for i in range(len(self.jnet_1))])
-        # #Get the total bias vector with components along basis vectors of states
-        # bias1SoluteTotNonLoc = np.dot(bias1solute,rate1_nonloc)
-        # bias1SolventTotNonLoc = np.dot(bias1solvent,rate1_nonloc)
-        #
-        # #Now go state by state - bring back bias vector to cartesian form.
-        # for st in self.vkinetic.starset.purestates:
-        #     indlist = self.vkinetic.stateToVecStar_pure[st]
-        #     if len(indlist)!=0:
-        #         self.NlsoluteBias1[self.vkinetic.starset.pureindexdict[st][0]][:]=\
-        #         sum([bias1SoluteTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
-        #         self.NlsolventBias1[self.vkinetic.starset.pureindexdict[st][0]][:]=\
-        #         sum([bias1SolventTotNonLoc[tup[0]]*self.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
-
         #First check if non-local biases should be zero anyway (as is the case with highly symmetric lattice - in that case vecpos_bare should be zero)
         if len(self.vkinetic.vecpos_bare)==0:
             self.eta00_solvent = np.zeros((len(self.vkinetic.starset.purestates),3))
@@ -517,8 +500,8 @@ class dumbbellMediated(VacancyMediated):
                 self.delbias3expansion_solute[i,jt] += len(self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure])*np.sum(np.dot(initindexdict[st0],eta_proj_solute))
                 self.delbias3expansion_solvent[i,jt] += len(self.vkinetic.vecpos[i+self.vkinetic.Nvstars_pure])*np.sum(np.dot(initindexdict[st0],eta_proj_solvent))
 
-    def update_bias_expansions(self, rate0list,rate2list):
-        self.calc_eta(pre0, betaene0, pre0T, betaene0T, pre2, betaene2, pre2T, betaene2T)
+    def update_bias_expansions(self,rate0list,rate2list):
+        self.calc_eta(rate0list,rate2list)
         self.bias_changes()
         self.bias1_solute_new = self.biases[1][0] + self.delbias1expansion_solute
         self.bias1_solvent_new = self.biases[1][1] + self.delbias1expansion_solvent
@@ -580,12 +563,12 @@ class dumbbellMediated(VacancyMediated):
         #Comapare with L_ij for vacancies. Is bFV redundant, because betaene0 and betaene2 already give us the site energies and pre0 and pre2, the prefactors?
         #Read the paper and Alnatt Lidiard or something to understand where the pre-factor comes from.
         pass
-        rate0list = ratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
-        rate2list = ratelist(self.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
-
-        self.update_bias_expansions(self,rate0list,rate2list)
-
-        omega1,omega3,omega4 = self.getsymmrates(bFS, bFdb, bbFT0, bFT1, bFT3, bFT4)
-        #Might need to have bFdb_bare and bFdb_mixed as separate - check later when implementing G calc
-        #a = solute, b = solvent
-        self.L_uc_aa, self.L_uc_bb, self.L_uc_ab = self.uncorrelated(rate0list,rate2list,omega1,omega3,omega4)
+        # rate0list = ratelist(self.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.vkinetic.starset.pdbcontainer.invmap)
+        # rate2list = ratelist(self.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.vkinetic.starset.mdbcontainer.invmap)
+        #
+        # self.update_bias_expansions(self,rate0list,rate2list)
+        #
+        # omega1,omega3,omega4 = self.getsymmrates(bFS, bFdb, bbFT0, bFT1, bFT3, bFT4)
+        # #Might need to have bFdb_bare and bFdb_mixed as separate - check later when implementing G calc
+        # #a = solute, b = solvent
+        # self.L_uc_aa, self.L_uc_bb, self.L_uc_ab = self.uncorrelated(rate0list,rate2list,omega1,omega3,omega4)
