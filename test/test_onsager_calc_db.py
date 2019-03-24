@@ -357,6 +357,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         #Get the non-local rates corresponding to a omega1 jump
         W01list = [rate0list[i][0] for i in self.onsagercalculator.om1types]
         #Get the omega1 contribution to the non-local bias vectors
+        #First check that there is no movement in the solutes
+        self.assertTrue(np.allclose(self.onsagercalculator.bias1_solute_new,np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure,len(self.onsagercalculator.jnet_1)))))
         bias1_solvent_new_total = np.dot(self.onsagercalculator.bias1_solvent_new,W01list)
         solvent_bias_1_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.purestates),3))
         for i in range(len(self.onsagercalculator.vkinetic.starset.purestates)):
@@ -420,10 +422,6 @@ class test_dumbbell_mediated(unittest.TestCase):
         #The following tests must hold - the non-local biases in omega2_space must become zero after eta updates
         self.assertTrue(np.allclose(solute_bias_2_new,np.zeros_like(solute_bias_2)),msg="\n{}\n".format(solute_bias_2))
         self.assertTrue(np.allclose(solvent_bias_2_new,np.zeros_like(solvent_bias_2)))
-
-
-
-
 
         #Now, do it for omega3
         bias3solute,bias3solvent = self.biases[3]
