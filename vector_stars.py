@@ -223,7 +223,7 @@ class vectorStars(VectorStarSet):
                     if ind1==None or ind2==None:
                         raise KeyError("dumbbell not found in iorlist")
                     tup = ((ind1,ind2),dx.copy())
-                    if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],atol=self.starset.crys.threshold) for t in connectlist):
+                    if not (ind1,ind2,dR[0],dR[1],dR[2]) in GFPureStarInd:
                         connectlist.append(tup)
                         GFPureStarInd[(ind1,ind2,dR[0],dR[1],dR[2])] = len(GFstarset_pure)
                 GFstarset_pure.append(connectlist)
@@ -253,9 +253,9 @@ class vectorStars(VectorStarSet):
                     if ind1==None or ind2==None:
                         raise KeyError("dumbbell not found in iorlist")
                     tup = ((ind1,ind2),dx.copy())
-                    if not any(t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(tup[1],t[1],atol=self.starset.crys.threshold) for t in connectlist):
+                    if not (ind1,ind2,dR[0],dR[1],dR[2]) in GFMixedStarInd:
                         connectlist.append(tup)
-                        GFPureStarInd[(ind1,ind2,dR[0],dR[1],dR[2])] = len(GFstarset_mixed)
+                        GFMixedStarInd[(ind1,ind2,dR[0],dR[1],dR[2])] = len(GFstarset_mixed)
                 GFstarset_mixed.append(connectlist)
 
         return GFstarset_pure,GFPureStarInd,GFstarset_mixed,GFMixedStarInd
@@ -272,6 +272,7 @@ class vectorStars(VectorStarSet):
         #     return None
 
         self.GFstarset_pure,self.GFPureStarInd,self.GFstarset_mixed,self.GFMixedStarInd = self.genGFstarset()
+
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
         GFexpansion_pure = np.zeros((Nvstars_pure,Nvstars_pure,len(self.GFstarset_pure)))
@@ -318,7 +319,7 @@ class vectorStars(VectorStarSet):
                         k = self.GFMixedStarInd[(ind1,ind2,dR[0],dR[1],dR[2])]
                         if k is None:
                             raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}".format(tup))
-                        GFexpansion_pure[i, j, k] += np.dot(vi, vj)
+                        GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
 
         #symmetrize
         for i in range(Nvstars_pure):
