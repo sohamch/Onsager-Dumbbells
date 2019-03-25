@@ -193,12 +193,11 @@ class StarSet(object):
                             allset.add(newstate)
                 stars.append(newstar)
         self.stars = stars
-
         for sl in self.stars:
             for s in sl:
                 if not np.allclose(s.R_s,0,atol=self.crys.threshold):
                     raise RuntimeError("Solute not at origin")
-
+        self.sortstars()
         self.mixedstartindex = len(self.stars)
         #Now add in the mixed states
         self.mixedstates=[]
@@ -304,6 +303,20 @@ class StarSet(object):
                 self.bareindex[ind] = si
                 self.bareindexdict[state] = (ind, si)
 
+    def sortstars(self):
+        """sorts the solute-dumbbell complex crystal stars in order of increasing solute-dumbell seperation distance,
+        like purestates. Note that this is called before mixed dumbbell stars are added in.
+        """
+        inddict={}
+        for i,star in enumerate(self.stars):
+            inddict[i] = self._sortkey(star[0])
+        #Now sort the stars according to dx^2, i.e, sort the dictionary by value
+        sortlist = sorted(inddict.items(),key=lambda x:x[1])
+        # print(sortlist)
+        starnew = []
+        for (ind,dx2) in sortlist:
+            starnew.append(self.stars[ind])
+        self.stars = starnew
 
     def jumpnetwork_omega1(self):
         jumpnetwork= []

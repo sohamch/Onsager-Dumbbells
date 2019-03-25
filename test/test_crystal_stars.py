@@ -327,3 +327,22 @@ class test_StarSet(unittest.TestCase):
                             if j1.state1.db==j2.state1.db and j1.state2.db==j2.state2.db:
                                 if j1.c1==j2.c1 and j1.c2==j2.c2:
                                     self.assertTrue(om1types[i]==om1types[j],msg="{},{}\n{}\n{}".format(i,j,j1,j2))
+    def test_sort_stars(self):
+        DC_Si = crystal.Crystal(np.array([[0.,0.5,0.5],[0.5,0.,0.5],[0.5,0.5,0.]])*0.55,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
+        famp0 = [np.array([1.,0.,0.])*0.145]
+        family = [famp0]
+        pdbcontainer = dbStates(DC_Si,0,family)
+        mdbcontainer = mStates(DC_Si,0,family)
+        jset0 = pdbcontainer.jumpnetwork(0.3,0.01,0.01)
+        jset2 = mdbcontainer.jumpnetwork(0.3,0.01,0.01)
+        #4.5 angst should cover atleast the nn distance in all the crystals
+        #create starset
+        crys_stars = StarSet(pdbcontainer,mdbcontainer,jset0,jset2,1)
+        dx_list=[]
+        for sts in zip(crys_stars.stars[:crys_stars.mixedstartindex]):
+            st0 = sts[0][0]
+            sol_pos = crys_stars.crys.unit2cart(st0.R_s,crys_stars.crys.basis[crys_stars.chem][st0.i_s])
+            db_pos = crys_stars.crys.unit2cart(st0.db.R,crys_stars.crys.basis[crys_stars.chem][st0.db.i])
+            dx = np.linalg.norm(db_pos-sol_pos)
+            dx_list.append(dx)
+        self.assertTrue(np.allclose(np.array(dx_list),np.array(sorted(dx_list))),msg="\n{}\n{}".format(dx_list,sorted(dx_list)))
