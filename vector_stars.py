@@ -182,16 +182,16 @@ class vectorStars(VectorStarSet):
         The connections must lie within the starset and must connect only those states that are connected by omega_0 or omega_2 jumps.
         The GFstarset is to be returned in the form of (i,j),dx. where the indices i and j correspond to the states in the iorset
         """
-        def inTotalList(conn,totlist,mixed=False):
-            if not mixed:
-                ind1 = self.starset.pdbcontainer.iorindex.get(conn.state1-conn.state1.R)
-                ind2 = self.starset.pdbcontainer.iorindex.get(conn.state2-conn.state2.R)
-            else:
-                ind1 = self.starset.mdbcontainer.iorindex.get(conn.state1-conn.state1.R)
-                ind2 = self.starset.mdbcontainer.iorindex.get(conn.state2-conn.state2.R)
-
-            dx = disp(self.starset.crys,self.starset.chem,conn.state1,conn.state2)
-            return any(ind1==t[0][0] and ind2==t[0][1] and np.allclose(t[1],dx,atol=self.starset.crys.threshold) for tlist in totlist for t in tlist)
+        # def inTotalList(conn,totlist,mixed=False):
+        #     if not mixed:
+        #         ind1 = self.starset.pdbcontainer.iorindex.get(conn.state1-conn.state1.R)
+        #         ind2 = self.starset.pdbcontainer.iorindex.get(conn.state2-conn.state2.R)
+        #     else:
+        #         ind1 = self.starset.mdbcontainer.iorindex.get(conn.state1-conn.state1.R)
+        #         ind2 = self.starset.mdbcontainer.iorindex.get(conn.state2-conn.state2.R)
+        #
+        #     dx = disp(self.starset.crys,self.starset.chem,conn.state1,conn.state2)
+        #     return any(ind1==t[0][0] and ind2==t[0][1] and np.allclose(t[1],dx,atol=self.starset.crys.threshold) for tlist in totlist for t in tlist)
 
         purestates = self.starset.purestates
         mixedstates = self.starset.mixedstates
@@ -206,9 +206,13 @@ class vectorStars(VectorStarSet):
                 except:
                     continue
 
-                if inTotalList(s,GFstarset_pure):
+                # if inTotalList(s,GFstarset_pure):
+                #     continue
+                ind1 = self.starset.pdbcontainer.iorindex.get(s.state1-s.state1.R)
+                ind2 = self.starset.pdbcontainer.iorindex.get(s.state2-s.state2.R)
+                dR = s.state2.R - s.state1.R
+                if (ind1,ind2,dR[0],dR[1],dR[2]) in GFPureStarInd:
                     continue
-
                 connectlist=[]
                 for g in self.starset.crys.G:
                     db1new = self.starset.pdbcontainer.gdumb(g,s.state1)[0]
@@ -238,7 +242,12 @@ class vectorStars(VectorStarSet):
                 except:
                     continue
 
-                if inTotalList(s,GFstarset_mixed,mixed=True):
+                # if inTotalList(s,GFstarset_mixed,mixed=True):
+                #     continue
+                ind1 = self.starset.mdbcontainer.iorindex.get(s.state1-s.state1.R)
+                ind2 = self.starset.mdbcontainer.iorindex.get(s.state2-s.state2.R)
+                dR = s.state2.R - s.state1.R
+                if (ind1,ind2,dR[0],dR[1],dR[2]) in GFMixedStarInd:
                     continue
 
                 connectlist=[]
@@ -264,13 +273,6 @@ class vectorStars(VectorStarSet):
         """
         carries out the expansion of the Green's function in the basis of the vector stars.
         """
-        # def getstar(tup,star):
-        #     for starind,list in enumerate(star):
-        #         for t in list:
-        #             if (t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(t[1],tup[1],atol = self.starset.crys.threshold)):
-        #                 return starind
-        #     return None
-
         self.GFstarset_pure,self.GFPureStarInd,self.GFstarset_mixed,self.GFMixedStarInd = self.genGFstarset()
 
         Nvstars_pure = self.Nvstars_pure
