@@ -546,3 +546,14 @@ class test_vecstars(unittest.TestCase):
                 GFexpansion_mixed[i,j,:] = GFexpansion_mixed[j,i,:]
 
         self.assertTrue(np.allclose(zeroclean(GFexpansion_mixed),GFexpansion_mixed_calc))
+
+    def test_order(self):
+        "test that we have the origin spectator states at the begining"
+        dx_list = []
+        for sts in zip(self.vec_stars.vecpos[:self.vec_stars.Nvstars_pure]):
+            st0 = sts[0][0]
+            sol_pos = self.vec_stars.starset.crys.unit2cart(st0.R_s,self.vec_stars.starset.crys.basis[self.vec_stars.starset.chem][st0.i_s])
+            db_pos = self.vec_stars.starset.crys.unit2cart(st0.db.R,self.vec_stars.starset.crys.basis[self.vec_stars.starset.chem][st0.db.i])
+            dx = np.linalg.norm(db_pos-sol_pos)
+            dx_list.append(dx)
+        self.assertTrue(np.allclose(zeroclean(np.array(dx_list)),zeroclean(np.array(sorted(dx_list)))),msg="\n{}\n{}".format(dx_list,sorted(dx_list)))

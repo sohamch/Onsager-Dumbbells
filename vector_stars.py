@@ -465,8 +465,8 @@ class vectorStars(VectorStarSet):
         (Note to self) - Refer to earlier notes for details.
         """
         #See my slides of Sept. 10 for diagram
-        rate0expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(self.starset.jumpindices)))
-        rate1expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(jumpnetwork)))
+        rate0expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(self.starset.jumpnetwork_omega0)))
+        rate1expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(jumpnetwork_omega1)))
         rate0escape = np.zeros((self.Nvstars_pure, len(self.starset.jumpindices)))
         rate1escape = np.zeros((self.Nvstars_pure, len(jumpnetwork_omega1)))
         #First, we do the rate1 and rate0 expansions
@@ -490,7 +490,7 @@ class vectorStars(VectorStarSet):
         rate3escape = np.zeros((self.Nvstars_pure, len(self.starset.jumpindices)))
         rate4escape = np.zeros((self.Nvstars-self.Nvstars_pure, len(jumpnetwork)))
 
-        #We implement the math for omega4 and note that omega3 is the negative jump of omega4
+        #We implement the matrix for omega4 and note that omega3 is the negative jump of omega4
         #This is because the order of the sum over stars in the rate expansion does not matter (see Sept. 30 slides).
         for k,jumplist in zip(itertools.count(), jumpnetwork_omega34):
             for jmp in jumplist:
@@ -512,9 +512,9 @@ class vectorStars(VectorStarSet):
                                         #The jump type remains the same because they have the same transition state
 
         #Next, we do the rate2expansion for mixed->mixed jumps
-        rate2expansion = np.zeros((self.Nvstars-self.Nvstars_pure,self.Nvstars-self.Nvstars_pure, len(jumpnetwork_omega2)))
-        rate2escape = np.zeros((self.Nvstars-self.Nvstars_pure, len(jumpnetwork_omega2)))
-        for k,jumplist in zip(itertools.count(), jumpnetwork_omega2):
+        rate2expansion = np.zeros((self.Nvstars-self.Nvstars_pure,self.Nvstars-self.Nvstars_pure, len(self.starset.jumpnetwork_omega2)))
+        rate2escape = np.zeros((self.Nvstars-self.Nvstars_pure, len(self.starset.jumpnetwork_omega2)))
+        for k,jumplist in zip(itertools.count(), self.starset.jumpnetwork_omega2):
             for jmp in jumplist:
                 for i in range(self.Nvstars_pure,self.Nvstars):
                     for chi_i,vi in zip(self.vecpos[i],self.vecvec[i]):
