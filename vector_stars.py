@@ -39,6 +39,7 @@ class vectorStars(VectorStarSet):
         self.vecpos = []
         self.vecpos_indexed = []
         self.vecvec = []
+        self.Nvstars_spec = 0
         #first do it for the complexes
         for star, indstar in zip(starset.stars[:starset.mixedstartindex],starset.starindexed[:starset.mixedstartindex]):
             pair0 = star[0]
@@ -57,6 +58,8 @@ class vectorStars(VectorStarSet):
             vlist = [v * scale for v in vlist] # see equation 80 in the paper - (there is a typo, this is correct).
             Nvect=len(vlist)
             if Nvect > 0:
+                if pair0.is_zero():
+                    self.Nvstars_spec += Nvect
                 for v in vlist:
                     self.vecpos.append(star)
                     self.vecpos_indexed.append(indstar)
@@ -273,7 +276,7 @@ class vectorStars(VectorStarSet):
         """
         carries out the expansion of the Green's function in the basis of the vector stars.
         """
-        self.GFstarset_pure,self.GFPureStarInd,self.GFstarset_mixed,self.GFMixedStarInd = self.genGFstarset()
+        GFstarset_pure,GFPureStarInd,GFstarset_mixed,GFMixedStarInd = self.genGFstarset()
 
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
@@ -332,7 +335,7 @@ class vectorStars(VectorStarSet):
             for j in range(0,i):
                 GFexpansion_mixed[i,j,:] = GFexpansion_mixed[j,i,:]
         # print(GFexpansion_pure.shape,GFexpansion_mixed.shape)
-        return zeroclean(GFexpansion_pure), zeroclean(GFexpansion_mixed)
+        return (GFstarset_pure,GFPureStarInd,zeroclean(GFexpansion_pure)), (GFstarset_mixed,GFMixedStarInd,zeroclean(GFexpansion_mixed))
 
     #See group meeting update slides of sept 10th to see how this works.
     def biasexpansion(self,jumpnetwork_omega1,jumpnetwork_omega2,jumptype,jumpnetwork_omega34):
@@ -525,10 +528,9 @@ class vectorStars(VectorStarSet):
                                     if chi_j.i_s==jmp.state2.i_s and np.allclose(chi_j.R_s,jmp.state2.R_s) and chi_j.db.i==jmp.state2.db.i and np.allclose(chi_j.db.o,jmp.state2.db.o):
                                         rate2expansion[i,j,k] += np.dot(vi,vj)
 
-        return zeroclean(rate0expansion),zeroclean(rate1expansion),zeroclean(rate2expansion),\
-               zeroclean(rate3expansion),zeroclean(rate4expansion)
-        #One more thing to think about - in our Dyson equation, the diagonal sum of om3 and om4 are added to om2
-        #and om0 respectively. How to implement that? See where delta_omega is constructed for vacancies.. we need to do it there
+        return (zeroclean(rate0expansion),zeroclean(rate0escape)),(zeroclean(rate1expansion),zeroclean(rate1escape)),(zeroclean(rate2expansion),zeroclean(rate2escape)),\
+               (zeroclean(rate3expansion),zeroclean(rate3escape)),(zeroclean(rate4expansion),zeroclean(rate4escape))
+
 
     def bareexpansion(self,jumpnetwork_omega1,jumptype,jumpnetwork_omega2,jumpnetwork_omega3,jumpnetwork_omega4):
         """
