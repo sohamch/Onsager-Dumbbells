@@ -541,9 +541,91 @@ class dumbbellMediated(VacancyMediated):
         self.bias2_solute_new = self.biases[2][0] + self.delbias2expansion_solute
         self.bias2_solvent_new = self.biases[2][1] + self.delbias2expansion_solvent
 
-    def getsymmrates(self, bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4):
+    def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT43):
         # what to pass here?
-        pass
+        Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure
+
+        omega0 = np.zeros(len(self.jnet0))
+        omega0escape = np.zeros((len(self.pdbcontainer.symorlist), len(self.jnet0)))
+
+        omega1 = np.zeros(len(self.jnet_1))
+        omega1escape = np.zeros((self.vkinetic.Nvstars_pure,len(self.jnet_1)))
+
+        omega3 = np.zeros(len(self.symjumplist_omega3))
+        omega3escape = np.zeros((Nvstars_mixed, len(self.symjumplist_omega3)))
+
+        omega4 = np.zeros(len(self.symjumplist_omega4))
+        omega4escape = np.zeros((self.vkinetic.Nvstars_pure, len(self.symjumplist_omega4)))
+
+        # build the omega0 lists
+        for jt, jlist in enumerate(self.jnet0):
+
+            # Get the bare dumbbells between which jumps are occurring
+            st1 = jlist[0].state1 - jlist[0].state1.R
+            st2 = jlist[0].state2 - jlist[0].state2.R
+
+            # get the symorindex of the states - these serve analogous to Wyckoff sets
+            w1 = self.pdbcontainer.invmap[self.pdbcontainer.iorindex[st1]]
+            w2 = self.pdbcontainer.invmap[self.pdbcontainer.iorindex[st2]]
+
+            omega0escape[w1, jt] = np.exp(-bFT0[jt] + bFdb0[w1])
+            omega0escape[w2, jt] = np.exp(-bFT0[jt] + bFdb0[w1])
+            omega0[jt] = np.sqrt(omega0escape[w1, jt] * omega0escape[w2, jt])
+
+        # we don't need the omega2 lists - omega2 is already in the non-local part
+
+        # build the omega1 lists
+        for jt, jlist in enumerate(self.jnet_1):
+
+            st1 = jlist[0].state1 - jlist[0].state1.R_s
+            st2 = jlist[0].state2 - jlist[0].state2.R_s
+
+            # get the crystal stars of the representative jumps
+            crStar1 = self.vkinetic.starset.pureindexdict[st1][0]
+            crStar2 = self.vkinetic.starset.pureindexdict[st2][0]
+
+            init2TS = np.exp(-bFT1[jt] + bFSdb[crStar1])
+            fin2TS = np.exp(-bFT1[jt] + bFSdb[crStar2])
+
+            omega1[jt] = np.sqrt(init2TS * fin2TS)
+
+            # Get the vector stars where they are located
+            v1list = self.vkinetic.stateToVecStar_pure[st1]
+            v2list = self.vkinetic.stateToVecStar_pure[st2]
+
+            for (v1, in_v1) in v1list:
+                omega1escape[v1, jt] = init2TS
+
+            for (v2, in_v2) in v2list:
+                omega1escape[v2, jt] = fin2TS
+
+        # Next, we need to build the lists for omega3 and omega4 lists
+        for jt, jlist in enumerate(self.symjumplist_omega43_all):
+
+            # The first state is a complex state, the second state is a mixed state.
+            st1 = jlist[0].state1 - jlist[0].state1.R_s
+            st2 = jlist[0].state2 - jlist[0].state2.R_s
+
+            # get the crystal stars
+            crStar1 = self.vkinetic.starset.pureindexdict[st1]
+            crStar2 = self.vkinetic.starset.mixedindexdict[st2]
+
+            init2TS = np.exp(-bFT43[jt] + bFSdb[crStar1])
+            fin2TS = np.exp(-bFT43[jt] + bFdb2[crStar2])
+
+            omega4[jt] = np.sqrt(init2TS * fin2TS)
+            omega3[jt] = np.sqrt(fin2TS * init2TS)
+
+            v1list = self.vkinetic.stateToVecStar_pure[st1]
+            v2list = self.vkinetic.stateToVecStar_mixed[st2]
+
+            for (v1, in_v1) in v1list:
+                omega4escape[v1, jt] = init2TS
+
+            for (v2, in_v1) in v2list:
+                omega3escape[v2, jt] = fin2TS
+
+        return (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape)
 
     def makeGF(self, bFdb0, bFdb2, bFT0, bFT2, omegas):
         """
@@ -556,8 +638,7 @@ class dumbbellMediated(VacancyMediated):
         rate3expansion, rate3escape), \
         (rate4expansion, rate4escape) = self.rateExps
 
-        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape), \
-        (omega4, omega4escape) = omegas
+        (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = omegas
 
         GF20 = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
         # left-upper part of GF20 = Nvstars_mixed x Nvstars_mixed g2 matrix
@@ -569,8 +650,9 @@ class dumbbellMediated(VacancyMediated):
         self.GFcalc_pure.SetRates(pre0, bFdb0, pre0T, bFT0)
         self.GFcalc_mixed.SetRates(pre2, bFdb2, pre2T, bFT2)
 
-        GF0 = np.array(
-            [self.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in [star[0] for star in self.GFstarset_pure]])
+        GF0 = np.array([self.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
+                        [star[0] for star in self.GFstarset_pure]])
+
         GF2 = np.array([self.GFcalc_mixed(tup[0][0], tup[0][1], tup[1]) for tup in
                         [star[0] for star in self.GFstarset_mixed]])  # type: ndarray
 
@@ -582,12 +664,11 @@ class dumbbellMediated(VacancyMediated):
 
         # make delta omega
         delta_om = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
+
         # off-diagonals
-        delta_om[Nvstars_mixed:, Nvstars_mixed:] = np.dot(rate1expansion, omega1) - np.dot(rate0expansion,
-                                                                                           omega0)
-        delta_om[:Nvstars_mixed, Nvstars_mixed + Nvstars_spec:] = np.dot(rate3expansion, omega3)
-        delta_om[:Nvstars_mixed, Nvstars_mixed + Nvstars_spec:] = np.dot(rate3expansion, omega3)
-        delta_om[Nvstars_mixed + Nvstars_spec:, :Nvstars_mixed] = np.dot(rate4expansion, omega4)
+        delta_om[Nvstars_mixed:, Nvstars_mixed:] = np.dot(rate1expansion, omega1) - np.dot(rate0expansion, omega0)
+        delta_om[:Nvstars_mixed, Nvstars_mixed:] = np.dot(rate3expansion, omega3)
+        delta_om[Nvstars_mixed:, :Nvstars_mixed] = np.dot(rate4expansion, omega4)
 
         # escapes
         for i in range(Nvstars_pure):
@@ -602,7 +683,8 @@ class dumbbellMediated(VacancyMediated):
 
         return GF_total
 
-    def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4):
+    def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFSdb, bFT1, bFT43):
+
         """
         bFdb0[i] = beta*ene_pdb[i] - len(pre_pdb[i]), i=1,2...,N_pdbcontainer.symorlist - pure dumbbell free energy
         bFdb2[i] = beta*ene_mdb[i] - len(pre_mdb[i]), i=1,2...,N_mdbcontainer.symorlist - mixed dumbbell free energy
@@ -624,17 +706,16 @@ class dumbbellMediated(VacancyMediated):
         rate2list = ratelist(self.jnet2_indexed, pre2, bFdb2, pre2T, bFT2, self.vkinetic.starset.mdbcontainer.invmap)
 
         # Make the symmetried rates for calculating GF, bias and gamma.
-        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape), (
-            omega4, omega4escape) = \
-            self.getsymmrates(bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4)
+        (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = \
+            self.getsymmrates(bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT43)
 
         # Update the bias expansions
         self.update_bias_expansions(self, rate0list, rate2list)
 
         # Make the Greens function
-        omegas = ((omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),
-                  (omega4, omega4escape))
-        #Any better way to do this?
+        omegas = ((omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape))
+
+        # Any better way to do this?
         GF_total = self.makeGF(bFdb0, bFdb2, bFT0, bFT2, omegas)
 
         # Once the GF is built, make the correlated part of the transport coefficient
