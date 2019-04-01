@@ -106,7 +106,7 @@ class vectorStars(VectorStarSet):
             if Nvect > 0:  # why did I put this? Makes sense to expand only if Nvects >0, otherwise there is zero bias.
                 # verify this
                 for v in vlist:
-                    self.vecpos.append(star)  # again, implement copy
+                    self.vecpos.append(star)
                     self.vecpos_indexed.append(indstar)
                     veclist = []
                     for pairI in star:
@@ -181,7 +181,20 @@ class vectorStars(VectorStarSet):
 
         # We must produce two expansions. One for pure dumbbell states pointing to pure dumbbell state
         # and the other from mixed dumbbell states to mixed states.
-        self.outers = self.outer()
+
+        # Need an indexing from the vector stars to the crystal stars
+        self.vstar2star = np.zeros(len(self.Nvstars))
+        for vstindex, vst in enumerate(self.vecpos[:self.Nvstars_pure]):
+            # get the crystal star of the representative state of the vector star
+            starindex = self.starset.pureindexdict[vst[0]][1]
+            self.vstar2star[vstindex] = starindex
+
+        for vstindex, vst in enumerate(self.vecpos[self.Nvstars_pure:]):
+            # get the crystal star of the representative state of the vector star
+            starindex = self.starset.mixedindexdict[vst[0]][1]
+            # The starindex is already with respect to the total number of (pure+mixed) crystal stars - see stars.py.
+            self.vstar2star[vstindex + self.Nvstars_pure] = starindex
+
 
     def genGFstarset(self):
         """
@@ -189,17 +202,6 @@ class vectorStars(VectorStarSet):
         The connections must lie within the starset and must connect only those states that are connected by omega_0 or omega_2 jumps.
         The GFstarset is to be returned in the form of (i,j),dx. where the indices i and j correspond to the states in the iorset
         """
-        # def inTotalList(conn,totlist,mixed=False):
-        #     if not mixed:
-        #         ind1 = self.starset.pdbcontainer.iorindex.get(conn.state1-conn.state1.R)
-        #         ind2 = self.starset.pdbcontainer.iorindex.get(conn.state2-conn.state2.R)
-        #     else:
-        #         ind1 = self.starset.mdbcontainer.iorindex.get(conn.state1-conn.state1.R)
-        #         ind2 = self.starset.mdbcontainer.iorindex.get(conn.state2-conn.state2.R)
-        #
-        #     dx = disp(self.starset.crys,self.starset.chem,conn.state1,conn.state2)
-        #     return any(ind1==t[0][0] and ind2==t[0][1] and np.allclose(t[1],dx,atol=self.starset.crys.threshold) for tlist in totlist for t in tlist)
-
         purestates = self.starset.purestates
         mixedstates = self.starset.mixedstates
         # Connect the states
@@ -574,8 +576,8 @@ class vectorStars(VectorStarSet):
         # Need versions for solute and solvent
         for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork_omega1):
             d0 = np.sum(0.5 * np.outer(dx, dx) for (i, j), dx in jumplist)
-            D0expansion_solute[:, :, jt] += d0_solute
-            D1expansion_solute[:, :, k] += d0_solute
+            D0expansion_solute[:, :, jt] += d0
+            D1expansion_solute[:, :, k] += d0
 
         for jt, jumplist in enumerate(self.starset.jumpnetwork_omega2):
             d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)
