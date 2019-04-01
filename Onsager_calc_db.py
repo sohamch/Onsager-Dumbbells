@@ -542,8 +542,7 @@ class dumbbellMediated(VacancyMediated):
         self.bias2_solute_new = self.biases[2][0] + self.delbias2expansion_solute
         self.bias2_solvent_new = self.biases[2][1] + self.delbias2expansion_solvent
 
-    def bareexpansion(self, jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4,
-                      eta0_solute, eta0_solvent):
+    def bareExpansion(self):
         """
         Returns the contributions to the terms of the uncorrelated diffusivity term,
         grouped separately for each type of jump. Intended to be called after displacements have been applied to the displacements.
@@ -556,6 +555,11 @@ class dumbbellMediated(VacancyMediated):
         The mixed dumbbell space is completely non-local.
         """
         # a = solute, b = solvent
+        eta0_solute, eta0_solvent = self.eta0total_solute, self.eta0total_solvent
+
+        jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4 =\
+        self.jnet_1, self.om1types, self.jnet2, self.symjumplist_omega3, self.symjumplist_omega4
+
         Ncomp = len(self.vkinetic.starset.purestates)
 
         D0expansion_aa = np.zeros((3, 3, len(self.jnet0)))
@@ -618,7 +622,7 @@ class dumbbellMediated(VacancyMediated):
                (zeroclean(D1expansion_aa), zeroclean(D1expansion_bb), zeroclean(D1expansion_ab)),\
                (zeroclean(D2expansion_aa), zeroclean(D2expansion_bb), zeroclean(D2expansion_ab)),\
                (zeroclean(D3expansion_aa), zeroclean(D3expansion_bb), zeroclean(D3expansion_ab)),\
-               (zeroclean(D4expansion_aa), zeroclean(D4expansion_bb), zeroclean(D4expansion_ab))vkinetic.
+               (zeroclean(D4expansion_aa), zeroclean(D4expansion_bb), zeroclean(D4expansion_ab))
 
     def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT43):
         # what to pass here?
@@ -862,3 +866,21 @@ class dumbbellMediated(VacancyMediated):
         prob_om2 = probISsqrt_om2 * omega2 * probFSsqrt_om2
         prob_om3 = probISsqrt_om3 * omega3 * probFSsqrt_om3
         prob_om4 = probISsqrt_om4 * omega4 * probFSsqrt_om4
+
+        # Generate the bare expansions
+        (D0expansion_aa, D0expansion_bb, D0expansion_ab),\
+        (D1expansion_aa, D1expansion_bb, D1expansion_ab),\
+        (D2expansion_aa, D2expansion_bb, D2expansion_ab),\
+        (D3expansion_aa, D3expansion_bb, D3expansion_ab),\
+        (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.bareExpansion()
+
+        L_uc_aa = np.dot(D1expansion_aa,prob_om1) - np.dot(D0expansion_aa,prob_om0) + np.dot(D2expansion_aa, prob_om2) +\
+                  np.dot(D3expansion_aa,prob_om3) + np.dot(D4expansion_aa,prob_om4)
+
+        L_uc_bb = np.dot(D1expansion_bb, prob_om1) - np.dot(D0expansion_bb, prob_om0) + np.dot(D2expansion_bb, prob_om2) + \
+                  np.dot(D3expansion_bb, prob_om3) + np.dot(D4expansion_bb, prob_om4)
+
+        L_uc_ab = np.dot(D1expansion_ab, prob_om1) - np.dot(D0expansion_ab, prob_om0) + np.dot(D2expansion_ab, prob_om2) + \
+                  np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
+
+        return (L_uc_aa+L_c_aa), (L_uc_bb+L_c_bb), (L_uc_ab+L_c_ab)
