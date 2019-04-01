@@ -542,6 +542,84 @@ class dumbbellMediated(VacancyMediated):
         self.bias2_solute_new = self.biases[2][0] + self.delbias2expansion_solute
         self.bias2_solvent_new = self.biases[2][1] + self.delbias2expansion_solvent
 
+    def bareexpansion(self, jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4,
+                      eta0_solute, eta0_solvent):
+        """
+        Returns the contributions to the terms of the uncorrelated diffusivity term,
+        grouped separately for each type of jump. Intended to be called after displacements have been applied to the displacements.
+
+        Params:
+            jumpnetwork_omega* - indexed versions of the jumpnetworks with displacements for a given species. - jumps need to be of the form ((i,j),dx_species)
+            jumptype - list that contains the omega_0 jump a given omega_1 jump list corresponds to. - these are the rates to be used to dot into b_0.
+
+        In mixed dumbbell space, both solute and solvent will have uncorrelated contributions.
+        The mixed dumbbell space is completely non-local.
+        """
+        # a = solute, b = solvent
+        Ncomp = len(self.vkinetic.starset.purestates)
+
+        D0expansion_aa = np.zeros((3, 3, len(self.jnet0)))
+        D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
+        D0expansion_ab = np.zeros((3, 3, len(self.jnet0)))
+
+        D1expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega1)))
+        D1expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega1)))
+        D1expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega1)))
+
+        D2expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega2)))
+        D2expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega2)))
+        D2expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega2)))
+
+        D3expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega3)))
+        D3expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega3)))
+        D3expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega3)))
+
+        D4expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega4)))
+        D4expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega4)))
+        D4expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega4)))
+
+        # Need versions for solute and solvent
+        for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork_omega1):
+            d0 = np.sum(
+                0.5 * np.outer(dx + eta0_solvent[i] - eta0_solvent[j], dx + eta0_solvent[i] - eta0_solvent[j]) for
+                (i, j), dx in jumplist)
+            D0expansion_solvent[:, :, jt] += d0
+            D1expansion_solvent[:, :, k] += d0
+            # For solutes, don't need to do anything for omega1 and omega0 - solute does not move anyway
+
+        for jt, jumplist in enumerate(jumpnetwork_omega2):
+            # Build the expansions directly
+            for (IS, FS), dx in jumplist:
+                dx_solute = dx + j.state2.db.o / 2. - j.state1.db.o / 2. + eta0_solute[Ncomp + IS] - eta0_solute[
+                    Ncomp + FS]
+                dx_solvent = dx - j.state2.db.o / 2. + j.state1.db.o / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[
+                    Ncomp + FS]
+                D2expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
+                D2expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
+                D2expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
+
+        for jt, jumplist in enumerate(jumpnetwork_omega3):
+            for (IS, FS), dx in jumplist:
+                dx_solute = -j.state1.db.o / 2. + eta0_solute[Ncomp + IS] - eta0_solute[FS]
+                dx_solvent = dx + j.state1.db.o / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[FS]
+                D3expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
+                D3expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
+                D3expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
+
+        for jt, jumplist in enumerate(jumpnetwork_omega4):
+            for (IS, FS), dx in jumplist:
+                dx_solute = j.state2.db.o / 2. + eta0_solute[IS] - eta0_solute[Ncomp + FS]
+                dx_solvent = dx - j.state2.db.o / 2. + eta0_solvent[IS] - eta0_solvent[Ncomp + FS]
+                D4expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
+                D4expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
+                D4expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
+
+        return (zeroclean(D0expansion_aa), zeroclean(D0expansion_bb), zeroclean(D0expansion_ab)),\
+               (zeroclean(D1expansion_aa), zeroclean(D1expansion_bb), zeroclean(D1expansion_ab)),\
+               (zeroclean(D2expansion_aa), zeroclean(D2expansion_bb), zeroclean(D2expansion_ab)),\
+               (zeroclean(D3expansion_aa), zeroclean(D3expansion_bb), zeroclean(D3expansion_ab)),\
+               (zeroclean(D4expansion_aa), zeroclean(D4expansion_bb), zeroclean(D4expansion_ab))vkinetic.
+
     def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT43):
         # what to pass here?
         Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure
