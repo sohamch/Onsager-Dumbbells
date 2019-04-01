@@ -537,24 +537,7 @@ class vectorStars(VectorStarSet):
                                         rate3expansion[j, i, k] += np.dot(vj, vi)
                                         # The jump type remains the same because they have the same transition state
 
-        # Next, we do the rate2expansion for mixed->mixed jumps
-        # rate2expansion = np.zeros(
-        #     (self.Nvstars - self.Nvstars_pure, self.Nvstars - self.Nvstars_pure, len(self.starset.jumpnetwork_omega2)))
-        # rate2escape = np.zeros((self.Nvstars - self.Nvstars_pure, len(self.starset.jumpnetwork_omega2)))
-        # for k, jumplist in zip(itertools.count(), self.starset.jumpnetwork_omega2):
-        #     for jmp in jumplist:
-        #         for i in range(self.Nvstars_pure, self.Nvstars):
-        #             for chi_i, vi in zip(self.vecpos[i], self.vecvec[i]):
-        #                 if chi_i == jmp.state1:
-        #                     rate2escape[i, k] -= np.dot(vi, vi)
-        #                     for j in range(self.Nvstars_pure, self.Nvstars):
-        #                         for chi_j, vj in zip(self.vecpos[j], self.vecvec[j]):
-        #                             if chi_j.i_s == jmp.state2.i_s and np.allclose(chi_j.R_s,
-        #                                                                            jmp.state2.R_s) and chi_j.db.i == jmp.state2.db.i and np.allclose(
-        #                                     chi_j.db.o, jmp.state2.db.o):
-        #                                 rate2expansion[i, j, k] += np.dot(vi, vj)
-
-        return (zeroclean(rate0expansion), zeroclean(rate0escape)), (zeroclean(rate1expansion), zeroclean(rate1escape)), \
+        return (zeroclean(rate0expansion), zeroclean(rate0escape)), (zeroclean(rate1expansion), zeroclean(rate1escape)),\
                (zeroclean(rate3expansion), zeroclean(rate3escape)), (zeroclean(rate4expansion), zeroclean(rate4escape))
 
     def outer(self):
