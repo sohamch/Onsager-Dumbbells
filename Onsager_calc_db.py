@@ -332,7 +332,8 @@ class dumbbellMediated(VacancyMediated):
         # generate the rate expansions
         self.rateExps = self.vkinetic.rateexpansion(self.jnet_1, self.om1types, self.symjumplist_omega43_all)
 
-        # generate the bare expansion
+        #generate the outer products of the vector stars
+        self.kinouter =  self.vkinetic.outer()
         # self.clearcache()
 
     def calc_eta(self, rate0list, rate2list):
@@ -549,7 +550,7 @@ class dumbbellMediated(VacancyMediated):
         omega0escape = np.zeros((len(self.pdbcontainer.symorlist), len(self.jnet0)))
 
         omega1 = np.zeros(len(self.jnet_1))
-        omega1escape = np.zeros((self.vkinetic.Nvstars_pure,len(self.jnet_1)))
+        omega1escape = np.zeros((self.vkinetic.Nvstars_pure, len(self.jnet_1)))
 
         omega3 = np.zeros(len(self.symjumplist_omega3))
         omega3escape = np.zeros((Nvstars_mixed, len(self.symjumplist_omega3)))
@@ -569,7 +570,7 @@ class dumbbellMediated(VacancyMediated):
             w2 = self.pdbcontainer.invmap[self.pdbcontainer.iorindex[st2]]
 
             omega0escape[w1, jt] = np.exp(-bFT0[jt] + bFdb0[w1])
-            omega0escape[w2, jt] = np.exp(-bFT0[jt] + bFdb0[w1])
+            omega0escape[w2, jt] = np.exp(-bFT0[jt] + bFdb0[w2])
             omega0[jt] = np.sqrt(omega0escape[w1, jt] * omega0escape[w2, jt])
 
         # we don't need the omega2 lists - omega2 is already in the non-local part
@@ -581,8 +582,8 @@ class dumbbellMediated(VacancyMediated):
             st2 = jlist[0].state2 - jlist[0].state2.R_s
 
             # get the crystal stars of the representative jumps
-            crStar1 = self.vkinetic.starset.pureindexdict[st1][0]
-            crStar2 = self.vkinetic.starset.pureindexdict[st2][0]
+            crStar1 = self.vkinetic.starset.pureindexdict[st1][1]
+            crStar2 = self.vkinetic.starset.pureindexdict[st2][1]
 
             init2TS = np.exp(-bFT1[jt] + bFSdb[crStar1])
             fin2TS = np.exp(-bFT1[jt] + bFSdb[crStar2])
@@ -607,15 +608,17 @@ class dumbbellMediated(VacancyMediated):
             st2 = jlist[0].state2 - jlist[0].state2.R_s
 
             # get the crystal stars
-            crStar1 = self.vkinetic.starset.pureindexdict[st1]
-            crStar2 = self.vkinetic.starset.mixedindexdict[st2]
+            crStar1 = self.vkinetic.starset.pureindexdict[st1][1]
+            crStar2 = self.vkinetic.starset.mixedindexdict[st2][1]
 
-            init2TS = np.exp(-bFT43[jt] + bFSdb[crStar1])
-            fin2TS = np.exp(-bFT43[jt] + bFdb2[crStar2])
+            init2TS = np.exp(-bFT43[jt] + bFSdb[crStar1]) # complex (bFSdb) to transition state
+            fin2TS = np.exp(-bFT43[jt] + bFdb2[crStar2]) # mixed (bFdb2) to transition state.
 
+            #symmetrized rates for omega3 and omega4 are equal
             omega4[jt] = np.sqrt(init2TS * fin2TS)
             omega3[jt] = np.sqrt(fin2TS * init2TS)
 
+            # get the vector stars
             v1list = self.vkinetic.stateToVecStar_pure[st1]
             v2list = self.vkinetic.stateToVecStar_mixed[st2]
 
@@ -632,7 +635,6 @@ class dumbbellMediated(VacancyMediated):
         Constructs the N_vs x N_vs GF matrix.
         """
         Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure  # type: int
-        Nvstars_spec = self.vkinetic.Nvstars_spec
 
         (rate0expansion, rate0escape), (rate1expansion, rate1escape), (rate2expansion, rate2escape), (
         rate3expansion, rate3escape), \
@@ -671,13 +673,15 @@ class dumbbellMediated(VacancyMediated):
         delta_om[Nvstars_mixed:, :Nvstars_mixed] = np.dot(rate4expansion, omega4)
 
         # escapes
-        for i in range(Nvstars_pure):
+        for i, starind in enumerate(self.vkinetic.vstar2star[:self.vkinetic.Nvstars_pure]):
+            symindex = self.vkinetic.starset.star2symlist[starind]
             delta_om[i + Nvstars_mixed, i + Nvstars_mixed] += \
-                np.dot(rate1escape[i, :], omega1escape[i, :]) - np.dot(rate0escape[i, :], omega0escape[i, :]) + np.dot(
-                    rate4escape[i, :], omega4escape[i, :])
+                np.dot(rate1escape[i, :], omega1escape[i, :])-\
+                np.dot(rate0escape[i, :], omega0escape[symindex, :])+\
+                np.dot(rate4escape[i, :], omega4escape[i, :])
 
         for i in range(Nvstars_mixed):
-            delta_om[i, i] = np.dot(rate3escape[i, :], omega3escape[i, :])
+            delta_om[i, i] += np.dot(rate3escape[i, :], omega3escape[i, :])
 
         GF_total = np.dot(np.linalg.inv(np.eye(self.vkinetic.Nvstars) + np.dot(GF20, delta_om)), GF20)
 
@@ -739,8 +743,13 @@ class dumbbellMediated(VacancyMediated):
         gamma_solvent_vs = np.dot(GF_total, bias_solvent_vs)
 
         # Next we produce the outer product in the basis of the vector star vector state functions
-        outer = self.vkinetic.outer()
+        # I
+
         # a=solute, b=solvent
-        L_uc_aa = np.dot(np.dot(outer, gamma_solute_vs), bias_solute_vs)
-        L_uc_bb = np.dot(np.dot(outer, gamma_solvent_vs), bias_solvent_vs)
-        L_uc_ab = np.dot(np.dot(outer, gamma_solvent_vs), bias_solute_vs)
+        L_c_aa = np.dot(np.dot(self.kinouter, gamma_solute_vs), bias_solute_vs)
+        L_c_bb = np.dot(np.dot(self.kinouter, gamma_solvent_vs), bias_solvent_vs)
+        L_c_ab = np.dot(np.dot(self.kinouter, gamma_solvent_vs), bias_solute_vs)
+
+        # Next, we get to the bare or uncorrelated terms
+        # First, we have to generate the probability arrays and multiply them with the ratelists. This will
+        # Give the probability-square-root multiplied rates in the uncorrelated terms.
