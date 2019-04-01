@@ -831,3 +831,34 @@ class dumbbellMediated(VacancyMediated):
         # Next, we get to the bare or uncorrelated terms
         # First, we have to generate the probability arrays and multiply them with the ratelists. This will
         # Give the probability-square-root multiplied rates in the uncorrelated terms.
+
+        probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb[self.vkinetic.starset.pureindexdict[jlist[0].state1][1]])
+                          for jlist in self.jnet_1])
+        probFSsqrt_om1 = np.array([np.exp(-0.5 * bFSdb[self.vkinetic.starset.pureindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+                          for jlist in self.jnet_1])
+
+        probISsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1]]])
+                          for jlist in self.jnet0])
+        probFSsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1 - jlist[0].state1.R]]])
+                          for jlist in self.jnet0])
+
+        probISsqrt_om2 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1][1]])
+                                   for jlist in self.jnet2])
+        probFSsqrt_om2 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+                                   for jlist in self.jnet2])
+
+        probISsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1-jlist[0].state1.R_s][1]])
+                                   for jlist in self.symjumplist_omega3])
+        probFSsqrt_om3 = np.array([np.exp(-0.5 * bFSdb[self.vkinetic.starset.pureindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+                                   for jlist in self.symjumplist_omega3])
+
+        probISsqrt_om4 = np.array([np.exp(-0.5 * bFSdb[self.vkinetic.starset.pureindexdict[jlist[0].state1 - jlist[0].state1.R_s][1]])
+                                   for jlist in self.symjumplist_omega4])
+        probFSsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2 - jlist[0].state2.R_s][1]])
+                                   for jlist in self.symjumplist_omega4])
+
+        prob_om1 = probISsqrt_om1 * omega1 * probFSsqrt_om1
+        prob_om0 = probISsqrt_om0 * omega0 * probFSsqrt_om0
+        prob_om2 = probISsqrt_om2 * omega2 * probFSsqrt_om2
+        prob_om3 = probISsqrt_om3 * omega3 * probFSsqrt_om3
+        prob_om4 = probISsqrt_om4 * omega4 * probFSsqrt_om4
