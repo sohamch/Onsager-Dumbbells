@@ -159,11 +159,11 @@ class dbStates(object):
             maplist=[]
             for st,ior in enumerate(self.iorlist):
                 R, (ch,inew) = self.crys.g_pos(g,np.array([0,0,0]),(self.chem,ior[0]))
-                onew  = np.dot(g.cartrot,ior[1])
+                onew  = np.dot(g.cartrot, ior[1])
                 if any(np.allclose(onew+t[1],0,atol=1.e-8) for t in self.iorlist):
                     onew = -onew+0.
                 for j,t in enumerate(self.iorlist):
-                    if(t[0]==inew and np.allclose(t[1],onew)):
+                    if t[0]==inew and np.allclose(t[1],onew):
                         maplist.append(j)
                 indexmap[g] = maplist
         return indexmap
