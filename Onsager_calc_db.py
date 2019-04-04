@@ -64,6 +64,7 @@ class BareDumbbell(Interstitial):
         self.omega_invertible = True
         if self.NV > 0:
             self.omega_invertible = any(np.allclose(g.cartrot, -np.eye(3)) for g in self.container.crys.G)
+
         # #What is this for though?
         # if self.omega_invertible:
         #     self.bias_solver = lambda omega,b : -la.solve(-omega,b,sym_pos=True)
@@ -88,6 +89,7 @@ class BareDumbbell(Interstitial):
             for g in self.container.crys.G:
                 r1, (ch, i1) = crys.g_pos(g, z, (chem, tup[0]))
                 onew = np.dot(g.cartrot, tup[1])
+                onew -= onew.R
                 if not mixed:
                     if np.allclose(onew + tup[1], z):
                         onew = -onew
@@ -108,10 +110,11 @@ class BareDumbbell(Interstitial):
                     # What if this changes the vector basis for the state itself?
                     # There are several groupos that leave a state unchanged.
                 lis.append(vb)
-            VV = np.zeros((3, 3, len(lis), len(lis)))
-            for i, vb_i in enumerate(lis):
-                for j, vb_j in enumerate(lis):
-                    VV[:, :, i, j] = np.dot(vb_i.T, vb_j)
+
+        VV = np.zeros((3, 3, len(lis), len(lis)))
+        for i, vb_i in enumerate(lis):
+            for j, vb_j in enumerate(lis):
+                VV[:, :, i, j] = np.dot(vb_i.T, vb_j)
 
         return np.array(lis), VV
 
@@ -624,6 +627,67 @@ class dumbbellMediated(VacancyMediated):
                (zeroclean(D3expansion_aa), zeroclean(D3expansion_bb), zeroclean(D3expansion_ab)),\
                (zeroclean(D4expansion_aa), zeroclean(D4expansion_bb), zeroclean(D4expansion_ab))
 
+    # noinspection SpellCheckingInspection
+    @staticmethod
+    def preene2betafree(kT, predb0, enedb0, preS, eneS, preSdb, eneSdb, predb2, enedb2, preT0, eneT0, preT2, eneT2, preT1, eneT1, preT43, eneT43):
+        """
+        Similar to the function for vacancy mediated OnsagerCalc. Takes in the energies and entropic pre-factors for
+        the states and transition states and returns the corresponding free energies. The difference from the vacancy case
+        is the consideration of more types of states ans transition states.
+
+        Parameters:
+            pre* - entropic pre-factors
+            ene* - state/transition state energies.
+        The pre-factors for pure dumbbells are matched to the symmorlist. For mixed dumbbells the mixedstarset and symmorlist
+        are equivalent and the pre-factors are energies are matched to these.
+        For solute-dumbbell complexes, the pre-factors and the energies are matched to the star set.
+
+        Note - for the solute-dumbbell configurations, eneSdb and preSdb are the binding (excess) energies and pre-factors
+        respectively. We need to evaluate the total configuration energy separately. See lines 1450-1465 in OnsagerCalc.py.
+
+        For all the transitions, the pre-factors and energies for transition states are matched to symmetry-unique jump types.
+
+        Returns :
+        bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4
+        the free energies for the states and transition states. Used in L_ij() and getsymmrates() to get the
+        symmetrized transition rates.
+
+
+        """
+        beta = 1/kT
+        bFdb0 = beta * enedb0 - np.log(predb0)
+        bFdb2 = beta * enedb2 - np.log(predb2)
+        bFS = beta * eneS - np.log(preS)
+        bFSdb = beta * eneSdb - np.log(preSdb)
+
+        bFT0 = beta * eneT0 - np.log(preT0)
+        bFT1 = beta * eneT1 - np.log(preT1)
+        bFT2 = beta * eneT1 - np.log(preT1)
+        bFT3 = beta * eneT43 - np.log(preT43)
+        bFT4 = beta * eneT43 - np.log(preT43)
+
+        # Now, shift
+        bFdb0_min = np.min(bFdb0)
+        bFdb2_min = np.min(bFdb2)
+        bFS_min = np.min(bFS)
+
+        bFdb0 -= bFdb0_min
+        bFdb2 -= bFdb2_min
+        bFS -= bFS_min
+        bFT0 -= bFdb0_min
+        bFT2 -= bFdb2_min
+        bFT3 -= bFdb2_min
+        bFT4 -= bFdb0_min
+        bFSdb -= (bFS_min + bFdb0_min)
+        # F_(Sdb_total) = F_s + F_db + F_Sdb
+        # Now if we shift F_Sdb -> F_Sdb - (F_Smin + F_dbmin)
+        # Then, F_(Sdb_total) = (F_s - F_smin) + (F_db - Fdbmin) + F_Sdb
+        # If F_s and F_db are individually very large, then shifting them reduces the magnitude of the quantity to be
+        # handled without changing the state probabilities.
+
+        return bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4
+
+
     def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT43):
         # what to pass here?
         Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure
@@ -769,7 +833,7 @@ class dumbbellMediated(VacancyMediated):
 
         return GF_total
 
-    def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFSdb, bFT1, bFT43):
+    def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT43):
 
         """
         bFdb0[i] = beta*ene_pdb[i] - len(pre_pdb[i]), i=1,2...,N_pdbcontainer.symorlist - pure dumbbell free energy
@@ -782,7 +846,8 @@ class dumbbellMediated(VacancyMediated):
         bFT3[i] = beta*eneT3[i] - len(preT3[i]) -> i = 1,2..,N_omega3
         bFT4[i] = beta*eneT4[i] - len(preT4[i]) -> i = 1,2..,N_omega4
 
-        bFS[i] = beta*ene[i] - len(pre[i]), i=1,2,..N_Wyckoff - solute free energies
+        Return:
+            L_aa, L_bb, L_ab - needs to be multiplied by c_db/KT
         """
         pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
         pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
@@ -792,11 +857,14 @@ class dumbbellMediated(VacancyMediated):
         rate2list = ratelist(self.jnet2_indexed, pre2, bFdb2, pre2T, bFT2, self.vkinetic.starset.mdbcontainer.invmap)
 
         # Make the symmetried rates for calculating GF, bias and gamma.
+        # First, make bFSdb_total from individual solute and pure dumbbell free energies and the binding free energy,
+        # i.e, bFdb0, bFS, bFSdb (binding), respectively.
+        # For origin states, this should be in such a way so that omega_1 - omega0 = 0
         (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = \
-            self.getsymmrates(bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT43)
+            self.getsymmrates(bFdb0, bFdb2, bFSdb_total, bFT0, bFT1, bFT2, bFT43)
 
         # Update the bias expansions
-        self.update_bias_expansions(self, rate0list, rate2list)
+        self.update_bias_expansions(rate0list, rate2list)
 
         # Make the Greens function
         omegas = ((omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape))
