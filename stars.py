@@ -194,12 +194,14 @@ class StarSet(object):
                             allset.add(newstate)
                 stars.append(newstar)
         self.stars = stars
-        for sl in self.stars:
-            for s in sl:
-                if not np.allclose(s.R_s, 0, atol=self.crys.threshold):
-                    raise RuntimeError("Solute not at origin")
 
         self.sortstars()
+
+        # Keep the indices of the origin states. Will be necessary when dealing with their rates and probabilities
+        self.originstates = []
+        for starind, star in self.stars:
+            if star[0].is_zero():
+                self.originstates.append(starind)
 
         self.mixedstartindex = len(self.stars)
         # Now add in the mixed states
@@ -280,7 +282,7 @@ class StarSet(object):
             db = star[0].db - star[0].db.R
             # now get the symorlist index in which the dumbbell belongs
             symind = self.mdbcontainer.invmap[self.mdbcontainer.iorindex[db]]
-            self.star2symlist[starind+self.mixedstartindex] = symind
+            self.star2symlist[starind + self.mixedstartindex] = symind
 
         # self.starindexed -> gives the indices into the purestates and mixedstates, of the states stored in the
         # starset, i.e, an indexed version of the starset.
@@ -556,5 +558,5 @@ class StarSet(object):
             jtags3.append(jarrdict)
 
         return (symjumplist_omega43_all, symjumplist_omega43_all_indexed), (
-        symjumplist_omega4, symjumplist_omega4_indexed, jtags4), (
-               symjumplist_omega3, symjumplist_omega3_indexed, jtags3)
+            symjumplist_omega4, symjumplist_omega4_indexed, jtags4), (
+                   symjumplist_omega3, symjumplist_omega3_indexed, jtags3)
