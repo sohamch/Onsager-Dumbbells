@@ -251,6 +251,14 @@ class dumbbellMediated(VacancyMediated):
             self.mdbcontainer.jumpnetwork(cutoff, solt_solv_cut, closestdistance)
         self.crys = pdbcontainer.crys  # we assume this is the same in both containers
         self.chem = pdbcontainer.chem
+
+        # Create the solute invmap
+        sitelist_solute = self.crys.sitelist(self.chem)
+        self.invmap_solute = np.zeros(len(self.crys.basis[self.chem]))
+        for wyckind,ls in enumerate(sitelist_solute):
+            for site in ls:
+                self.invmap_solute[site] = wyckind
+
         # self.jnet2_indexed = self.kinetic.starset.jnet2_indexed
         self.thermo = stars.StarSet(pdbcontainer, mdbcontainer, (self.jnet0, self.jnet0_indexed),
                                     (self.jnet2, self.jnet2_indexed))
@@ -677,8 +685,8 @@ class dumbbellMediated(VacancyMediated):
         bFT0 -= bFdb0_min
         bFT2 -= bFdb2_min
         bFT3 -= bFdb2_min
-        bFT4 -= bFdb0_min
-        bFSdb -= (bFS_min + bFdb0_min)
+        bFT1 -= (bFS_min + bFdb0_min)
+        bFT4 -= (bFS_min + bFdb0_min)
         # F_(Sdb_total) = F_s + F_db + F_Sdb
         # Now if we shift F_Sdb -> F_Sdb - (F_Smin + F_dbmin)
         # Then, F_(Sdb_total) = (F_s - F_smin) + (F_db - Fdbmin) + F_Sdb
@@ -688,8 +696,19 @@ class dumbbellMediated(VacancyMediated):
         return bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4
 
 
-    def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT43):
-        # what to pass here?
+    def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4):
+        """
+
+        :param bFdb0: beta * ene_db0 - ln(pre_db0) - relative to bFdb0min
+        :param bFdb2: beta * ene_db2 - ln(pre_db2) - relative to bFdb2min
+        :param bFSdb: beta * ene_Sdb - ln(pre_Sdb) - Total (not excess) - Relative to bFdb0min + bFSmin
+        :param bFT0: beta * ene_T0 - ln(pre_T0) - relative to bFdb0min
+        :param bFT1: beta * ene_T1 - ln(pre_T1) - relative to bFdb0min + bFSmin
+        :param bFT2: beta * ene_T2 - ln(pre_T2) - relative to bFdb2min
+        :param bFT3: beta * ene_T3 - ln(pre_T3) - relative to bFdb2min
+        :param bFT4: beta * ene_T4 - ln(pre_T4) - relative to bFdb0min + bFSmin
+        :return:
+        """
         Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure
 
         omega0 = np.zeros(len(self.jnet0))
@@ -757,12 +776,12 @@ class dumbbellMediated(VacancyMediated):
             crStar1 = self.vkinetic.starset.pureindexdict[st1][1]
             crStar2 = self.vkinetic.starset.mixedindexdict[st2][1]
 
-            init2TS = np.exp(-bFT43[jt] + bFSdb[crStar1]) # complex (bFSdb) to transition state
-            fin2TS = np.exp(-bFT43[jt] + bFdb2[crStar2]) # mixed (bFdb2) to transition state.
+            init2TS = np.exp(-bFT4[jt] + bFSdb[crStar1])  # complex (bFSdb) to transition state
+            fin2TS = np.exp(-bFT3[jt] + bFdb2[crStar2])  # mixed (bFdb2) to transition state.
 
-            #symmetrized rates for omega3 and omega4 are equal
+            # symmetrized rates for omega3 and omega4 are equal
             omega4[jt] = np.sqrt(init2TS * fin2TS)
-            omega3[jt] = np.sqrt(fin2TS * init2TS)
+            omega3[jt] = omega4[jt] # symmetry condition
 
             # get the vector stars
             v1list = self.vkinetic.stateToVecStar_pure[st1]
@@ -833,13 +852,17 @@ class dumbbellMediated(VacancyMediated):
 
         return GF_total
 
-    def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT43):
+    def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4):
 
         """
-        bFdb0[i] = beta*ene_pdb[i] - len(pre_pdb[i]), i=1,2...,N_pdbcontainer.symorlist - pure dumbbell free energy
-        bFdb2[i] = beta*ene_mdb[i] - len(pre_mdb[i]), i=1,2...,N_mdbcontainer.symorlist - mixed dumbbell free energy
+        bFdb0[i] = beta*ene_pdb[i] - ln(pre_pdb[i]), i=1,2...,N_pdbcontainer.symorlist - pure dumbbell free energy
+        bFdb2[i] = beta*ene_mdb[i] - ln(pre_mdb[i]), i=1,2...,N_mdbcontainer.symorlist - mixed dumbbell free energy
+        bFS[i] = beta*ene_S[i] - _ln(pre_S[i]), i=1,2,..N_Wyckoff - site free energy for solute.
+        The above three values are relative to their respective minimum values.
+        bFSdb - beta*ene_Sdb[i] - ln(pre_Sdb[i]) excess (binding) i=1,2...,mixedstartindex. free energy between a solute and a
+        bare dumbbell in it's vicinity.
 
-        Jump barrier free energies:
+        Jump barrier free energies (See preene2betaene for details):
         bFT0[i] = beta*ene_TS[i] - ln(pre_TS[i]), i=1,2,...,N_omega0
         bFT2[i] = beta*ene_TS[i] - ln(pre_TS[i]), i=1,2,...,N_omega2
         bFT1[i] = beta*eneT1[i] - len(preT1[i]) -> i = 1,2..,N_omega1
@@ -860,8 +883,14 @@ class dumbbellMediated(VacancyMediated):
         # First, make bFSdb_total from individual solute and pure dumbbell free energies and the binding free energy,
         # i.e, bFdb0, bFS, bFSdb (binding), respectively.
         # For origin states, this should be in such a way so that omega_1 - omega0 = 0
+        bFSdb_total = np.zeros(self.vkinetic.starset.mixedstartindex)
+        for starind,star in enumerate(self.vkinetic.starset.mixedstartindex):
+            # Get the symorlist index for the representative state of the star
+            symindex = self.vkinetic.starset.star2symlist[starind]
+            bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]] + bFSdb[starind]
+
         (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = \
-            self.getsymmrates(bFdb0, bFdb2, bFSdb_total, bFT0, bFT1, bFT2, bFT43)
+            self.getsymmrates(bFdb0, bFdb2, bFSdb_total, bFT0, bFT1, bFT2, bFT3, bFT4)
 
         # Update the bias expansions
         self.update_bias_expansions(rate0list, rate2list)
@@ -893,8 +922,6 @@ class dumbbellMediated(VacancyMediated):
         gamma_solvent_vs = np.dot(GF_total, bias_solvent_vs)
 
         # Next we produce the outer product in the basis of the vector star vector state functions
-        # I
-
         # a=solute, b=solvent
         L_c_aa = np.dot(np.dot(self.kinouter, gamma_solute_vs), bias_solute_vs)
         L_c_bb = np.dot(np.dot(self.kinouter, gamma_solvent_vs), bias_solvent_vs)
@@ -904,9 +931,9 @@ class dumbbellMediated(VacancyMediated):
         # First, we have to generate the probability arrays and multiply them with the ratelists. This will
         # Give the probability-square-root multiplied rates in the uncorrelated terms.
 
-        probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb[self.vkinetic.starset.pureindexdict[jlist[0].state1][1]])
+        probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state1][1]])
                           for jlist in self.jnet_1])
-        probFSsqrt_om1 = np.array([np.exp(-0.5 * bFSdb[self.vkinetic.starset.pureindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+        probFSsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
                           for jlist in self.jnet_1])
 
         probISsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1]]])
@@ -921,10 +948,10 @@ class dumbbellMediated(VacancyMediated):
 
         probISsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1-jlist[0].state1.R_s][1]])
                                    for jlist in self.symjumplist_omega3])
-        probFSsqrt_om3 = np.array([np.exp(-0.5 * bFSdb[self.vkinetic.starset.pureindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+        probFSsqrt_om3 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
                                    for jlist in self.symjumplist_omega3])
 
-        probISsqrt_om4 = np.array([np.exp(-0.5 * bFSdb[self.vkinetic.starset.pureindexdict[jlist[0].state1 - jlist[0].state1.R_s][1]])
+        probISsqrt_om4 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state1 - jlist[0].state1.R_s][1]])
                                    for jlist in self.symjumplist_omega4])
         probFSsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2 - jlist[0].state2.R_s][1]])
                                    for jlist in self.symjumplist_omega4])
