@@ -185,7 +185,7 @@ class vectorStars(VectorStarSet):
         # and the other from mixed dumbbell states to mixed states.
 
         # Need an indexing from the vector stars to the crystal stars
-        self.vstar2star = np.zeros(len(self.Nvstars))
+        self.vstar2star = np.zeros(self.Nvstars)
         for vstindex, vst in enumerate(self.vecpos[:self.Nvstars_pure]):
             # get the crystal star of the representative state of the vector star
             starindex = self.starset.pureindexdict[vst[0]][1]
@@ -287,8 +287,8 @@ class vectorStars(VectorStarSet):
 
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
-        GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(self.GFstarset_pure)))
-        GFexpansion_mixed = np.zeros((Nvstars_mixed, Nvstars_mixed, len(self.GFstarset_mixed)))
+        GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
+        GFexpansion_mixed = np.zeros((Nvstars_mixed, Nvstars_mixed, len(GFstarset_mixed)))
 
         # build up the pure GFexpansion
         for i in range(Nvstars_pure):
@@ -306,8 +306,8 @@ class vectorStars(VectorStarSet):
                         ind2 = self.starset.pdbcontainer.iorindex.get(ds.state2 - ds.state2.R)
                         if ind1 == None or ind2 == None:
                             raise KeyError("enpoint subtraction within starset not found in iorlist")
-                        # k = getstar(((ind1,ind2),dx),self.GFstarset_pure)
-                        k = self.GFPureStarInd[(ind1, ind2, dR[0], dR[1], dR[2])]
+                        # k = getstar(((ind1,ind2),dx),GFstarset_pure)
+                        k = GFPureStarInd[(ind1, ind2, dR[0], dR[1], dR[2])]
                         if k is None:
                             raise ArithmeticError(
                                 "complex GF starset not big enough to accomodate state pair {}".format(tup))
@@ -328,8 +328,8 @@ class vectorStars(VectorStarSet):
                         ind2 = self.starset.mdbcontainer.iorindex.get(ds.state2 - ds.state2.R)
                         if ind1 == None or ind2 == None:
                             raise KeyError("enpoint subtraction within starset not found in iorlist")
-                        # k = getstar(((ind1,ind2),dx),self.GFstarset_mixed)
-                        k = self.GFMixedStarInd[(ind1, ind2, dR[0], dR[1], dR[2])]
+                        # k = getstar(((ind1,ind2),dx),GFstarset_mixed)
+                        k = GFMixedStarInd[(ind1, ind2, dR[0], dR[1], dR[2])]
                         if k is None:
                             raise ArithmeticError(
                                 "mixed GF starset not big enough to accomodate state pair {}".format(tup))
@@ -533,8 +533,8 @@ class vectorStars(VectorStarSet):
                                     # Go through the final complex states
                                     if chi_j == jmp.state2:
                                         rate3escape[j - self.Nvstars_pure, k] -= np.dot(vj, vj)
-                                        rate4expansion[i, j, k] += np.dot(vi, vj)
-                                        rate3expansion[j, i, k] += np.dot(vj, vi)
+                                        rate4expansion[i, j - self.Nvstars_pure, k] += np.dot(vi, vj)
+                                        rate3expansion[j - self.Nvstars_pure, i, k] += np.dot(vj, vi)
                                         # The jump type remains the same because they have the same transition state
 
         return (zeroclean(rate0expansion), zeroclean(rate0escape)), (zeroclean(rate1expansion), zeroclean(rate1escape)),\
