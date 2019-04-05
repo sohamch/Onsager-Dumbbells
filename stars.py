@@ -265,7 +265,7 @@ class StarSet(object):
 
         self.starindexed = starindexed
 
-        self.star2symlist = []
+        self.star2symlist = np.zeros(len(self.stars))
         # The i_th element of this index list gives the corresponding symorlist from which the dumbbell of the
         # representative state of the i_th star comes from.
         for starind, star in enumerate(self.stars[:self.mixedstartindex]):
