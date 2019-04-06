@@ -772,7 +772,7 @@ class dumbbellMediated(VacancyMediated):
 
             # get the crystal stars
             crStar1 = self.vkinetic.starset.pureindexdict[st1][1]
-            crStar2 = self.vkinetic.starset.mixedindexdict[st2][1]
+            crStar2 = self.vkinetic.starset.mixedindexdict[st2][1] - self.vkinetic.starset.mixedstartindex
 
             init2TS = np.exp(-bFT4[jt] + bFSdb[crStar1])  # complex (bFSdb) to transition state
             fin2TS = np.exp(-bFT3[jt] + bFdb2[crStar2])  # mixed (bFdb2) to transition state.
@@ -789,7 +789,7 @@ class dumbbellMediated(VacancyMediated):
                 omega4escape[v1, jt] = init2TS
 
             for (v2, in_v1) in v2list:
-                omega3escape[v2, jt] = fin2TS
+                omega3escape[v2 - self.vkinetic.Nvstars_pure, jt] = fin2TS
 
         return (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape)
 
@@ -799,8 +799,7 @@ class dumbbellMediated(VacancyMediated):
         """
         Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure  # type: int
 
-        (rate0expansion, rate0escape), (rate1expansion, rate1escape), (rate2expansion, rate2escape), (
-        rate3expansion, rate3escape), \
+        (rate0expansion, rate0escape), (rate1expansion, rate1escape), (rate3expansion, rate3escape), \
         (rate4expansion, rate4escape) = self.rateExps
 
         (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = omegas
@@ -837,6 +836,7 @@ class dumbbellMediated(VacancyMediated):
 
         # escapes
         for i, starind in enumerate(self.vkinetic.vstar2star[:self.vkinetic.Nvstars_pure]):
+            #######
             symindex = self.vkinetic.starset.star2symlist[starind]
             delta_om[i + Nvstars_mixed, i + Nvstars_mixed] += \
                 np.dot(rate1escape[i, :], omega1escape[i, :])-\
