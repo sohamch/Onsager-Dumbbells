@@ -848,7 +848,7 @@ class dumbbellMediated(VacancyMediated):
 
         GF_total = np.dot(np.linalg.inv(np.eye(self.vkinetic.Nvstars) + np.dot(GF20, delta_om)), GF20)
 
-        return GF_total, delta_om
+        return GF_total, GF20, delta_om
 
     def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4):
 
@@ -968,13 +968,13 @@ class dumbbellMediated(VacancyMediated):
         (D3expansion_aa, D3expansion_bb, D3expansion_ab),\
         (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.bareExpansion()
 
-        L_uc_aa = np.dot(D1expansion_aa,prob_om1) - np.dot(D0expansion_aa,prob_om0) + np.dot(D2expansion_aa, prob_om2) +\
+        L_uc_aa = np.dot(D1expansion_aa,prob_om1) + np.dot(D2expansion_aa, prob_om2) +\
                   np.dot(D3expansion_aa,prob_om3) + np.dot(D4expansion_aa,prob_om4)
 
-        L_uc_bb = np.dot(D1expansion_bb, prob_om1) - np.dot(D0expansion_bb, prob_om0) + np.dot(D2expansion_bb, prob_om2) + \
+        L_uc_bb = np.dot(D1expansion_bb, prob_om1) + np.dot(D2expansion_bb, prob_om2) + \
                   np.dot(D3expansion_bb, prob_om3) + np.dot(D4expansion_bb, prob_om4)
 
-        L_uc_ab = np.dot(D1expansion_ab, prob_om1) - np.dot(D0expansion_ab, prob_om0) + np.dot(D2expansion_ab, prob_om2) + \
+        L_uc_ab = np.dot(D1expansion_ab, prob_om1) + np.dot(D2expansion_ab, prob_om2) + \
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
         return (L_uc_aa+L_c_aa), (L_uc_bb+L_c_bb), (L_uc_ab+L_c_ab)
