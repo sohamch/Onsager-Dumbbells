@@ -199,7 +199,7 @@ class StarSet(object):
 
         # Keep the indices of the origin states. Will be necessary when dealing with their rates and probabilities
         self.originstates = []
-        for starind, star in self.stars:
+        for starind, star in enumerate(self.stars):
             if star[0].is_zero():
                 self.originstates.append(starind)
 
