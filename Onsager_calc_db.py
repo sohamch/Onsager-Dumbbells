@@ -241,14 +241,35 @@ class dumbbellMediated(VacancyMediated):
     Also, instead of working with crystal and chem, we work with the container objects.
     """
 
-    def __init__(self, pdbcontainer, mdbcontainer, cutoff, solt_solv_cut, solv_solv_cut, closestdistance, NGFmax=4,
-                 Nthermo=0):
+    def __init__(self, pdbcontainer, mdbcontainer, jnet0data, jnet2data, cutoff, solt_solv_cut, solv_solv_cut,
+                 closestdistance, NGFmax=4, Nthermo=0):
+        """
+
+        :param pdbcontainer: The container object for pure dumbbells - instance of dbStates
+        :param mdbcontainer: The container object for mixed dumbbell - instance of mStates
+
+        :param jnet0data - (jnet0, jnet0_indexed) - the jumpnetworks for pure dumbbells
+            jnet0 - jumps are of the form (state1, state2, c1 ,c2) - must be produced from states in pdbcontainer.
+            jnet0_indexed - jumps are of the form ((i, j),d x) - indices must be matched to states in pdbcontainer.
+
+        :param jnet2data - (jnet2, jnet2_indexed) - the jumpnetworks for mixed dumbbells
+            jnet2 - jumps are of the form (state1, state2, c1 ,c2) - must be produced from states in mdbcontainer.
+            jnet2_indexed - jumps are of the form ((i, j), dx) - indices must be matched to states in mdbcontainer.
+
+        :param cutoff: The maximum jump distance to be considered while building the jump networks
+        :param solt_solv_cut: The collision cutoff between solute and solvent atoms
+        :param solv_solv_cut: The collision cutoff between solvent and solvent atoms
+        :param closestdistance: The closest distance allowable to all other atoms in the crystal.
+        :param NGFmax: Parameter controlling k-point density (cf - GFcalc.py from the vacancy version)
+        :param Nthermo: The number of jump-nearest neighbor sites that are to be considered within the thermodynamic
+        shell.
+        """
         # All the required quantities will be extracted from the containers as we move along
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
         (self.jnet0, self.jnet0_indexed), (self.jnet2, self.jnet2_indexed) = \
-            self.pdbcontainer.jumpnetwork(cutoff, solv_solv_cut, closestdistance), \
-            self.mdbcontainer.jumpnetwork(cutoff, solt_solv_cut, closestdistance)
+            self.jnet0data, \
+            self.jnet2data
         self.crys = pdbcontainer.crys  # we assume this is the same in both containers
         self.chem = pdbcontainer.chem
 
@@ -275,27 +296,7 @@ class dumbbellMediated(VacancyMediated):
 
         # Generate the initialized crystal and vector stars and the jumpnetworks with the kinetic shell
         self.generate(Nthermo, cutoff, solt_solv_cut, solv_solv_cut, closestdistance)
-        # Generate the jumpnetworks using the kinetic shell
 
-    # def GFCalculator(self,NGFmax=0,pdb=True):
-    #     """
-    #     Mostly similar to vacancy case - returns the GF calculator for complex or mixed dumbbell
-    #     states as specified.
-    #     """
-    #     #unlike the vacancy case, it is better to recalculate for now.
-    #     if NGFmax<0: raise ValueError("NGFmax must be greater than 0")
-    #     self.NGFmax=NGFmax
-    #     self.clearcache(pdb)#make all precalculated lists empty
-    #     if pdb:
-    #         return GFcalc_dumbbells.GF_dumbbells(self.pdbcontainer,self.jnet0_indexed,NGFmax)
-    #     return GFcalc_dumbbells.GF_dumbbells(self.mdbcontainer,self.jnet2_indexed,NGFmax)
-
-    # def clearcache(self):
-    #     """
-    #     Makes all pre-computed dicitionaries empty for pure or mixed dumbbell as specified
-    #     """
-    #     self.GFvalues_pdb, self.LvvValues_pdb, self.etav_pdb = {}, {}, {}
-    #     self.GFvalues_mdb, self.LvvValues_mdb, self.etav_mdb = {}, {}, {}
 
     def generate_jnets(self, cutoff, solt_solv_cut, solv_solv_cut, closestdistance):
         """
@@ -453,13 +454,12 @@ class dumbbellMediated(VacancyMediated):
         # But the jtags assume all the eta vectors are in the same list.
         # So, we need to first concatenate the mixed eta vectors into the pure eta vectors.
 
+        # noinspection PyAttributeOutsideInit
         self.eta0total_solute = np.zeros(
             (len(self.vkinetic.starset.purestates) + len(self.vkinetic.starset.mixedstates), 3))
+        # noinspection PyAttributeOutsideInit
         self.eta0total_solvent = np.zeros(
             (len(self.vkinetic.starset.purestates) + len(self.vkinetic.starset.mixedstates), 3))
-
-        # self.eta02total_solute = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
-        # self.eta02total_solvent = np.zeros((len(self.vkinetic.starset.purestates)+len(self.vkinetic.starset.mixedstates),3))
 
         self.eta0total_solute[:len(self.vkinetic.starset.purestates), :] = self.eta00_solute.copy()
         self.eta0total_solute[len(self.vkinetic.starset.purestates):, :] = self.eta02_solute.copy()
@@ -933,6 +933,7 @@ class dumbbellMediated(VacancyMediated):
 
         probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state1][1]])
                           for jlist in self.jnet_1])
+
         probFSsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
                           for jlist in self.jnet_1])
 
