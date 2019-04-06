@@ -9,41 +9,31 @@ from vector_stars import *
 
 class test_dumbbell_mediated(unittest.TestCase):
     def setUp(self):
-        latt = np.array([[0.,0.5,0.5],[0.5,0.,0.5],[0.5,0.5,0.]])*0.55
-        self.DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
-        self.cube = cube
-        #keep it simple with [1.,0.,0.] type orientations for now
-        o = np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126
+        # We test a new weird lattice because it is more interesting
+        latt = np.array([[0., 0.1, 0.5], [0.3, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
+        self.DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
+        # keep it simple with [1.,0.,0.] type orientations for now
+        o = np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126
         famp0 = [o.copy()]
         family = [famp0]
 
-        self.pdbcontainer_si = dbStates(self.DC_Si,0,family)
-        self.mdbcontainer_si = mStates(self.DC_Si,0,family)
+        self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
+        self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
+        self.jset0, self.jset2 = \
+            self.pdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01), self.mdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01)
 
-        # self.jset0,self.jset2 = self.pdbcontainer_si.jumpnetwork(0.4,0.01,0.01), self.mdbcontainer_si.jumpnetwork(0.4,0.01,0.01)
-        #
-        # self.crys_stars = StarSet(self.pdbcontainer_si,self.mdbcontainer_si,self.jset0,self.jset2, Nshells=1)
-        # self.vec_stars = vectorStars(self.crys_stars)
-        #
-        # #generate 1, 3 and 4 jumpnetworks
-        # (self.jnet_1,self.jnet_1_indexed), self.jtype = self.crys_stars.jumpnetwork_omega1()
-        # (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed),(self.symjumplist_omega3,self.symjumplist_omega3_indexed)=self.crys_stars.jumpnetwork_omega34(0.4,0.01,0.01,0.01)
+        self.onsagercalculator = dumbbellMediated(self.pdbcontainer_si, self.mdbcontainer_si, self.jset0, self.jset2,
+                                                  0.3, 0.01, 0.01, 0.01, NGFmax=4, Nthermo=1)
+        # generate all the bias expansions - will separate out later
+        self.biases = \
+            self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1, self.onsagercalculator.jnet2,
+                                                          self.onsagercalculator.om1types,
+                                                          self.onsagercalculator.symjumplist_omega43_all)
 
-        # self.W1list = np.ones(len(self.jnet_1))
-        # self.W2list = np.ones(len(self.jset2[0]))
-        # self.W3list = np.ones(len(self.symjumplist_omega3))
-        # self.W4list = np.ones(len(self.symjumplist_omega4))
-
-        #generate all the bias expansions - will separate out later
-        #Previously, all the jumplists were created as arrays of ones.
-        #To make things more concrete, we initialize them with random numbers
-        self.onsagercalculator=dumbbellMediated(self.pdbcontainer_si,self.mdbcontainer_si,0.3,0.01,0.01,0.01,NGFmax=4,Nthermo=1)
         self.W1list = np.random.rand(len(self.onsagercalculator.jnet_1))
         self.W2list = np.random.rand(len(self.onsagercalculator.jnet0))
         self.W3list = np.random.rand(len(self.onsagercalculator.symjumplist_omega3))
         self.W4list = np.random.rand(len(self.onsagercalculator.symjumplist_omega4))
-        self.biases =\
-        self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1,self.onsagercalculator.jnet2,self.onsagercalculator.om1types,self.onsagercalculator.symjumplist_omega43_all)
 
 #     def test_displacements(self):
 #
@@ -82,25 +72,7 @@ class test_dumbbell_mediated(unittest.TestCase):
 #         # self.assertTrue(jnet0_solute==None)
 
     def test_calc_eta(self):
-        #We test a new weird lattice because it is more interesting
-        latt = np.array([[0.,0.1,0.5],[0.3,0.,0.5],[0.5,0.5,0.]])*0.55
-        self.DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
-        self.cube = cube
-        #keep it simple with [1.,0.,0.] type orientations for now
-        o = np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126
-        famp0 = [o.copy()]
-        family = [famp0]
-
-        self.pdbcontainer_si = dbStates(self.DC_Si,0,family)
-        self.mdbcontainer_si = mStates(self.DC_Si,0,family)
-
-        #generate all the bias expansions - will separate out later
-        #Previously, all the jumplists were created as arrays of ones.
-        #To make things more concrete, we initialize them with random numbers
-        self.onsagercalculator=dumbbellMediated(self.pdbcontainer_si,self.mdbcontainer_si,0.3,0.01,0.01,0.01,NGFmax=4,Nthermo=1)
-        self.biases =\
-        self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1,self.onsagercalculator.jnet2,self.onsagercalculator.om1types,self.onsagercalculator.symjumplist_omega43_all)
-        #set up the pre-factors and energies for rate calculations
+        # set up random pre-factors and energies for rate calculations
         pre0 = np.random.rand(len(self.onsagercalculator.pdbcontainer.symorlist))
         betaene0 = np.random.rand(len(self.onsagercalculator.pdbcontainer.symorlist))
         pre0T = np.random.rand(len(self.onsagercalculator.jnet0))
@@ -126,8 +98,8 @@ class test_dumbbell_mediated(unittest.TestCase):
             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute,np.zeros((len(self.onsagercalculator.vkinetic.starset.purestates),3))))
 
         else:
-            #The non-local pure dumbbell biases have been tested in test_vecstars.
-            #Here, we check if for periodic dumbbells, we have the same solvent bias.
+            # The non-local pure dumbbell biases have been tested in test_vecstars.
+            # Here, we check if for periodic dumbbells, we have the same solvent bias.
             for i in range(len(self.onsagercalculator.vkinetic.starset.purestates)):
                 for j in range(len(self.onsagercalculator.vkinetic.starset.purestates)):
                     if self.onsagercalculator.vkinetic.starset.purestates[i].db.i == self.onsagercalculator.vkinetic.starset.purestates[j].db.i:
@@ -135,7 +107,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent[j,:]))
                             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent_bare[self.onsagercalculator.vkinetic.starset.bareindexdict[self.onsagercalculator.vkinetic.starset.purestates[i].db - self.onsagercalculator.vkinetic.starset.purestates[i].db.R][0]]))
 
-            #Check that we get the correct non-local bias vector
+            # Check that we get the correct non-local bias vector
             for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
                 bias_true = self.onsagercalculator.NlsolventBias_bare[i,:]
                 bias_calc = np.zeros(3)
@@ -145,12 +117,12 @@ class test_dumbbell_mediated(unittest.TestCase):
                             bias_calc += rate0list[jt][0]*dx
                 self.assertTrue(np.allclose(bias_calc,bias_true))
 
-            #The above test confirms that our NlsolventBias_bare is correct
-            #Now we check if the eta vectors are otrue
+            # The above test confirms that our NlsolventBias_bare is correct
+            # Now we check if the eta vectors are otrue
             for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
                 bias_test = np.zeros(3)
                 db = self.onsagercalculator.vkinetic.starset.bareStates[i]
-                #First, let's check the indexing
+                # First, let's check the indexing
                 self.assertEqual(i,self.onsagercalculator.vkinetic.starset.bareindexdict[db][0])
                 bias_true = self.onsagercalculator.NlsolventBias_bare[i,:]
 
@@ -161,25 +133,23 @@ class test_dumbbell_mediated(unittest.TestCase):
                             bias_test += rate0list[jt][0]*(self.onsagercalculator.eta00_solvent_bare[FS,:]-self.onsagercalculator.eta00_solvent_bare[IS,:])
                 self.assertTrue(np.allclose(bias_test,bias_true),msg="{}{}".format(bias_test,bias_true))
 
-            #A small test to reaffirm that vector bases are calculated properly for the bare states.
+            # A small test to reaffirm that vector bases are calculated properly for the bare states.
             for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
-                #get the indices of the state
+                # get the indices of the state
                 st = self.onsagercalculator.vkinetic.starset.bareStates[i]
-                #next get the vectorstar,state indices
+                # next get the vectorstar,state indices
                 indlist = self.onsagercalculator.vkinetic.stateToVecStar_bare[st]
-                #The IndOfStar in indlist for the mixed case is already shifted by the number of pure vector stars.
+                # The IndOfStar in indlist for the mixed case is already shifted by the number of pure vector stars.
                 if len(indlist)!=0:
                     vlist=[]
                     for tup in indlist:
                         vlist.append(self.onsagercalculator.vkinetic.vecvec_bare[tup[0]][tup[1]])
                     eta_test_solvent = sum([np.dot(self.onsagercalculator.eta00_solvent_bare[i,:],v)*v for v in vlist])
-                    # eta_test_solute = sum([np.dot(self.onsagercalculator.eta02_solute[i,:],v)*v for v in vlist])
-                    # print(vlist)
                     self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec_bare[indlist[0][0]]),self.onsagercalculator.eta00_solvent_bare[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta00_solvent_bare[i]))
 
 
-        #Repeat the above tests for mixed dumbbells
-        #First check if we have the correct bias vectors
+        # Repeat the above tests for mixed dumbbells
+        # First check if we have the correct bias vectors
         for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
             bias_calc_solute = self.onsagercalculator.NlsoluteBias2[i]
             bias_calc_solvent = self.onsagercalculator.NlsolventBias2[i]
@@ -198,7 +168,7 @@ class test_dumbbell_mediated(unittest.TestCase):
             self.assertTrue(np.allclose(bias_calc_solute,bias_true_solute))
             self.assertTrue(np.allclose(bias_calc_solvent,bias_true_solvent))
 
-        #Now that the bias vectors are correct, we should be able to recover them from the eta vectors
+        # Now that the bias vectors are correct, we should be able to recover them from the eta vectors
         for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
             bias_test_solute = np.zeros(3)
             bias_test_solvent = np.zeros(3)
@@ -224,23 +194,6 @@ class test_dumbbell_mediated(unittest.TestCase):
         """
         This is to check if the del_bias expansions are working fine, prod.
         """
-
-        latt = np.array([[0.,0.1,0.5],[0.3,0.,0.5],[0.5,0.5,0.]])*0.55
-        self.DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
-        self.cube = cube
-        #keep it simple with [1.,0.,0.] type orientations for now
-        o = np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126
-        famp0 = [o.copy()]
-        family = [famp0]
-
-        self.pdbcontainer_si = dbStates(self.DC_Si,0,family)
-        self.mdbcontainer_si = mStates(self.DC_Si,0,family)
-
-        self.onsagercalculator=dumbbellMediated(self.pdbcontainer_si,self.mdbcontainer_si,0.3,0.01,0.01,0.01,NGFmax=4,Nthermo=1)
-
-        self.biases =\
-        self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1,self.onsagercalculator.jnet2,self.onsagercalculator.om1types,self.onsagercalculator.symjumplist_omega43_all)
-
         pre0 = np.random.rand(len(self.onsagercalculator.pdbcontainer.symorlist))
         betaene0 = np.random.rand(len(self.onsagercalculator.pdbcontainer.symorlist))
         pre0T = np.random.rand(len(self.onsagercalculator.jnet0))
@@ -255,24 +208,22 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         self.onsagercalculator.update_bias_expansions(rate0list,rate2list)
 
-        #Next, we calculate the bias updates explicitly
-        #First, we make lists to test against
-        #While the non-local rates are determined by rate0list and rate2list, we are free to use random local corrections
+        # Next, we calculate the bias updates explicitly First, we make lists to test against While the non-local
+        # rates are determined by rate0list and rate2list, we are free to use random local corrections
         W0list = np.array([rate0list[i][0] for i in range(len(rate0list))])
         W2list = np.array([rate2list[i][0] for i in range(len(rate2list))])
-        #Now, local corrections (randomized)
+        # Now, local corrections (randomized)
         W1list = np.random.rand(len(self.onsagercalculator.jnet_1))
         W3list = np.random.rand(len(self.onsagercalculator.symjumplist_omega3))
         W4list = np.random.rand(len(self.onsagercalculator.symjumplist_omega4))
 
-        #First, we verify that the non-local bias out of all the bare dumbbell states dissappear
+        # First, we verify that the non-local bias out of all the bare dumbbell states dissappear
         bias0_solvent_nonloc = np.dot(self.onsagercalculator.biasBareExpansion,W0list)
         # solute_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
         solvent_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
         for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_bare[self.onsagercalculator.vkinetic.starset.bareStates[i]]
-            #We have indlist as (IndOfStar, IndOfState)
-            # solute_bias_Nl[i,:] = sum([bias1_solute_nonloc[tup[0]]*self.onsagercalculator.vkinetic.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
+            # We have indlist as (IndOfStar, IndOfState)
             solvent_bias_Nl[i,:] = sum([bias0_solvent_nonloc[tup[0]]*self.onsagercalculator.vkinetic.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
 
         #Next, update with eta vectors manually

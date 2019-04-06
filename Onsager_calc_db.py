@@ -267,9 +267,7 @@ class dumbbellMediated(VacancyMediated):
         # All the required quantities will be extracted from the containers as we move along
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
-        (self.jnet0, self.jnet0_indexed), (self.jnet2, self.jnet2_indexed) = \
-            self.jnet0data, \
-            self.jnet2data
+        (self.jnet0, self.jnet0_indexed), (self.jnet2, self.jnet2_indexed) = jnet0data, jnet2data
         self.crys = pdbcontainer.crys  # we assume this is the same in both containers
         self.chem = pdbcontainer.chem
 
