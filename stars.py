@@ -7,47 +7,47 @@ from collections import defaultdict
 from representations import *
 
 
-def calc_dx_species(crys, jnet, jnet_indexed, type='bare'):
-    """
-    Return a jumpnetwork for the individual species 'alpha' in the form (i,j,dx_alpha)
-    Parameters:
-    jnet - jumpnetwork with jumps in terms of states
-    jnet_indexed - the indexed jumpnetwork.
-    species - indicates which species we are calculating "dx" for.
-    pure - True if we are working in pure dumbell space, False if in mixed dumbell space
-    Returns:
-    symmetry grouped jumps of the form (i,j,dx_species)
-    """
-    if not (type == 'bare' or type == 'mixed'):
-        raise ValueError('the type can only be bare or mixed')
-    if len(jnet_indexed) != len(jnet):
-        raise ValueError("Need the same indexed jumplist as the original jumplist")
-    if type == "bare":
-        if not isinstance(jnet[0][0].state1, dumbbell):
-            raise TypeError("bare dumbell transitions need to be between dumbbell objects")
-    else:
-        if not isinstance(jnet[0][0].state1, SdPair):
-            raise TypeError("mixed dumbbell or complex transitions need to be between SdPair objects")
-    # First deal with solute in pure dumbbell space
-    jnet_solvent = []
-    jnet_solute = []
-    if type == 'bare':
-        # See the notes, the mass tranport of solvent between pure dumbbell jumps is the same as dx
-        jnet_solvent = [[((i, j), dx.copy()) for (i, j), dx in jlist] for jlist in jnet_indexed]
-        jnet_solute = [[((i, j), np.zeros(3)) for (i, j), dx in jlist] for jlist in jnet_indexed]
-    else:
-        for i, jlist in enumerate(jnet):
-            speclist_solute = []
-            speclist_solvent = []
-            for j, jmp in enumerate(jlist):
-                dx = jnet_indexed[i][j][1]
-                dx_solute = dx + (jmp.state2.db.o / 2. - jmp.state1.db.o / 2.)
-                dx_solvent = dx + (-jmp.state2.db.o / 2. + jmp.state1.db.o / 2.)
-                speclist_solute.append(((jnet_indexed[i][j][0][0], jnet_indexed[i][j][0][1]), dx_solute))
-                speclist_solvent.append(((jnet_indexed[i][j][0][0], jnet_indexed[i][j][0][1]), dx_solvent))
-            jnet_solvent.append(speclist_solvent)
-            jnet_solute.append(speclist_solute)
-    return jnet_solute, jnet_solvent
+# def calc_dx_species(crys, jnet, jnet_indexed, type='bare'):
+#     """
+#     Return a jumpnetwork for the individual species 'alpha' in the form (i,j,dx_alpha)
+#     Parameters:
+#     jnet - jumpnetwork with jumps in terms of states
+#     jnet_indexed - the indexed jumpnetwork.
+#     species - indicates which species we are calculating "dx" for.
+#     pure - True if we are working in pure dumbell space, False if in mixed dumbell space
+#     Returns:
+#     symmetry grouped jumps of the form (i,j,dx_species)
+#     """
+#     if not (type == 'bare' or type == 'mixed'):
+#         raise ValueError('the type can only be bare or mixed')
+#     if len(jnet_indexed) != len(jnet):
+#         raise ValueError("Need the same indexed jumplist as the original jumplist")
+#     if type == "bare":
+#         if not isinstance(jnet[0][0].state1, dumbbell):
+#             raise TypeError("bare dumbell transitions need to be between dumbbell objects")
+#     else:
+#         if not isinstance(jnet[0][0].state1, SdPair):
+#             raise TypeError("mixed dumbbell or complex transitions need to be between SdPair objects")
+#     # First deal with solute in pure dumbbell space
+#     jnet_solvent = []
+#     jnet_solute = []
+#     if type == 'bare':
+#         # See the notes, the mass tranport of solvent between pure dumbbell jumps is the same as dx
+#         jnet_solvent = [[((i, j), dx.copy()) for (i, j), dx in jlist] for jlist in jnet_indexed]
+#         jnet_solute = [[((i, j), np.zeros(3)) for (i, j), dx in jlist] for jlist in jnet_indexed]
+#     else:
+#         for i, jlist in enumerate(jnet):
+#             speclist_solute = []
+#             speclist_solvent = []
+#             for j, jmp in enumerate(jlist):
+#                 dx = jnet_indexed[i][j][1]
+#                 dx_solute = dx + (jmp.state2.db.o / 2. - jmp.state1.db.o / 2.)
+#                 dx_solvent = dx + (-jmp.state2.db.o / 2. + jmp.state1.db.o / 2.)
+#                 speclist_solute.append(((jnet_indexed[i][j][0][0], jnet_indexed[i][j][0][1]), dx_solute))
+#                 speclist_solvent.append(((jnet_indexed[i][j][0][0], jnet_indexed[i][j][0][1]), dx_solvent))
+#             jnet_solvent.append(speclist_solvent)
+#             jnet_solute.append(speclist_solute)
+#     return jnet_solute, jnet_solvent
 
 
 class StarSet(object):
