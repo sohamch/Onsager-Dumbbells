@@ -185,7 +185,7 @@ class vectorStars(VectorStarSet):
         # and the other from mixed dumbbell states to mixed states.
 
         # Need an indexing from the vector stars to the crystal stars
-        self.vstar2star = np.zeros(self.Nvstars)
+        self.vstar2star = np.zeros(self.Nvstars, dtype=int)
         for vstindex, vst in enumerate(self.vecpos[:self.Nvstars_pure]):
             # get the crystal star of the representative state of the vector star
             starindex = self.starset.pureindexdict[vst[0]][1]
