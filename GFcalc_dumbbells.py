@@ -1,9 +1,10 @@
 import numpy as np
 from onsager import PowerExpansion as PE
-from onsager.GFcalc import GFCrystalcalc
-from onsager import GFcalc
+from GFcalc import GFCrystalcalc
+# import GFcalc
 import itertools
 from scipy.special import hyp1f1, gamma, expi, factorial
+
 # from copy import deepcopy
 # from numpy import linalg as LA
 # from scipy.special import hyp1f1, gamma, expi #, gammainc
@@ -12,6 +13,8 @@ GFcalc module for dumbbell interstitials
 Inherits most aspects from the original GFcalc module written by Prof. Trinkle.
 """
 T3D = PE.Taylor3D
+
+
 class GF_dumbbells(GFCrystalcalc):
     """
     Class calculator for the Green function, designed to work with the Crystal class.
@@ -19,7 +22,7 @@ class GF_dumbbells(GFCrystalcalc):
     Highly similar to vacany GF calculator, indexing of jumps is in (i,or) list rather than basis set (i).
     """
 
-    def __init__(self, container, jumpnetwork, Nmax=4, kptwt = None):
+    def __init__(self, container, jumpnetwork, Nmax=4, kptwt=None):
         """
         Initializes our calculator with the appropriate topology / connectivity. Doesn't
         require, at this point, the site probabilities or transition rates to be known.
@@ -35,21 +38,21 @@ class GF_dumbbells(GFCrystalcalc):
         """
         # this is really just used by loadHDF5() to circumvent __init__
         if all(x is None for x in (container, jumpnetwork)): return
-        if any (len(tup)!=2 for l in jumpnetwork for tup in l):
-            raise TypeError ("Need the indexed form of the jumpnetwork.")
+        if any(len(tup) != 2 for l in jumpnetwork for tup in l):
+            raise TypeError("Need the indexed form of the jumpnetwork.")
         self.crys = container.crys
         self.chem = container.chem
         self.iorlist = container.iorlist.copy()
         self.symorlist = container.symorlist.copy()
-        self.N = len(self.iorlist)#N - no. of dumbbell states
+        self.N = len(self.iorlist)  # N - no. of dumbbell states
         self.Ndiff = self.networkcount(jumpnetwork, self.N)
-        #Create invmap - which symmety-grouped (i,or) pair list in symorlist
+        # Create invmap - which symmety-grouped (i,or) pair list in symorlist
         # does a given (i,or) pair in iorlist belong to
-        self.invmap = container.invmap.copy() #internalized in the container definition itself
+        self.invmap = container.invmap.copy()  # internalized in the container definition itself
         self.NG = len(self.crys.G)  # number of group operations
         self.indexmap = container.indexmap
         self.grouparray, self.indexpair = self.BreakdownGroups()
-        #modified BreakdownGroups using new indexmap for dumbbells
+        # modified BreakdownGroups using new indexmap for dumbbells
         bmagn = np.array([np.sqrt(np.dot(self.crys.reciplatt[:, i], self.crys.reciplatt[:, i]))
                           for i in range(3)])
         bmagn /= np.power(np.product(bmagn), 1 / 3)
@@ -65,7 +68,7 @@ class GF_dumbbells(GFCrystalcalc):
         # The latter is used to calculate escape rates
         self.FTjumps, self.SEjumps = self.FourierTransformJumps(jumpnetwork, self.N, self.kpts)
         # generate the Taylor expansion coefficients for each jump
-        #generate the jumppairs
+        # generate the jumppairs
         self.jumppairs = tuple((self.invmap[jumplist[0][0][0]], self.invmap[jumplist[0][0][1]])
                                for jumplist in jumpnetwork)
         self.Taylorjumps = self.TaylorExpandJumps(jumpnetwork, self.N)
@@ -166,12 +169,12 @@ class GF_dumbbells(GFCrystalcalc):
                             Only the cartesian rotation matrix
         :return indexpair: array[N][N][NG][2] of the index pair for each group operation
         """
-        #Soham - change required in index mapping
+        # Soham - change required in index mapping
         grouparray = np.zeros((self.NG, self.crys.dim, self.crys.dim))
         indexpair = np.zeros((self.N, self.N, self.NG, 2), dtype=int)
         for ng, g in enumerate(self.crys.G):
             grouparray[ng, :, :] = g.cartrot[:, :]
-            #first construct the indexmap of the group operations for dumbbells
+            # first construct the indexmap of the group operations for dumbbells
             indexmap = self.indexmap[g]
             for i in range(self.N):
                 for j in range(self.N):
