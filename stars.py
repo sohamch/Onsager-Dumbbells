@@ -290,19 +290,17 @@ class StarSet(object):
         # now generate the index dicts
         # --starindex -> tells us which star (via it's index in the states list) a state belongs to.
         # --indexdict -> tell us given a pair state, what is its index in the states list and which star in the starset it belongs to.
-        self.pureindex = np.zeros(len(self.purestates), dtype=int)
-        self.bareindex = np.zeros(len(self.bareStates), dtype=int)
-        self.mixedindex = np.zeros(len(self.mixedstates), dtype=int)
-        self.pureindexdict = {}
-        self.mixedindexdict = {}
-        self.bareindexdict = {}
 
+        self.pureindex = np.zeros(len(self.purestates), dtype=int)
+        self.pureindexdict = {}
         for si, star, starind in zip(itertools.count(), self.stars[:self.mixedstartindex],
                                      self.starindexed[:self.mixedstartindex]):
             for state, ind in zip(star, starind):
                 self.pureindex[ind] = si
                 self.pureindexdict[state] = (ind, si)
 
+        self.mixedindex = np.zeros(len(self.mixedstates), dtype=int)
+        self.mixedindexdict = {}
         for si, star, starind in zip(itertools.count(), self.stars[self.mixedstartindex:], \
                                      self.starindexed[self.mixedstartindex:]):
             for state, ind in zip(star, starind):
@@ -322,6 +320,8 @@ class StarSet(object):
                         indlist.append(j)
             self.bareStarindexed.append(indlist)
 
+        self.bareindex = np.zeros(len(self.bareStates), dtype=int)
+        self.bareindexdict = {}
         for si, star, starind in zip(itertools.count(), self.barePeriodicStars, self.bareStarindexed):
             for state, ind in zip(star, starind):
                 self.bareindex[ind] = si
