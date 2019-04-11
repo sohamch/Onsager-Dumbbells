@@ -273,7 +273,7 @@ class dumbbellMediated(VacancyMediated):
 
         # Create the solute invmap
         sitelist_solute = self.crys.sitelist(self.chem)
-        self.invmap_solute = np.zeros(len(self.crys.basis[self.chem]))
+        self.invmap_solute = np.zeros(len(self.crys.basis[self.chem]),dtype=int)
         for wyckind,ls in enumerate(sitelist_solute):
             for site in ls:
                 self.invmap_solute[site] = wyckind
@@ -288,7 +288,8 @@ class dumbbellMediated(VacancyMediated):
         self.NNstar = stars.StarSet(pdbcontainer, mdbcontainer, (self.jnet0, self.jnet0_indexed),
                                     (self.jnet2, self.jnet2_indexed), 2)
         self.vkinetic = vector_stars.vectorStars()
-        # For now, initiate GF calculators directly.
+
+        # Make GF calculators.
         self.GFcalc_pure = GF_dumbbells(self.pdbcontainer, self.jnet0_indexed, Nmax=4, kptwt=None)
         self.GFcalc_mixed = GF_dumbbells(self.mdbcontainer, self.jnet2_indexed, Nmax=4, kptwt=None)
 
@@ -668,7 +669,7 @@ class dumbbellMediated(VacancyMediated):
 
         bFT0 = beta * eneT0 - np.log(preT0)
         bFT1 = beta * eneT1 - np.log(preT1)
-        bFT2 = beta * eneT1 - np.log(preT1)
+        bFT2 = beta * eneT2 - np.log(preT2)
         bFT3 = beta * eneT43 - np.log(preT43)
         bFT4 = beta * eneT43 - np.log(preT43)
 
@@ -685,18 +686,11 @@ class dumbbellMediated(VacancyMediated):
         bFT3 -= bFdb2_min
         bFT1 -= (bFS_min + bFdb0_min)
         bFT4 -= (bFS_min + bFdb0_min)
-        # F_(Sdb_total) = F_s + F_db + F_Sdb
-        # Now if we shift F_Sdb -> F_Sdb - (F_Smin + F_dbmin)
-        # Then, F_(Sdb_total) = (F_s - F_smin) + (F_db - Fdbmin) + F_Sdb
-        # If F_s and F_db are individually very large, then shifting them reduces the magnitude of the quantity to be
-        # handled without changing the state probabilities.
 
         return bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4
 
-
     def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4):
         """
-
         :param bFdb0: beta * ene_db0 - ln(pre_db0) - relative to bFdb0min
         :param bFdb2: beta * ene_db2 - ln(pre_db2) - relative to bFdb2min
         :param bFSdb: beta * ene_Sdb - ln(pre_Sdb) - Total (not excess) - Relative to bFdb0min + bFSmin
@@ -743,6 +737,9 @@ class dumbbellMediated(VacancyMediated):
 
             st1 = jlist[0].state1 - jlist[0].state1.R_s
             st2 = jlist[0].state2 - jlist[0].state2.R_s
+
+            if st1.is_zero() or st2.is_zero():
+                continue
 
             # get the crystal stars of the representative jumps
             crStar1 = self.vkinetic.starset.pureindexdict[st1][1]
@@ -820,11 +817,8 @@ class dumbbellMediated(VacancyMediated):
         GF2 = np.array([self.GFcalc_mixed(tup[0][0], tup[0][1], tup[1]) for tup in
                         [star[0] for star in self.GFstarset_mixed]])  # type: ndarray
 
-        G0 = np.dot(self.GFexpansion_pure, GF0)
-        G2 = np.dot(self.GFexpansion_mixed, GF2)
-
-        GF20[:Nvstars_mixed, :Nvstars_mixed] = G2.copy()
-        GF20[Nvstars_mixed:, Nvstars_mixed:] = G0.copy()
+        GF20[:Nvstars_mixed, :Nvstars_mixed] = np.dot(self.GFexpansion_mixed, GF2)
+        GF20[Nvstars_mixed:, Nvstars_mixed:] = np.dot(self.GFexpansion_pure, GF0)
 
         # make delta omega
         delta_om = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
@@ -881,8 +875,9 @@ class dumbbellMediated(VacancyMediated):
         # First, make bFSdb_total from individual solute and pure dumbbell free energies and the binding free energy,
         # i.e, bFdb0, bFS, bFSdb (binding), respectively.
         # For origin states, this should be in such a way so that omega_1 - omega0 = 0
-        bFSdb_total = np.zeros(self.vkinetic.starset.mixedstartindex)
-        for starind,star in enumerate(self.vkinetic.starset.mixedstartindex):
+        N_comp_stars = self.vkinetic.starset.mixedstartindex
+        bFSdb_total = np.zeros(N_comp_stars)
+        for starind,star in enumerate(self.vkinetic.starset.stars[:N_comp_stars]):
             # Get the symorlist index for the representative state of the star
             symindex = self.vkinetic.starset.star2symlist[starind]
             bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]] + bFSdb[starind]
