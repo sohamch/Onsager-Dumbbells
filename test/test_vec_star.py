@@ -435,10 +435,10 @@ class test_vecstars(unittest.TestCase):
 
         #Check that every state in the GFstarsets is present as keys in in the starinds
         sm = sum([len(star) for star in GFstarset_pure])
-        self.assertEqual(sm,GFPureStarInd)
+        self.assertEqual(sm,len(GFPureStarInd))
 
         sm = sum([len(star) for star in GFstarset_mixed])
-        self.assertEqual(sm,GFMixedStarInd)
+        self.assertEqual(sm,len(GFMixedStarInd))
 
         #First for the complex states
         for st1 in self.vec_stars.starset.purestates:
@@ -450,6 +450,8 @@ class test_vecstars(unittest.TestCase):
                 dx = disp(self.vec_stars.starset.crys,self.vec_stars.starset.chem,s.state1,s.state2)
                 ind1 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state1-s.state1.R)
                 ind2 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state2-s.state2.R)
+                self.assertFalse(ind1==None)
+                self.assertFalse(ind2==None)
                 found =\
                 any(ind1==tup[0][0] and ind2==tup[0][1] and np.allclose(tup[1],dx,atol=self.vec_stars.starset.crys.threshold)for tlist in GFstarset_pure for tup in tlist)
 
@@ -464,6 +466,8 @@ class test_vecstars(unittest.TestCase):
                 dx = disp(self.vec_stars.starset.crys,self.vec_stars.starset.chem,s.state1,s.state2)
                 ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state1-s.state1.R)
                 ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state2-s.state2.R)
+                self.assertFalse(ind1 == None)
+                self.assertFalse(ind2 == None)
                 found =\
                 any(ind1==tup[0][0] and ind2==tup[0][1] and np.allclose(tup[1],dx,atol=self.vec_stars.starset.crys.threshold)for tlist in GFstarset_mixed for tup in tlist)
 
