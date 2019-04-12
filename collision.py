@@ -96,7 +96,7 @@ def collision_self(dbcontainer, jump, cutoff12, cutoff13=None):
     return (c12 or c13)
 
 
-def collision_others(crys, chem, jmp, closestdistance):
+def collision_others(container, jmp, closestdistance):
     """
     Takes a jump and sees if the moving atom of the dumbbell collides with any other atom.
     params:
@@ -107,15 +107,29 @@ def collision_others(crys, chem, jmp, closestdistance):
     Returns:
         True if atoms collide. False otherwise.
     """
+    crys, chem = container.crys, container.chem
     # Format closestdistance appropriately
     if isinstance(closestdistance, list):
         closest2list = [x ** 2 for c, x in enumerate(closestdistance)]
     else:
         closest2list = [closestdistance ** 2 for c in range(crys.Nchem)]
+
     # First extract the necessary parameters for calculating the transport vector
-    (i1, i2) = (jmp.state1.i, jmp.state2.i) if isinstance(jmp.state1, dumbbell) else (jmp.state1.db.i, jmp.state2.db.i)
-    (R1, R2) = (jmp.state1.R, jmp.state2.R) if isinstance(jmp.state1, dumbbell) else (jmp.state1.db.R, jmp.state2.db.R)
-    (o1, o2) = (jmp.state1.o, jmp.state2.o) if isinstance(jmp.state1, dumbbell) else (jmp.state1.db.o, jmp.state2.db.o)
+    if isinstance(jmp.state1, dumbbell):
+        (i1, i2) = (container.iorlist[jmp.state1.iorind][0], container.iorlist[jmp.state2.iorind][0])
+    else:
+        (i1, i2) = (container.iorlist[jmp.state1.db.iorind][0], container.iorlist[jmp.state2.db.iorind][0])
+
+    if isinstance(jmp.state1, dumbbell):
+        (R1, R2) = (jmp.state1.R, jmp.state2.R)
+    else:
+        (R1, R2) = (jmp.state1.db.R, jmp.state2.db.R)
+
+    if isinstance(jmp.state1, dumbbell):
+        (o1, o2) = (container.iorlist[jmp.state1.iorind][1], container.iorlist[jmp.state2.iorind][1])
+    else:
+        (o1, o2) = (container.iorlist[jmp.state1.db.iorind][1], container.iorlist[jmp.state2.db.iorind][1])
+
     c1, c2 = jmp.c1, jmp.c2
     dvec = (c2 / 2.) * o2 - (c1 / 2.) * o1
     dR = crys.unit2cart(R2, crys.basis[chem][i2]) - crys.unit2cart(R1, crys.basis[chem][i1])
@@ -152,4 +166,4 @@ def collision_others(crys, chem, jmp, closestdistance):
                         # print(c,n,u0)
                         # This print statement is only for seeing outputs in the testing phase.
                         return True
-    return False  # if no collision occur.
+    return False  # if no collision occurs.
