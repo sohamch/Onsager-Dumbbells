@@ -4,7 +4,7 @@ from representations import *
 from collision import *
 
 
-def disp(crys, chem, obj1, obj2):
+def disp(dbcontainer, obj1, obj2):
     """
     Computes the transport vector for the initial and final states of a jump
     param:
@@ -12,8 +12,15 @@ def disp(crys, chem, obj1, obj2):
         obj1,obj2 - the initial and final state objects of a jump
         Return - displacement when going from obj1 to obj2
     """
-    (i1, i2) = (obj1.i, obj2.i) if isinstance(obj1, dumbbell) else (obj1.db.i, obj2.db.i)
+    crys, chem = dbcontainer.crys, dbcontainer.chem
+
+    if isinstance(obj1, dumbbell):
+        (i1, i2) = (dbcontainer.iorlist[obj1.iorind][0], dbcontainer.iorlist[obj2.iorind][0])
+    else:
+        (i1, i2) = (dbcontainer.iorlist[obj1.db.iorind][0], dbcontainer.iorlist[obj2.db.iorind][0])
+
     (R1, R2) = (obj1.R, obj2.R) if isinstance(obj1, dumbbell) else (obj1.db.R, obj2.db.R)
+
     return crys.unit2cart(R2, crys.basis[chem][i2]) - crys.unit2cart(R1, crys.basis[chem][i1])
 
 
@@ -27,6 +34,9 @@ class dbStates(object):
                       2. Given an (i,or) pair, check which pair in the set a group operation maps it onto.
     """
 
+    # TODO - add fliplist that stores the index of the negative orientation of a db in iorlist
+    # TODO - make a dict that has gdumbs as keys and g's as values.
+
     def __init__(self, crys, chem, family):
         if not isinstance(family, list):
             raise TypeError("Enter the families as a list of lists")
@@ -34,51 +44,30 @@ class dbStates(object):
         self.crys = crys
         self.chem = chem
         self.family = family
+        # make the dumbbell states, change the indexmap of the grouops and store original groupops in G_crys
         self.iorlist = self.genpuresets()
-        self.symorlist = self.gensymset()
+        self.G, self.G_crys, = self.makeNewGops(self.crys, self.chem, self.iorlist)
+        self.symorlist, self.symIndlist = self.gensymset() # make this an indexed list
         # Store both iorlist and symorlist so that we can compare them later if needed.
         self.threshold = crys.threshold
-        self.invmap = self.invmap(self.iorlist, self.symorlist)
-        self.indexmap = self.indexmapping()
-        self.indsymlist = self.indexedsymlist()
-        self.iorindex = self.gendict(self.iorlist)
-        # iorindex contains origin centered dumbbells as keys, and their indices in iorlist as values
+        self.invmap = self.invmapping(self.iorlist, self.symorlist)
+        # Invmap says which (i, or) pair is present in which symmetric (i, or) list
 
     @staticmethod
-    def gendict(iorlist):
-        indDict = {}
-        for ind, tup in enumerate(iorlist):
-            db = dumbbell(tup[0], tup[1].copy(), np.zeros(3, dtype=int))
-            indDict[db] = ind
-        return indDict
-
-    @staticmethod
-    def invmap(iorlist, symorlist):
-        for l in symorlist:
-            for tup in l:
-                if not any(t[0] == tup[0] and np.allclose(t[1], tup[1]) for t in iorlist):
-                    raise TypeError("iorlist and symorlist have different states")
-        invmap = np.zeros(len(iorlist), dtype=int)
-        for ind, l in enumerate(symorlist):
-            for i, tup in enumerate(iorlist):
-                if any(tup[0] == t[0] and np.allclose(tup[1], t[1]) for t in l):
-                    invmap[i] = ind
-        return invmap
-
-    def indexedsymlist(self):
-        """
-        return a version of symorlist indexed to iorlist
-        """
-        stind = []
-        for l in self.symorlist:
-            lis = []
-            for tup1 in l:
-                for ind, tup in enumerate(self.iorlist):
-                    if tup[0] == tup1[0] and np.allclose(tup[1], tup1[1]):
-                        lis.append(ind)
+    def invmapping(iorlist, symorlist):
+        # Sanity checks between iorlist and symorlist is performed during testing
+        invmap = []
+        for (i, o) in iorlist:
+            for symind, symlist in enumerate(symorlist):
+                count = 0
+                for (i1, o1) in symlist:
+                    if i1 == i and np.allclose(o1, o):
+                        count += 1
+                        invmap.append(symind)
                         break
-            stind.append(lis)
-        return stind
+                    if count == 1:
+                        break
+
 
     def genpuresets(self):
         """
@@ -101,10 +90,10 @@ class dbStates(object):
 
         sitelist = self.crys.sitelist(self.chem)
         # Get the Wyckoff sets
-        pairlist = []
-        for i, wycksites in enumerate(sitelist):
-            orlist = self.family[i]
-            site = wycksites[0]
+        iorlist = []
+        for wyckind, wycksites in enumerate(sitelist):
+            orlist = self.family[wyckind]  # Get the orientations allowed on the given Wyckoff set.
+            site = wycksites[0]  # Get the representative site of the Wyckoff set.
             newlist = []
             for o in orlist:
                 for g in self.crys.G:
@@ -114,73 +103,65 @@ class dbStates(object):
                         if negOrInList(o_new, pairlist):
                             o_new = -o_new + 0.
                         pairlist.append((i_new, o_new))
-        return pairlist
+        return iorlist
 
-    def gensymset(self):  # crys,chem,iorlist
+    @staticmethod
+    def makeDbGops(crys, chem, iorlist):
+        G=[]
+        G_crys={}
+        for g in crys.G:
+            # Will have indexmap for each groupop
+            indexmap = []
+            for (i, o) in iorlist:
+                # Need the elements of indexmap
+                R, (ch, i_new) = crys.g_pos(g, np.zeros(3), (chem, i))
+                o_new = crys.g_direc(g, o)
+                count = 0
+                for idx2, (i2, o2) in enumerate(iorlist):
+                    if i2 == i_new and (np.allclose(o2, o_new, atol=crys.threshold) or
+                                        np.allclose(o2, -o_new, atol=crys.threshold)):
+                        indexmap.append(idx2)
+                        break
+
+            gdumb = crystal.GroupOp(g.rot, g.trans, g.cartrot, tuple(indexmap))
+            G.append(gdumb)
+            self.G_crys[gdumb] = g
+
+        return frozenset(G), G_crys
+
+    def gensymset(self):
         """
         Takes in a flat list of (i,or) pairs and groups them according to symmetry
-        params:
-            crys - the working crystal object
-            chem - the sublattice under consideration
-            iorlist - flat list of (i,or) pairs
-        Returns:
-            symorlist - a list of lists which contain symmetry related (i,or) pairs
         """
 
-        # some helper functions
-        def matchvec(vec1, vec2):
-            return np.allclose(vec1, vec2, atol=self.crys.threshold) or np.allclose(vec1 + vec2, 0,
-                                                                                    atol=self.crys.threshold)
-
-        def insymlist(ior, symlist):
-            return any(ior[0] == x[0] and matchvec(ior[1], x[1]) for lis in symlist for x in lis)
-
-        def inset(ior, set):
-            return any(ior[0] == x[0] and matchvec(ior[1], x[1]) for x in set)
-
-        newlist = []
-        symlist = []
-        for ior in self.iorlist:
-            if insymlist(ior, symlist):
+        # We'll take advantage of the gdumbs we have created
+        symIorList = []
+        symIndlist = []
+        allIndlist = set([])
+        for idx, (i, o) in enumerate(self.iorlist):
+            if idx in allIndlist:
                 continue
-            newlist = []
-            newlist.append(ior)
-            for g in self.crys.G:
-                R, (ch, inew) = self.crys.g_pos(g, np.array([0, 0, 0]), (self.chem, ior[0]))
-                onew = np.dot(g.cartrot, ior[1])
-                if any(np.allclose(onew + t[1], 0, atol=1.e-8) for t in self.iorlist):
-                    onew = -onew + 0.
-                if not inset((inew, onew), newlist):
-                    newlist.append((inew, onew))
-            symlist.append(newlist)
-        return symlist
+            newlist=[]
+            newindlist = []
+            for gdumb in self.G:
+                idxnew = gdumb.indexmap[idx]
+                allIndlist.add(idxnew)
+                newindlist.append(idxnew)
+                newlist.append(self.iorlist[idxnew])
+            symIndlist.append(newindlist)
+            symIorList.append(newlist)
 
-    def indexmapping(self):
-        indexmap = {}
-        for g in self.crys.G:
-            maplist = []
-            for st, ior in enumerate(self.iorlist):
-                R, (ch, inew) = self.crys.g_pos(g, np.array([0, 0, 0]), (self.chem, ior[0]))
-                onew = np.dot(g.cartrot, ior[1])
-                if any(np.allclose(onew + t[1], 0, atol=1.e-8) for t in self.iorlist):
-                    onew = -onew + 0.
-                for j, t in enumerate(self.iorlist):
-                    if t[0] == inew and np.allclose(t[1], onew):
-                        maplist.append(j)
-                indexmap[g] = maplist
-        return indexmap
+        return symIorList, symIndlist
 
-    def gdumb(self, g, db):
+    def gflip(self, gdumb, idx):
         """
-        Takes in a dumbbell, applies a group operation and reverses orientation if new orientation
-        is not in iorlist. Also returns the multiplicative constant for jump object.
+        Takes in a (i, or) index, idx, applies a group operation and returns -1 if the groupop reverses the orientation
+        from that of the destination index (gdumb.indexmap[idx]), +1 if not
         """
-        dbnew = db.gop(self.crys, self.chem, g)
-        mult = 1
-        if any(np.allclose(dbnew.o, -o1) for s, o1 in self.iorlist):
-            dbnew = -dbnew
-            mult = -1
-        return dbnew, mult
+        inew, onew = self.iorlist[gdumb.indexmap[idx]]
+        if np.allclose(onew, -np.dot(gdumb.cartrot, self.iorlist[idx][1]), atol = self.crys.threshold):
+            return -1
+        return 1
 
     def jumpnetwork(self, cutoff, solv_solv_cut, closestdistance):
         """
@@ -192,10 +173,10 @@ class dbStates(object):
             closestdistance - minimum allowable distance to check for collisions with other atoms. Can be a single
             number or a list (corresponding to each sublattice)
         Returns:
-            jumpnetwork - the symmetrically grouped jumpnetworks (pair1,pair2,c1,c2)
-            jumpindices - the jumpnetworks with dbs in pair1 and pair2 indexed to iorset -> (i,j,dx,c1,c2)
+            jumpnetwork - the symmetrically grouped jumpnetworks (db1,db2,c1,c2)
+            jumpindices - the jumpnetworks with dbs in pair1 and pair2 indexed to iorset -> (i,j,dx)
         """
-        crys, chem, iorset = self.crys, self.chem, self.iorlist
+        crys, chem, iorlist = self.crys, self.chem, self.iorlist
 
         def getjumps(j, jumpset):
             "Does the symmetric list construction for an input jump and an existing jumpset"
@@ -203,57 +184,36 @@ class dbStates(object):
             # If the jump has not already been considered, check if it leads to collisions.
             jlist = []
             jindlist = []
-            for g in crys.G:
-                # jnew = j.gop(crys,chem,g)
-                db1new, mul1 = self.gdumb(g, j.state1)
-                db2new, mul2 = self.gdumb(g, j.state2)
+            for gdumb in self.G:
+                # Get the new dumbbells
+                db1new = (gdumb.indexmap[j.state1.iorind], np.dot(gdumb.rot, j.state1.R))
+                db2new = (gdumb.indexmap[j.state2.iorind], np.dot(gdumb.rot, j.state2.R))
                 trans = db1new.R.copy()
+
                 db2new = db2new - trans
                 db1new = db1new - trans
+                mul1 = self.gflip(gdumb, j.state1.iorind)
+                mul2 = self.gflip(gdumb, j.state2.iorind)
+
                 jnew = jump(db1new, db2new, j.c1 * mul1, j.c2 * mul2)  # Check this part
-                db1newneg = dumbbell(jnew.state2.i, jnew.state2.o, jnew.state1.R)
-                db2newneg = dumbbell(jnew.state1.i, jnew.state1.o, -jnew.state2.R)
+                dx = disp(self, j.state1, j.state2)
+
+                db1newneg = dumbbell(jnew.state2.iorind, jnew.state1.R)
+                db2newneg = dumbbell(jnew.state1.iorind, -jnew.state2.R)
                 jnewneg = jump(db1newneg, db2newneg, jnew.c2, jnew.c1)
+
                 if not np.allclose(db1newneg.R, np.zeros(3), atol=1e-8):
                     raise RuntimeError("Intial state not at origin")
+
                 if not jnew in jumpset:
                     # add both the jump and it's negative
                     jlist.append(jnew)
                     jlist.append(jnewneg)
-                    jindlist.append(indexed(jnew))
-                    jindlist.append(indexed(jnewneg))
+                    jindlist.append(((jnew.state1.iorind, jnew.state2.iorind), dx))
+                    jindlist.append(((jnewneg.state1.iorind, jnewneg.state2.iorind), -dx))
                     jumpset.add(jnew)
                     jumpset.add(jnewneg)
             return jlist, jindlist
-
-        # pointers to necessary parameters from dbobj
-
-        def indexed(j):
-            """
-            Takes in a jump and indexes it to the iorset
-            Params:
-                j - the jump to index
-            Return:
-                indexj - (i,j,dx,c1,c2)
-            """
-            (i1, o1) = (j.state1.i, j.state1.o)
-            (i2, o2) = (j.state2.i, j.state2.o)
-            initindex = None
-            finindex = None
-            for ind, (i, o) in enumerate(iorset):
-                if (i1 == i and np.allclose(o, o1, atol=1e-8)):
-                    initindex = ind
-                    break
-            for ind, (i, o) in enumerate(iorset):
-                if (i2 == i and np.allclose(o, o2, atol=1e-8)):
-                    finindex = ind
-                    break
-            if initindex == None or finindex == None:
-                raise RuntimeError(
-                    "The given initial or final dumbbell state in the jump is not in the (i,or) list provided")
-            dx = disp(crys, chem, j.state1, j.state2)
-            tup = ((initindex, finindex), dx)
-            return tup
 
         nmax = [int(np.round(np.sqrt(cutoff ** 2 / crys.metric[i, i]))) + 1 for i in range(3)]
         Rvects = [np.array([n0, n1, n2]) for n0 in range(-nmax[0], nmax[0] + 1)
@@ -265,24 +225,25 @@ class dbStates(object):
         # dxcount=0
         z = np.zeros(3).astype(int)
         for R in Rvects:
-            for i in iorset:
-                for f in iorset:
-                    db1 = dumbbell(i[0], i[1], np.array([0, 0, 0], dtype=int))
-                    db2 = dumbbell(f[0], f[1], R)
+            for i, tup1 in enumerate(iorlist):
+                for f, tup2 in enumerate(iorlist):
+                    db1 = dumbbell(i, np.array([0, 0, 0], dtype=int))
+                    db2 = dumbbell(f, R)
                     if db1 == db2:  # catch the diagonal case
                         continue
-                    dx = disp(crys, chem, db1, db2)
+                    dx = disp(self, db1, db2)
                     if np.dot(dx, dx) > cutoff * cutoff:
                         continue
                     for c1 in [-1, 1]:
-                        # Check if the jump is a rotation
+                        # Check if the jump is a rotation - 180 degree rotations end up in the same state
+                        # They are also detected by collisions since the two atoms pass through each other and hence
+                        # are not considered.
                         if np.allclose(np.dot(dx, dx), np.zeros(3), atol=crys.threshold):
                             j = jump(db1, db2, c1, 1)
                             if j in jumpset:  # no point doing anything else if the jump has already been considered
                                 continue
-                            if collision_self(crys, chem, j, solv_solv_cut, solv_solv_cut) or collision_others(crys,
-                                                                                                               chem, j,
-                                                                                                               closestdistance):
+                            if collision_self(self, j, solv_solv_cut, solv_solv_cut) or\
+                                    collision_others(self, j, closestdistance):
                                 continue
                             jlist, jindlist = getjumps(j, jumpset)
                             jumplist.append(jlist)
@@ -292,15 +253,25 @@ class dbStates(object):
                             j = jump(db1, db2, c1, c2)
                             if j in jumpset:  # no point doing anything else if the jump has already been considered
                                 continue
-                            if collision_self(crys, chem, j, solv_solv_cut, solv_solv_cut) or collision_others(crys,
-                                                                                                               chem, j,
-                                                                                                               closestdistance):
+                            if collision_self(self, j, solv_solv_cut, solv_solv_cut) or\
+                                    collision_others(self, j, closestdistance):
                                 continue
                             jlist, jindlist = getjumps(j, jumpset)
                             jumplist.append(jlist)
                             jumpindices.append(jindlist)
         return jumplist, jumpindices
 
+    def getIndex(self, t):
+
+        """
+        :param i: input site index
+        :param o: input orientation
+        :return: idx (integer) - the index of (i, o) in the iorlist, if it exists.
+        """
+        for idx,tup in enumerate(self.iorlist):
+            if t[0]==tup[0] and np.allclose(t[1],tup[1],atol = 1e-8):
+                return idx
+        raise ValueError("The given site orientation pair {} is not present in the container".format(t))
 
 class mStates(object):
     """
@@ -314,57 +285,34 @@ class mStates(object):
     def __init__(self, crys, chem, family):
         if not isinstance(family, list):
             raise TypeError("Enter the families as a list of lists")
-
+        # Should I just inherit dbStates here?
         self.crys = crys
         self.chem = chem
         self.family = family
+        # make the dumbbell states, change the indexmap of the grouops and store original groupops in G_crys
         self.iorlist = self.genmixedsets()
-        self.symorlist = self.gensymset()
+        self.G, self.G_crys, = self.makeNewGops(self.crys, self.chem, self.iorlist)
+        self.symorlist, self.symIndlist = self.gensymset()  # make this an indexed list
         # Store both iorlist and symorlist so that we can compare them later if needed.
         self.threshold = crys.threshold
         self.invmap = self.invmapping(self.iorlist, self.symorlist)
-        self.indexmap = self.indexmapping()
-        self.iorindex = self.gendict(self.iorlist)
+
+        # Invmap says which (i, or) pair is present in which symmetric (i, or) list
 
     @staticmethod
-    def gendict(iorlist):
-        indDict = {}
-        for ind, tup in enumerate(iorlist):
-            db = dumbbell(tup[0], tup[1].copy(), np.zeros(3, dtype=int))
-            indDict[db] = ind
-        return indDict
-
-    def checkinlist(self, mdb):
-        """
-        Takes as an argument a dumbbell and returns if it is the iorlist
-
-        """
-        # Type check to see if a mixed dumbbell is passed
-        if not isinstance(mdb, SdPair):
-            raise TypeError("Mixed dumbbell must be an SdPair object.")
-        if not (mdb.i_s == mdb.db.i and np.allclose(mdb.R_s, mdb.db.R, atol=self.threshold)):
-            raise TypeError("Passed in pair is not a mixed dumbbell")
-
-        db = dumbbell(mdb.db.i, mdb.db.o.copy(), np.zeros(3, dtype=int))
-        value = self.iorindex.get(db)
-
-        # Place a check for test purposes
-        return not (value == None)
-
-    def indexedsymlist(self):
-        """
-        return a version of symorlist indexed to iorlist
-        """
-        stind = []
-        for l in self.symorlist:
-            lis = []
-            for tup1 in l:
-                for ind, tup in enumerate(self.iorlist):
-                    if tup[0] == tup1[0] and np.allclose(tup[1], tup1[1]):
-                        lis.append(ind)
+    def invmapping(iorlist, symorlist):
+        # Sanity checks between iorlist and symorlist is performed during testing
+        invmap = []
+        for (i, o) in iorlist:
+            for symind, symlist in enumerate(symorlist):
+                count = 0
+                for (i1, o1) in symlist:
+                    if i1 == i and np.allclose(o1, o):
+                        count += 1
+                        invmap.append(symind)
                         break
-            stind.append(lis)
-        return stind
+                    if count == 1:
+                        break
 
     def genmixedsets(self):
         """
@@ -398,92 +346,52 @@ class mStates(object):
                         pairlist.append((i_new, o_new))
         return pairlist
 
+    @staticmethod
+    def makeDbGops(crys, chem, iorlist):
+        G = []
+        G_crys = {}
+        for g in crys.G:
+            # Will have indexmap for each groupop
+            indexmap = []
+            for (i, o) in iorlist:
+                # Need the elements of indexmap
+                R, (ch, i_new) = crys.g_pos(g, np.zeros(3), (chem, i))
+                o_new = crys.g_direc(g, o)
+                count = 0
+                for idx2, (i2, o2) in enumerate(iorlist):
+                    if i2 == i_new and np.allclose(o2, o_new, atol=crys.threshold):
+                        indexmap.append(idx2)
+                        break
+            gdumb = crystal.GroupOp(g.rot, g.trans, g.cartrot, tuple(indexmap))
+            G.append(gdumb)
+            self.G_crys[gdumb] = g
+        return frozenset(G), G_crys
+
     def gensymset(self):
         """
         Takes in a flat list of (i,or) pairs and groups them according to symmetry
-        params:
-            crys - the working crystal object
-            chem - the sublattice under consideration
-            iorlist - flat list of (i,or) pairs
-        Returns:
-            symorlist - a list of lists which contain symmetry related (i,or) pairs
         """
-        crys, chem, iorlist = self.crys, self.chem, self.iorlist
-
-        def matchvec(vec1, vec2):
-            return np.allclose(vec1, vec2, atol=crys.threshold)
-
-        def insymlist(ior, symlist):
-            return any(ior[0] == x[0] and matchvec(ior[1], x[1]) for lis in symlist for x in lis)
-
-        def inset(ior, set):
-            return any(ior[0] == x[0] and matchvec(ior[1], x[1]) for x in set)
-
-        # first make a set of the unique pairs supplied - each taken only once
-        # That way we won't need to do redundant group operations
-        orset = []
-        for ior in iorlist:
-            if not inset(ior, orset):
-                orset.append(ior)
-
-        # Now check for valid group transitions within orset.
-        # If the result of a group operation (j,o1) or it's negative (j,-o1) is not there is orset, append it to orset.
-        ior = orset[0]
-        newlist = []
-        symlist = []
-        newlist.append(ior)
-        for g in crys.G:
-            R, (ch, inew) = crys.g_pos(g, np.array([0, 0, 0]), (chem, ior[0]))
-            onew = np.dot(g.cartrot, ior[1])
-            if not inset((inew, onew), newlist):
-                newlist.append((inew, onew))
-        symlist.append(newlist)
-        for ior in orset[1:]:
-            if insymlist(ior, symlist):
+        symIorList = []
+        symIndlist = []
+        allIndlist = set([])
+        for idx, (i, o) in enumerate(self.iorlist):
+            if idx in allIndlist:
                 continue
             newlist = []
-            newlist.append(ior)
-            for g in crys.G:
-                R, (ch, inew) = crys.g_pos(g, np.array([0, 0, 0]), (chem, ior[0]))
-                onew = np.dot(g.cartrot, ior[1])
-                if not inset((inew, onew), newlist):
-                    newlist.append((inew, onew))
-            symlist.append(newlist)
-        return symlist
+            newindlist = []
+            for gdumb in self.G:
+                idxnew = gdumb.indexmap[idx]
+                allIndlist.add(idxnew)
+                newindlist.append(idxnew)
+                newlist.append(self.iorlist[idxnew])
+            symIndlist.append(newindlist)
+            symIorList.append(newlist)
 
-    @staticmethod
-    def invmapping(iorlist, symorlist):
-        for l in symorlist:
-            for tup in l:
-                if not any(t[0] == tup[0] and np.allclose(t[1], tup[1]) for t in iorlist):
-                    raise TypeError("iorlist and symorlist have different states")
-        invmap = np.zeros(len(iorlist), dtype=int)
-        for i, tup in enumerate(iorlist):
-            for ind, l in enumerate(symorlist):
-                if any(tup[0] == t[0] and np.allclose(tup[1], t[1]) for t in l):
-                    invmap[i] = ind
-        return invmap
-
-    # Equivalent of enumeration over dicts - for k,v in dict.items() - read docs.
-    # Make indexmap a dictionary with the gops as keys.
-    # Read up on dicts and sets in python.
-    # Also, do not hash into floats.
-    def indexmapping(self):
-        indexmap = {}
-        for g in self.crys.G:
-            maplist = []
-            for st, ior in enumerate(self.iorlist):
-                R, (ch, inew) = self.crys.g_pos(g, np.array([0, 0, 0]), (self.chem, ior[0]))
-                onew = np.dot(g.cartrot, ior[1])
-                for j, t in enumerate(self.iorlist):
-                    if t[0] == inew and np.allclose(t[1], onew):
-                        maplist.append(j)
-            indexmap[g] = maplist
-        return indexmap
+        return symIorList, symIndlist
 
     def jumpnetwork(self, cutoff, solt_solv_cut, closestdistance):
         """
-        Makes a jumpnetwork of pure dumbbells within a given distance to be used for omega_0
+        Makes a jumpnetwork of mixed dumbbells within a given distance to be used for omega_0
         and to create the solute-dumbbell stars.
         Parameters:
             cutoff - maximum jump distance
@@ -492,33 +400,6 @@ class mStates(object):
             number or a list (corresponding to each sublattice)
         """
         crys, chem, mset = self.crys, self.chem, self.iorlist
-
-        def indexed(j):
-            """
-            Takes in a jump and indexes it to the iorset
-            Params:
-                j - the jump to index
-            Return:
-                indexj - (i,j,dx,c1,c2)
-            """
-            (i1, o1) = (j.state1.db.i, j.state1.db.o)
-            (i2, o2) = (j.state2.db.i, j.state2.db.o)
-            initindex = None
-            finindex = None
-            for ind, (i, o) in enumerate(mset):
-                if (i1 == i and np.allclose(o, o1, atol=1e-8)):
-                    initindex = ind
-                    break
-            for ind, (i, o) in enumerate(mset):
-                if (i2 == i and np.allclose(o, o2, atol=1e-8)):
-                    finindex = ind
-                    break
-            if initindex == None or finindex == None:
-                raise RuntimeError(
-                    "The given initial or final dumbbell state in the jump is not in the (i,or) list provided")
-            dx = disp(crys, chem, j.state1, j.state2)
-            tup = ((initindex, finindex), dx)
-            return tup
 
         nmax = [int(np.round(np.sqrt(cutoff ** 2 / crys.metric[i, i]))) + 1 for i in range(3)]
         Rvects = [np.array([n0, n1, n2]) for n0 in range(-nmax[0], nmax[0] + 1)
@@ -529,46 +410,51 @@ class mStates(object):
         jumpset = set([])
 
         for R in Rvects:
-            for i in mset:
-                for f in mset:
-                    db1 = dumbbell(i[0], i[1], np.array([0, 0, 0]))
-                    p1 = SdPair(i[0], np.array([0, 0, 0]), db1)
-                    db2 = dumbbell(f[0], f[1], R)
-                    p2 = SdPair(f[0], R, db2)
+            for i, st1 in mset:
+                for f, st2 in mset:
+                    db1 = dumbbell(i, np.array([0, 0, 0]))
+                    p1 = SdPair(st1[0], np.array([0, 0, 0]), db1)
+                    db2 = dumbbell(f, R)
+                    p2 = SdPair(st2[0], R, db2)
                     if p1 == p2:
                         continue
-                    dx = disp(crys, chem, db1, db2)
+                    dx = disp(self, db1, db2)
                     if np.dot(dx, dx) > cutoff ** 2:
                         continue
                     j = jump(p1, p2, 1, 1)  # since only solute moves, both indicators are +1
                     if j in jumpset:
                         continue
-                    if not (collision_self(crys, chem, j, solt_solv_cut, solt_solv_cut) or collision_others(crys, chem,
-                                                                                                            j,
-                                                                                                            closestdistance)):
+                    if not (collision_self(self, j, solt_solv_cut, solt_solv_cut) or
+                            collision_others(self, j, closestdistance)):
                         jlist = []
                         jindlist = []
-                        for g in crys.G:
-                            jnew = j.gop(crys, chem, g)
+                        for gdumb in self.G:
+                            jnew = j.gop(self, gdumb)
                             p1new = jnew.state1 - jnew.state1.R_s
                             p2new = jnew.state2 - jnew.state1.R_s
                             jnew = jump(p1new, p2new, jnew.c1, jnew.c2)
-                            if not self.checkinlist(jnew.state1) or not self.checkinlist(jnew.state2):
-                                raise RuntimeError("Unexpected mixed dumbbell with (i,o) not in given set")
+
+                            # Place some sanity checks for safety, also helpful for tests
+                            if not np.allclose(jnew.state1.R_s, np.zeros(3), atol=self.crys.threshold):
+                                raise ValueError("The initial state is not at the origin unit cell")
+                            if not np.allclose(jnew.state1.db.R, np.zeros(3), atol=self.crys.threshold):
+                                raise ValueError("The solute is not at the same site as the dumbbell in mixed dumbbell")
+                            if not np.allclose(jnew.state2.db.R, jnew.state2.R_s, atol=self.crys.threshold):
+                                raise ValueError("The solute is not at the same site as the dumbbell in mixed dumbbell")
+
                             if not jnew in jumpset:
+                                dx = disp(self, jnew.state1, jnew.state2)
                                 # create the negative jump
-                                p1neg = SdPair(p2new.i_s, p1new.R_s, dumbbell(p2new.db.i, p2new.db.o, p1new.db.R))
-                                p2neg = SdPair(p1new.i_s, 2 * p1new.R_s - p2new.R_s,
-                                               dumbbell(p1new.db.i, p1new.db.o, 2 * p1new.db.R - p2new.db.R))
+                                p1neg = SdPair(p2new.i_s, p1new.R_s, dumbbell(p2new.db.iorind, p1new.db.R))
+                                p2neg = SdPair(p1new.i_s, - p2new.R_s, dumbbell(p1new.db.iorind, - p2new.db.R))
                                 jnewneg = jump(p1neg, p2neg, 1, 1)
                                 # add both the jump and its negative
                                 jlist.append(jnew)
                                 jlist.append(jnewneg)
-                                jindlist.append(indexed(jnew))
-                                jindlist.append(indexed(jnewneg))
+                                jindlist.append(((jnew.state1.db.iorind, jnew.state2.db.iorind), dx))
+                                jindlist.append(((jnew.state2.db.iorind, jnew.state1.db.iorind), -dx))
                                 jumpset.add(jnew)
                                 jumpset.add(jnewneg)
                         jumplist.append(jlist)
                         jumpindices.append(jindlist)
-
         return jumplist, jumpindices
