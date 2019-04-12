@@ -30,11 +30,21 @@ class dumbbell(namedtuple('dumbbell', 'iorind R')):
         # return hash((self.i,o[0],o[1]*5,o[2],self.R[0],self.R[1],self.R[2]))
         return hash((self.iorind, self.R[0], self.R[1], self.R[2]))
 
-    def gop(self, gdumb):
-        # Check crystal module for how dumbbells are rotated.
-        newIorInd = gdumb.indexmap[self.iorind]
-        Rnew = np.dot(gdumb.rot, self.R)
-        return self.__class__(newIorInd, r1)
+    def gop(self, container, gdumb, pure=True):
+
+        # If we have a pure dumbbell, we return the result of the groupop, as well as the flip indicator
+        # Otherwise, just return the new dumbbell
+        i, o = container.iorlist[self.iorind]
+        # Dealing with a pure dumbbell
+        R_new, (ch, i_new) = container.crys.g_pos(container.G_crys[gdumb], self.R, (container.chem, i))
+        if not i_new == container.iorlist[gdumb.indexmap[self.iorind]][0]:
+            raise ValueError("Gdumb and G not consistent")
+        newind = gdumb.indexmap[self.iorind]
+        if pure:
+            flipind = container.gflip(gdumb, self.iorind)
+            return self.__class__(newind, R_new), flipind
+        else:
+            return self.__class__(newind, R_new)
 
     def __add__(self, other):
         if not isinstance(other, np.ndarray):
@@ -77,10 +87,15 @@ class SdPair(namedtuple('SdPair', "i_s R_s db")):
         return hash((self.i_s, self.R_s[0], hash(self.db)))
         # return id(self)
 
-    def gop(self, container, gdumb):  # apply group operation
+    def gop(self, container, gdumb, complex=True):  # apply group operation
+        # If we have a complex, return a flip indicator as well, else, just return the new pair
         R_s_new, (ch, i_s_new) = container.crys.g_pos(container.G_crys[gdumb], self.R_s, (container.chem, self.i_s))
-        dbnew = self.db.gop(gdumb)
-        return self.__class__(i_s_new, R_s_new, dbnew)
+        if complex:
+            dbnew, flip = self.db.gop(container, gdumb, pure=True)
+            return self.__class__(i_s_new, R_s_new, dbnew), flip
+        else:
+            dbnew = self.db.gop(container, gdumb, pure=False)
+            return self.__class__(i_s_new, R_s_new, dbnew)
 
     def is_zero(self, container):
         """
@@ -155,12 +170,6 @@ class jump(namedtuple('jump', 'state1 state2 c1 c2')):
         # Do Type checking of input stateects
         if not isinstance(self.state2, self.state1.__class__):
             raise TypeError("Incompatible Initial and final states. They must be of the same type.")
-        # Note - the following checks are transferred to the stars.py module while building the shells.
-        # if isinstance(self.state1, SdPair):
-        #     # If not a mixed dumbbell, solute cannot move
-        #     if not (self.state1.i_s == self.state1.db.i and np.allclose(self.state1.R_s, self.state1.db.R)):
-        #         if not (self.state1.i_s == self.state2.i_s and np.allclose(self.state1.R_s, self.state2.R_s)):
-        #             raise ArithmeticError("Solute atom cannot jump unless part of mixed dumbell")
 
     def __eq__(self, other):
         return (self.state1 == other.state1 and self.state2 == other.state2 and
@@ -217,22 +226,6 @@ class jump(namedtuple('jump', 'state1 state2 c1 c2')):
 
         return strrep
 
-    def gop(self, container, gdumb):  # Find symmetry equivalent jumps - required when making composite jumps.
-
-        state1new = None
-        state2new = None
-
-        if isinstance(self.state1, dumbbell):
-            state1new = self.state1.gop(gdumb)
-            state2new = self.state2.gop(gdumb)
-
-        elif isinstance(self.state1, SdPair):
-            state1new = self.state1.gop(container, gdumb)
-            state2new = self.state2.gop(container, gdumb)
-
-        return self.__class__(state1new, state2new, self.c1, self.c2)
-
-
 class connector(namedtuple('connector', 'state1 state2')):
     """
     An object that simple connects two states.
@@ -241,9 +234,13 @@ class connector(namedtuple('connector', 'state1 state2')):
     """
 
     def __init__(self, state1, state2):
+        # Check compatibility
         if not (isinstance(self.state1, dumbbell) and isinstance(self.state2, dumbbell)):
             raise TypeError("Incompatible Initial and final states. They must be of the dumbbell type.")
-        # Check compatibility
+
+        # Check correctness
+        if not np.allclose(state1.R, np.zeros(3)):
+            raise ValueError("The initial dumbbell in a connector must always be at the origin unit cell")
 
     def __eq__(self, other):
         return self.state1 == other.state1 and self.state2 == other.state2
@@ -251,7 +248,13 @@ class connector(namedtuple('connector', 'state1 state2')):
     def __hash__(self):
         return hash((self.state1, self.state2))
 
-    def gop(self, gdumb):  # Find symmetry equivalent jumps - required when making composite jumps.
-        state1new = self.state1.gop(gdumb)
-        state2new = self.state2.gop(gdumb)
-        return self.__class__(state1new, state2new)
+    def gop(self, container, gdumb, pure=True):
+
+        state1new = self.state1.gop(container, gdumb, pure=pure)
+        state2new = self.state2.gop(container, gdumb, pure=pure)
+        if pure:
+            db2new = state2new[0] - state1new[0].R
+            db1new = state1new[0] - state1new[0].R
+            return self.__class__(db1new, db2new)
+        else:
+            return self.__class__(state1new - state1new.R, state2new - state1new.R)
