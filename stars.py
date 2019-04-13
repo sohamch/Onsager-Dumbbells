@@ -7,49 +7,6 @@ from collections import defaultdict
 from representations import *
 
 
-# def calc_dx_species(crys, jnet, jnet_indexed, type='bare'):
-#     """
-#     Return a jumpnetwork for the individual species 'alpha' in the form (i,j,dx_alpha)
-#     Parameters:
-#     jnet - jumpnetwork with jumps in terms of states
-#     jnet_indexed - the indexed jumpnetwork.
-#     species - indicates which species we are calculating "dx" for.
-#     pure - True if we are working in pure dumbell space, False if in mixed dumbell space
-#     Returns:
-#     symmetry grouped jumps of the form (i,j,dx_species)
-#     """
-#     if not (type == 'bare' or type == 'mixed'):
-#         raise ValueError('the type can only be bare or mixed')
-#     if len(jnet_indexed) != len(jnet):
-#         raise ValueError("Need the same indexed jumplist as the original jumplist")
-#     if type == "bare":
-#         if not isinstance(jnet[0][0].state1, dumbbell):
-#             raise TypeError("bare dumbell transitions need to be between dumbbell objects")
-#     else:
-#         if not isinstance(jnet[0][0].state1, SdPair):
-#             raise TypeError("mixed dumbbell or complex transitions need to be between SdPair objects")
-#     # First deal with solute in pure dumbbell space
-#     jnet_solvent = []
-#     jnet_solute = []
-#     if type == 'bare':
-#         # See the notes, the mass tranport of solvent between pure dumbbell jumps is the same as dx
-#         jnet_solvent = [[((i, j), dx.copy()) for (i, j), dx in jlist] for jlist in jnet_indexed]
-#         jnet_solute = [[((i, j), np.zeros(3)) for (i, j), dx in jlist] for jlist in jnet_indexed]
-#     else:
-#         for i, jlist in enumerate(jnet):
-#             speclist_solute = []
-#             speclist_solvent = []
-#             for j, jmp in enumerate(jlist):
-#                 dx = jnet_indexed[i][j][1]
-#                 dx_solute = dx + (jmp.state2.db.o / 2. - jmp.state1.db.o / 2.)
-#                 dx_solvent = dx + (-jmp.state2.db.o / 2. + jmp.state1.db.o / 2.)
-#                 speclist_solute.append(((jnet_indexed[i][j][0][0], jnet_indexed[i][j][0][1]), dx_solute))
-#                 speclist_solvent.append(((jnet_indexed[i][j][0][0], jnet_indexed[i][j][0][1]), dx_solvent))
-#             jnet_solvent.append(speclist_solvent)
-#             jnet_solute.append(speclist_solute)
-#     return jnet_solute, jnet_solvent
-
-
 class StarSet(object):
     """
     class to form the crystal stars, with shells indicated by the number of jumps.
@@ -57,13 +14,13 @@ class StarSet(object):
     The minimum shell (Nshells=0) is composed of dumbbells situated atleast one jump away.
     """
 
-    def __init__(self, pdbcontainer, mdbcontainer, jumpnetwork_omega0, jumpnetwork_omega2,
+    def __init__(self, pdbcontainer, mdbcontainer, jnetwrk0, jnetwrk2,
                  Nshells=None):  # ,originstates=False):
         """
         Parameters:
         pdbcontainer,mdbcontainer:
             -containers containing the pure and mixed dumbbell information respectively
-        jumpnetwork_omega0,jumpnetwork_omega2 - jumpnetworks in pure and mixed dumbbell spaces respectively.
+        jnet0,jnet2 - jumpnetworks in pure and mixed dumbbell spaces respectively.
             Note - must send in both as pair states and indexed.
         Nshells - number of thermodynamic shells. Minimum - one jump away - corresponds to Nshells=0
 
@@ -100,24 +57,19 @@ class StarSet(object):
         self.chem = pdbcontainer.chem
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
-        self.mixedset = mdbcontainer.iorlist
 
-        self.jumpnetwork_omega0 = jumpnetwork_omega0[0]
-        self.jumpnetwork_omega0_indexed = jumpnetwork_omega0[1]
+        self.jnet0 = jnet0[0]
+        self.jnet0_ind = jnet0[1]
 
-        self.jumpnetwork_omega2 = jumpnetwork_omega2[0]
-        self.jumpnetwork_omega2_indexed = jumpnetwork_omega2[1]
+        self.jnet2 = jnet2[0]
+        self.jnet2_ind = jnet2[1]
 
-        self.jumplist = [j for l in self.jumpnetwork_omega0 for j in l]
-        self.jumpset = set(self.jumplist)
+        self.jumplist = [j for l in self.jnet0 for j in l]
+        # self.jumpset = set(self.jumplist)
 
-        self.jumpindices = []  # what is this? contain a symmetry grouped omega0 jumpnetwork
-        # But the elements in the symmetry-unique lists are not jump objects, but indices
-        # into jumplist.
-
-        self.Nshells = Nshells
+        self.jumpindices = []
         count = 0
-        for l in self.jumpnetwork_omega0:
+        for l in self.jnet0:
             self.jumpindices.append([])
             for j in l:
                 self.jumpindices[-1].append(count)
@@ -144,22 +96,24 @@ class StarSet(object):
 
     def generate(self, Nshells):
         # Return nothing if Nshells are not specified
-        if Nshells == None: return
+        if Nshells is None:
+            return
+        self.Nshells = Nshells
         z = np.zeros(3).astype(int)
-        if Nshells <= 1:
-            # A minimum of one shell will be produced.
+        if Nshells < 1:
             Nshells = 0
         startshell = set([])
         stateset = set([])
-        # build the starting shell
-        for j in self.jumplist:
-            for tup in self.pdbcontainer.iorlist:
-                # Build the first shell from the jumpnetwork- The initial dumbbell is in the origin, so assign it as the solute location.
-                pair = SdPair(j.state1.i, np.zeros(3, dtype=int), dumbbell(j.state2.i, tup[1], j.state2.R))
-                # startshell.add(pair)
+        if Nshells >= 1:
+            # build the starting shell
+            for j in self.jumplist:
+                # Build the first shell from the jump network
+                # One by one, keeping the solute at the basis sites of the origin unit cell, put those dumbbell states
+                # at those positions, as are dictated by the the jumps.
+                # The idea is that a valid jump must be able to bring a dumbbell to a solute site.
+                pair = SdPair(pdbcontainer.iorlist[j.state1.iorind][0], np.zeros(3, dtype=int), j.state2)
                 stateset.add(pair)
         lastshell = stateset.copy()
-        # nextshell=set([])
         # Now build the next shells:
         for step in range(Nshells - 1):
             nextshell = set([])
@@ -169,7 +123,8 @@ class StarSet(object):
                         raise ValueError("The solute is not at the origin")
                     try:
                         pairnew = pair.addjump(j)
-                    except:
+                    except ArithmeticError:
+                        # If there is somehow a type error, we will get the message.
                         continue
                     if not (pair.i_s == pairnew.i_s and np.allclose(pairnew.R_s, pair.R_s, atol=self.crys.threshold)):
                         raise ArithmeticError("Solute shifted from a complex!(?)")
@@ -184,20 +139,20 @@ class StarSet(object):
         for state in self.stateset:
             if not (state in allset):
                 newstar = []
-                for g in self.crys.G:
-                    newstate = state.gop(self.crys, self.chem, g)
-                    newdb = self.pdbcontainer.gdumb(g, state.db)[0] - newstate.R_s
-                    newstate = SdPair(newstate.i_s, np.zeros(3, dtype=int), newdb)
-                    if newstate in self.stateset:
-                        if not newstate in allset:
+                for gdumb in self.pdbcontainer.G:
+                    newstate = state.gop(self.pdbcontainer, gdumb)[0]
+                    newstate = newstate - newstate.R_s  # Shift the solute back to the origin unit cell.
+                    if newstate in self.stateset:  # Check if this state is allowed to be present.
+                        if not newstate in allset: # Check if this state has already been considered.
                             newstar.append(newstate)
                             allset.add(newstate)
+                if len(newstar)==0:
+                    raise ValueError("A star must have at least one state.")
                 stars.append(newstar)
         self.stars = stars
-
         self.sortstars()
 
-        # Keep the indices of the origin states. Will be necessary when dealing with their rates and probabilities
+        # Keep the indices of the origin states. May be necessary when dealing with their rates and probabilities
         self.originstates = []
         for starind, star in enumerate(self.stars):
             if star[0].is_zero():
@@ -225,7 +180,7 @@ class StarSet(object):
 
         # Next, we build up the jtags for omega2 (see Onsager_calc_db module).
         j2initlist = []
-        for jt, jlist in enumerate(self.jumpnetwork_omega2_indexed):
+        for jt, jlist in enumerate(self.jnet2_ind):
             initindices = defaultdict(list)
             for (i, j), dx in jlist:
                 initindices[i].append(j)
