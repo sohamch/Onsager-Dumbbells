@@ -202,8 +202,8 @@ class test_statemaking(unittest.TestCase):
         mdbcontainer = mStates(cube, 0, family)
         # check for the correct number of states
         jset, jind = mdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
-        test_dbi = dumbbell(0, np.array([0.126, 0., 0.]), np.array([0, 0, 0]))
-        test_dbf = dumbbell(0, np.array([0.126, 0., 0.]), np.array([0, 1, 0]))
+        test_dbi = dumbbell(mdbcontainer.getIndex((0, np.array([0.126, 0., 0.]))), np.array([0, 0, 0]))
+        test_dbf = dumbbell(mdbcontainer.getIndex((0, np.array([0.126, 0., 0.]))), np.array([0, 1, 0]))
         count = 0
         for i, jlist in enumerate(jset):
             for q, j in enumerate(jlist):
@@ -222,9 +222,10 @@ class test_statemaking(unittest.TestCase):
                 if j.c1 == -1 or j.c2 == -1:
                     count += 1
                     break
-                if not (j.state1.i_s == j.state1.db.i and j.state2.i_s == j.state2.db.i and np.allclose(j.state1.R_s,
-                                                                                                        j.state1.db.R) and np.allclose(
-                        j.state2.R_s, j.state2.db.R)):
+                if not (j.state1.i_s == mdbcontainer.iorlist[j.state1.db.iorind][0] and
+                        j.state2.i_s == mdbcontainer.iorlist[j.state2.db.iorind][0] and
+                        np.allclose(j.state1.R_s, j.state1.db.R) and
+                        np.allclose(j.state2.R_s, j.state2.db.R)):
                     count += 1
                     break
             if count == 1:
@@ -240,7 +241,7 @@ class test_statemaking(unittest.TestCase):
             for jindex in range(len(jind[lindex])):
                 (i1, o1) = mdbcontainer.iorlist[jind[lindex][jindex][0][0]]
                 (i2, o2) = mdbcontainer.iorlist[jind[lindex][jindex][0][1]]
-                self.assertEqual(jset[lindex][jindex].state1.db.i, i1)
-                self.assertEqual(jset[lindex][jindex].state2.db.i, i2)
-                self.assertTrue(np.allclose(jset[lindex][jindex].state1.db.o, o1))
-                self.assertTrue(np.allclose(jset[lindex][jindex].state2.db.o, o2))
+                self.assertEqual(mdbcontainer.iorlist[jset[lindex][jindex].state1.db.iorind][0], i1)
+                self.assertEqual(mdbcontainer.iorlist[jset[lindex][jindex].state2.db.iorind][0], i2)
+                self.assertTrue(np.allclose(mdbcontainer.iorlist[jset[lindex][jindex].state1.db.iorind][1], o1))
+                self.assertTrue(np.allclose(mdbcontainer.iorlist[jset[lindex][jindex].state2.db.iorind][1], o2))

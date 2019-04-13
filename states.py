@@ -410,8 +410,7 @@ class mStates(object):
                         for gdumb in self.G:
                             p1new = p1.gop(self, gdumb, complex=False)
                             p2new = p2.gop(self, gdumb, complex=False)
-                            jnew = jump(p1new, p2new, jnew.c1, jnew.c2)
-
+                            jnew = jump(p1new - p1new.R_s, p2new - p1new.R_s, j.c1, j.c2)
                             # Place some sanity checks for safety, also helpful for tests
                             if not np.allclose(jnew.state1.R_s, np.zeros(3), atol=self.crys.threshold):
                                 raise ValueError("The initial state is not at the origin unit cell")
