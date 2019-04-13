@@ -49,20 +49,20 @@ class test_statemaking(unittest.TestCase):
                 self.assertTrue(np.allclose(st_iorlist[1], state[1], atol=dbstates.crys.threshold))
 
     # Test jumpnetwork
-    def test_purejumps(self):
+    def test_jnet0(self):
         # cube
         famp0 = [np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126]
         family = [famp0]
         pdbcontainer_cube = dbStates(cube, 0, family)
         jset_cube, jind_cube = pdbcontainer_cube.jumpnetwork(0.3, 0.01, 0.01)
-        test_dbi = dumbbell(0, np.array([0.126, 0., 0.]), np.array([0, 0, 0]))
-        test_dbf = dumbbell(0, np.array([0.126, 0., 0.]), np.array([0, 1, 0]))
+        test_dbi = dumbbell(pdbcontainer_cube.getIndex((0, np.array([0.126, 0., 0.]))), np.array([0, 0, 0]))
+        test_dbf = dumbbell(pdbcontainer_cube.getIndex((0, np.array([0.126, 0., 0.]))), np.array([0, 1, 0]))
         count = 0
         indices = []
         for i, jlist in enumerate(jset_cube):
             for q, j in enumerate(jlist):
-                if j.state1 == test_dbi or j.state1 == -test_dbi:
-                    if j.state2 == test_dbf or j.state2 == -test_dbf:
+                if j.state1 == test_dbi:
+                    if j.state2 == test_dbf:
                         if j.c1 == j.c2 == -1:
                             count += 1
                             indices.append((i, q))
@@ -81,8 +81,8 @@ class test_statemaking(unittest.TestCase):
         o1 = np.array([1., -1., 0.]) * 0.2 / np.sqrt(2)
         if any(np.allclose(-o1, o) for i, o in pdbcontainer_fcc.iorlist):
             o1 = -o1.copy()
-        db1 = dumbbell(0, o1, np.array([0, 0, 0]))
-        db2 = dumbbell(0, o1, np.array([0, 0, 1]))
+        db1 = dumbbell(pdbcontainer_fcc.getIndex((0, o1)), np.array([0, 0, 0]))
+        db2 = dumbbell(pdbcontainer_fcc.getIndex((0, o1)), np.array([0, 0, 1]))
         jmp = jump(db1, db2, 1, 1)
         jtest = []
         for jl in jset_fcc:
@@ -105,8 +105,8 @@ class test_statemaking(unittest.TestCase):
         o1 = np.array([1., -1., 0.]) * 0.2 / np.sqrt(2)
         if any(np.allclose(-o1, o) for i, o in pdbcontainer_si.iorlist):
             o1 = -o1.copy()
-        db1 = dumbbell(0, o1, np.array([0, 0, 0]))
-        db2 = dumbbell(0, o1, np.array([0, 0, 1]))
+        db1 = dumbbell(pdbcontainer_si.getIndex((0, o1)), np.array([0, 0, 0]))
+        db2 = dumbbell(pdbcontainer_si.getIndex((0, o1)), np.array([0, 0, 1]))
         jmp = jump(db1, db2, 1, 1)
         jtest = []
         for jl in jset_si:
@@ -127,8 +127,8 @@ class test_statemaking(unittest.TestCase):
         o = np.array([0.145, 0., 0.])
         if any(np.allclose(-o, o1) for i, o1 in pdbcontainer_hcp.iorlist):
             o = -o + 0.
-        db1 = dumbbell(0, o, np.array([0, 0, 0], dtype=int))
-        db2 = dumbbell(1, o, np.array([0, 0, 0], dtype=int))
+        db1 = dumbbell(pdbcontainer_hcp.getIndex((0, o)), np.array([0, 0, 0], dtype=int))
+        db2 = dumbbell(pdbcontainer_hcp.getIndex((1, o)), np.array([0, 0, 0], dtype=int))
         testjump = jump(db1, db2, 1, 1)
         count = 0
         testlist = []
@@ -153,10 +153,10 @@ class test_statemaking(unittest.TestCase):
                 for jindex in range(len(jind[lindex])):
                     (i1, o1) = pdbcontainer.iorlist[jind[lindex][jindex][0][0]]
                     (i2, o2) = pdbcontainer.iorlist[jind[lindex][jindex][0][1]]
-                    self.assertEqual(jset[lindex][jindex].state1.i, i1)
-                    self.assertEqual(jset[lindex][jindex].state2.i, i2)
-                    self.assertTrue(np.allclose(jset[lindex][jindex].state1.o, o1))
-                    self.assertTrue(np.allclose(jset[lindex][jindex].state2.o, o2))
+                    self.assertEqual(pdbcontainer.iorlist[jset[lindex][jindex].state1.iorind][0], i1)
+                    self.assertEqual(pdbcontainer.iorlist[jset[lindex][jindex].state2.iorind][0], i2)
+                    self.assertTrue(np.allclose(pdbcontainer.iorlist[jset[lindex][jindex].state1.iorind][1], o1))
+                    self.assertTrue(np.allclose(pdbcontainer.iorlist[jset[lindex][jindex].state2.iorind][1], o2))
 
     def test_mStates(self):
         dbstates = dbStates(self.crys, 0, self.family)
