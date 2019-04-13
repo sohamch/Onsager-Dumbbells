@@ -30,16 +30,10 @@ def disp(dbcontainer, obj1, obj2):
 # Create pure dumbbell states
 class dbStates(object):
     """
-    Class to generate all possible dumbbell configurations for given basis sites
+    Class to generate all possible dumbbell configurations for given basis sites.
+    Make a "supercrystal" with the states as the dumbbell configurations, capable of handling symmetry operations.
     This is mainly to automate group operations on jumps (to return correct dumbbell states)
-    Functionalities - 1. take in a list of (i,or) pairs created using gensets and convert it
-    to symmetry grouped pairs.
-                      2. Given an (i,or) pair, check which pair in the set a group operation maps it onto.
     """
-
-    # TODO - add fliplist that stores the index of the negative orientation of a db in iorlist
-    # TODO - make a dict that has gdumbs as keys and g's as values.
-
     def __init__(self, crys, chem, family):
         if not isinstance(family, list):
             raise TypeError("Enter the families as a list of lists")
@@ -49,7 +43,7 @@ class dbStates(object):
         self.family = family
         # make the dumbbell states, change the indexmap of the grouops and store original groupops in G_crys
         self.iorlist = self.genpuresets()
-        self.G, self.G_crys, = self.makeNewGops(self.crys, self.chem, self.iorlist)
+        self.G, self.G_crys, = self.makeDbGops(self.crys, self.chem, self.iorlist)
         self.symorlist, self.symIndlist = self.gensymset() # make this an indexed list
         # Store both iorlist and symorlist so that we can compare them later if needed.
         self.threshold = crys.threshold
@@ -95,14 +89,13 @@ class dbStates(object):
                 for g in self.crys.G:
                     R, (ch, i_new) = self.crys.g_pos(g, np.zeros(3), (self.chem, site))
                     o_new = self.crys.g_direc(g, o)
-                    if not (inlist((i_new, o_new), pairlist) or inlist((i_new, -o_new), pairlist)):
-                        if negOrInList(o_new, pairlist):
+                    if not (inlist((i_new, o_new), iorlist) or inlist((i_new, -o_new), iorlist)):
+                        if negOrInList(o_new, iorlist):
                             o_new = -o_new + 0.
-                        pairlist.append((i_new, o_new))
+                        iorlist.append((i_new, o_new))
         return iorlist
 
-    @staticmethod
-    def makeDbGops(crys, chem, iorlist):
+    def makeDbGops(self, crys, chem, iorlist):
         G=[]
         G_crys={}
         for g in crys.G:
@@ -121,7 +114,7 @@ class dbStates(object):
                         
             gdumb = crystal.GroupOp(g.rot, g.trans, g.cartrot, tuple([tuple(indexmap)]))
             G.append(gdumb)
-            self.G_crys[gdumb] = g
+            G_crys[gdumb] = g
 
         return frozenset(G), G_crys
 
@@ -259,7 +252,6 @@ class dbStates(object):
         return jumplist, jumpindices
 
     def getIndex(self, t):
-
         """
         :param i: input site index
         :param o: input orientation
@@ -270,14 +262,8 @@ class dbStates(object):
                 return idx
         raise ValueError("The given site orientation pair {} is not present in the container".format(t))
 
+
 class mStates(object):
-    """
-    Class to generate all possible mixed dumbbell configurations for given basis sites
-    This is mainly to automate group operations on jumps (to return correct dumbbell states)
-    Functionalities - 1. take in a list of (i,or) pairs created using gensets and convert it
-    to symmetry grouped pairs.
-                      2. Given an (i,or) pair, check which pair in the set a group operation maps it onto.
-    """
 
     def __init__(self, crys, chem, family):
         if not isinstance(family, list):
@@ -452,7 +438,6 @@ class mStates(object):
         return jumplist, jumpindices
 
     def getIndex(self, t):
-
         """
         :param i: input site index
         :param o: input orientation
