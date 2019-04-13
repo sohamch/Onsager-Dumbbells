@@ -100,7 +100,7 @@ class StarSet(object):
         if Nshells is None:
             return
         self.Nshells = Nshells
-        z = np.zeros(3).astype(int)
+        z = np.zeros(3, dtype=int)
         if Nshells < 1:
             Nshells = 0
         startshell = set([])
@@ -162,22 +162,24 @@ class StarSet(object):
         self.mixedstartindex = len(self.stars)
         # Now add in the mixed states
         self.mixedstates = []
-        for tup in self.mdbcontainer.iorlist:
-            db = dumbbell(tup[0], tup[1], z)
+        for idx, tup in enumerate(self.mdbcontainer.iorlist):
+            db = dumbbell(idx, z)
             mdb = SdPair(tup[0], z, db)
             self.mixedstates.append(mdb)
 
-        for l in self.mdbcontainer.symorlist:
+        for l in self.mdbcontainer.symIndlist:
             # The sites and orientations are already grouped - convert them into SdPairs
             newlist = []
-            for tup in l:
-                db = dumbbell(tup[0], tup[1], z)
-                mdb = SdPair(tup[0], z, db)
+            for idx in l:
+                db = dumbbell(idx, z)
+                mdb = SdPair(self.mdbcontainer.iorlist[idx][0], z, db)
                 newlist.append(mdb)
             self.stars.append(newlist)
+
         self.purestates = sorted(list(self.stateset), key=self._sortkey)
-        # self.mixedstates = list(self.mixedstateset)#No use sorting - every state is origin state, the mixed state space is periodic.
-        self.bareStates = [dumbbell(tup[0], tup[1], np.zeros(3)) for tup in self.pdbcontainer.iorlist]
+        self.mixedstates = list(self.mixedstateset)
+        # No use sorting - every state is origin state, the mixed state space is periodic.
+        self.bareStates = [dumbbell(idx, z) for idx in range(len(self.pdbcontainer.iorlist))]
 
         # Next, we build up the jtags for omega2 (see Onsager_calc_db module).
         j2initlist = []
