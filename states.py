@@ -258,7 +258,8 @@ class dbStates(object):
         :return: idx (integer) - the index of (i, o) in the iorlist, if it exists.
         """
         for idx,tup in enumerate(self.iorlist):
-            if t[0]==tup[0] and np.allclose(t[1],tup[1],atol = 1e-8):
+            if t[0]==tup[0] and (np.allclose(t[1], tup[1], atol=self.crys.threshold) or
+                                 np.allclose(t[1], -tup[1], atol=self.crys.threshold)):
                 return idx
         raise ValueError("The given site orientation pair {} is not present in the container".format(t))
 
