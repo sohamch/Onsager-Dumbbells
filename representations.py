@@ -37,9 +37,9 @@ class dumbbell(namedtuple('dumbbell', 'iorind R')):
         i, o = container.iorlist[self.iorind]
         # Dealing with a pure dumbbell
         R_new, (ch, i_new) = container.crys.g_pos(container.G_crys[gdumb], self.R, (container.chem, i))
-        if not i_new == container.iorlist[gdumb.indexmap[self.iorind]][0]:
+        if not i_new == container.iorlist[gdumb.indexmap[0][self.iorind]][0]:
             raise ValueError("Gdumb and G not consistent")
-        newind = gdumb.indexmap[self.iorind]
+        newind = gdumb.indexmap[0][self.iorind]
         if pure:
             flipind = container.gflip(gdumb, self.iorind)
             return self.__class__(newind, R_new), flipind
