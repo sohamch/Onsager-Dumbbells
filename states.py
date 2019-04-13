@@ -275,7 +275,7 @@ class mStates(object):
         self.family = family
         # make the dumbbell states, change the indexmap of the grouops and store original groupops in G_crys
         self.iorlist = self.genmixedsets()
-        self.G, self.G_crys, = self.makeNewGops(self.crys, self.chem, self.iorlist)
+        self.G, self.G_crys, = self.makeDbGops(self.crys, self.chem, self.iorlist)
         self.symorlist, self.symIndlist = self.gensymset()  # make this an indexed list
         # Store both iorlist and symorlist so that we can compare them later if needed.
         self.threshold = crys.threshold
@@ -324,8 +324,7 @@ class mStates(object):
                         pairlist.append((i_new, o_new))
         return pairlist
 
-    @staticmethod
-    def makeDbGops(crys, chem, iorlist):
+    def makeDbGops(self, crys, chem, iorlist):
         G = []
         G_crys = {}
         for g in crys.G:
@@ -342,7 +341,7 @@ class mStates(object):
                         break
             gdumb = crystal.GroupOp(g.rot, g.trans, g.cartrot, tuple([tuple(indexmap)]))
             G.append(gdumb)
-            self.G_crys[gdumb] = g
+            G_crys[gdumb] = g
         return frozenset(G), G_crys
 
     def gensymset(self):
