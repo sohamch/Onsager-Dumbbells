@@ -79,7 +79,8 @@ class StarSet(object):
 
     def _sortkey(self, entry):
         sol_pos = self.crys.unit2cart(entry.R_s, self.crys.basis[self.chem][entry.i_s])
-        db_pos = self.crys.unit2cart(entry.db.R, self.crys.basis[self.chem][entry.db.i])
+        db_pos = self.crys.unit2cart(entry.db.R,
+                                     self.crys.basis[self.chem][self.pdbcontainer.iorlist[entry.db.iorind][0]])
         return np.dot(db_pos - sol_pos, db_pos - sol_pos)
 
     def genIndextoContainer(self, purestates, mixedstates):
@@ -111,7 +112,7 @@ class StarSet(object):
                 # One by one, keeping the solute at the basis sites of the origin unit cell, put those dumbbell states
                 # at those positions, as are dictated by the the jumps.
                 # The idea is that a valid jump must be able to bring a dumbbell to a solute site.
-                pair = SdPair(pdbcontainer.iorlist[j.state1.iorind][0], np.zeros(3, dtype=int), j.state2)
+                pair = SdPair(pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, j.state2)
                 stateset.add(pair)
         lastshell = stateset.copy()
         # Now build the next shells:
@@ -283,8 +284,9 @@ class StarSet(object):
                 self.bareindexdict[state] = (ind, si)
 
     def sortstars(self):
-        """sorts the solute-dumbbell complex crystal stars in order of increasing solute-dumbell seperation distance,
-        like purestates. Note that this is called before mixed dumbbell stars are added in.
+        """sorts the solute-dumbbell complex crystal stars in order of increasing solute-dumbbell separation distance.
+        Note that this is called before mixed dumbbell stars are added in. The mixed dumbbells being in a periodic state
+        space, all the mixed dumbbell states are at the origin anyway.
         """
         inddict = {}
         for i, star in enumerate(self.stars):
