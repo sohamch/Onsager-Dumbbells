@@ -27,6 +27,38 @@ def disp(dbcontainer, obj1, obj2):
     return crys.unit2cart(R2, crys.basis[chem][i2]) - crys.unit2cart(R1, crys.basis[chem][i1])
 
 
+def disp4(pdbcontainer, mdbcontainer, obj1, obj2):
+    """
+    Computes the transport vector for the initial and final states of an associative jump
+    param:
+        dbcontainer - dumbbell states container.
+        obj1,obj2 - the initial and final state objects of a jump
+        Return - displacement when going from obj1 to obj2
+    """
+    true_crys = np.allclose(pdbcontainer.crys.latt, mdbcontainer.crys.latt, atol=pdbcontainer.crys.threshold)
+
+    true_basis_len = len(pdbcontainer.crys.basis) == len(mdbcontainer.crys.basis)
+    if not (true_basis and true_crys):
+        raise TypeError("Different crystal structures entered for pure and dumbbell states")
+
+    true_site_len = all([len(chem1) == len(chem2) for chem1, chem2 in
+                         zip(mdbcontainer.crys.basis, pdbcontainer.crys.basis)])
+    if not true_site_len:
+        raise TypeError("Different site numbers entered for pure and dumbbell states for same chemistries")
+
+    true_site_locs = all([[np.allclose(arr1, arr2) for arr1, arr2 in zip(chem1, chem2)]for chem1, chem2 in
+                          zip(mdbcontainer.crys.basis, pdbcontainer.crys.basis)])
+
+    if not true_site_locs:
+        raise TypeError("basis sites are at different locations for the two containers.")
+
+    crys, chem = dbcontainer.crys, dbcontainer.chem
+    (i1, i2) = (pdbcontainer.iorlist[obj1.db.iorind][0], mdbcontainer.iorlist[obj2.db.iorind][0])
+    (R1, R2) = (obj1.db.R, obj2.db.R)
+
+    return crys.unit2cart(R2, crys.basis[chem][i2]) - crys.unit2cart(R1, crys.basis[chem][i1])
+
+
 # Create pure dumbbell states
 class dbStates(object):
     """
@@ -232,8 +264,8 @@ class dbStates(object):
                             j = jump(db1, db2, c1, 1)
                             if j in jumpset:  # no point doing anything else if the jump has already been considered
                                 continue
-                            if collision_self(self, j, solv_solv_cut, solv_solv_cut) or\
-                                    collision_others(self, j, closestdistance):
+                            if collision_self(self, None, j, solv_solv_cut, solv_solv_cut) or\
+                                    collision_others(self, None, j, closestdistance):
                                 continue
                             jlist, jindlist = getjumps(j, jumpset)
                             jumplist.append(jlist)
@@ -243,8 +275,8 @@ class dbStates(object):
                             j = jump(db1, db2, c1, c2)
                             if j in jumpset:  # no point doing anything else if the jump has already been considered
                                 continue
-                            if collision_self(self, j, solv_solv_cut, solv_solv_cut) or\
-                                    collision_others(self, j, closestdistance):
+                            if collision_self(self, None, j, solv_solv_cut, solv_solv_cut) or\
+                                    collision_others(self, None, j, closestdistance):
                                 continue
                             jlist, jindlist = getjumps(j, jumpset)
                             jumplist.append(jlist)
@@ -403,8 +435,8 @@ class mStates(object):
                     j = jump(p1, p2, 1, 1)  # since only solute moves, both indicators are +1
                     if j in jumpset:
                         continue
-                    if not (collision_self(self, j, solt_solv_cut, solt_solv_cut) or
-                            collision_others(self, j, closestdistance)):
+                    if not (collision_self(self, None, j, solt_solv_cut, solt_solv_cut) or
+                            collision_others(self, None, j, closestdistance)):
                         jlist = []
                         jindlist = []
                         for gdumb in self.G:
