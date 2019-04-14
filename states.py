@@ -32,7 +32,7 @@ def disp4(pdbcontainer, mdbcontainer, obj1, obj2):
     Computes the transport vector for the initial and final states of an associative jump
     param:
         dbcontainer - dumbbell states container.
-        obj1,obj2 - the initial and final state objects of a jump
+        obj1,obj2 - the initial and final state objects of a jump - must be of Omega4 type
         Return - displacement when going from obj1 to obj2
     """
     true_crys = np.allclose(pdbcontainer.crys.latt, mdbcontainer.crys.latt, atol=pdbcontainer.crys.threshold)
