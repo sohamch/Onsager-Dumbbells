@@ -402,17 +402,15 @@ class StarSet(object):
             if p_pure.is_zero(self.pdbcontainer):  # Specator rotating into mixed does not make sense.
                 continue
             for p_mixed in self.mixedstates:
+                if not (np.allclose(p_pure.R_s, 0, atol=self.crys.threshold)
+                        and np.allclose(p_mixed.R_s, 0, atol=self.crys.threshold)):
+                    raise RuntimeError("Solute shifted from origin - cannot happen")
+                if not (p_pure.i_s == p_mixed.i_s):
+                    # The solute must remain in exactly the same position before and after the jump
+                    continue
                 for c1 in [-1, 1]:
-                    try:
-                        j = jump(p_pure, p_mixed, c1, -1)
-                    except:
-                        continue
-                    # The next four lines should be commented out when ready
-                    # if not (np.allclose(p_pure.R_s,0,atol=self.crys.threshold) and np.allclose(p_mixed.R_s,0,atol=self.crys.threshold)):
-                    #     raise RuntimeError("Solute shifted from origin - cannot happen")
-                    # if not(p_pure.i_s==p_mixed.i_s): #The solute must remain in exactly the same position before and after the jump
-                    #     raise RuntimeError("Incorrect jump constructed")
-                    dx = disp(self.crys, self.chem, j.state1, j.state2)
+                    j = jump(p_pure, p_mixed, c1, -1)
+                    dx = disp4(self.pdbcontainer, self.mdbcontainer, j.state1, j.state2)
                     if np.dot(dx, dx) > cutoff ** 2: continue
                     if not j in alljumpset_omega4:  # check if jump already considered
                         # if a jump is in alljumpset_omega4, it's negative will have to be in alljumpset_omega3
