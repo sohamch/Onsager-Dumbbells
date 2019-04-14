@@ -435,9 +435,6 @@ class StarSet(object):
                                                 and np.allclose(jnew.state2.R_s, jnew.state2.db.R, self.crys.threshold)):
                                             raise RuntimeError("Final state not mixed")
                                         newset.add(jnew)
-                                        # newnegset.add(-jnew)
-                                        # new_allset.add(jnew)
-                                        # new_allset.add(-jnew)
                                         alljumpset_omega4.add(jnew)
                                 newset = list(newset)
                                 newnegset = [-jmp for jmp in newset]
@@ -461,8 +458,8 @@ class StarSet(object):
                                     dx = disp4(self.pdbcontainer, self.mdbcontainer, jmp.state1, jmp.state2)
                                     new4index.append(((pure_ind, mixed_ind), dx.copy()))
                                     new3index.append(((mixed_ind, pure_ind), -dx))
-                                    newallindex.append(((pure_ind, mixed_ind), dx))
-                                    newallindex.append((mixed_ind, pure_ind), -dx))
+                                    newallindex.append(((pure_ind, mixed_ind), dx.copy()))
+                                    newallindex.append(((mixed_ind, pure_ind), -dx))
 
                                 symjumplist_omega4.append(newset)
                                 omega4inits.append(jinitdict4)
@@ -478,15 +475,6 @@ class StarSet(object):
         # Now build the jtags
         jtags4 = []
         jtags3 = []
-        # for initdict in initstates:
-        #     arrdict = {}
-        #     for IS,lst in initdict.items():
-        #         jtagarr = np.zeros((len(lst),len(self.complexStates)+len(self.mixedstates)),dtype=int)
-        #         for jnum,FS in enumerate(lst):
-        #             jtagarr[jnum][IS] = 1
-        #             jtagarr[jnum][FS] = -1
-        #         arrdict[IS] = jtagarr.copy()
-        #     jtags.append(arrdict)
 
         for initdict in omega4inits:
             jarrdict = {}
