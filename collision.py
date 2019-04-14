@@ -4,13 +4,14 @@ from representations import *
 from test_structs import *
 
 
-def collision_self(dbcontainer, jump, cutoff12, cutoff13=None):
+def collision_self(dbcontainer, dbcontainer2, jump, cutoff12, cutoff13=None):
     """
     Check if the three atoms involved in a dumbbell jumping from one site to the next
     are colliding or not.
 
     params:
-        container - the dumbell states container
+        dbcontainer - the dumbell states container (instance of either dbStates or mStates from states.py module)
+        dbcontainer2 - the second container if the jumps are occuring between pure and mixed dumbbell spaces.
         jump - the jump object representing the transitions
         cutoff12 - minimum allowed distance between the two atoms in the initial dumbbell.
         cutoff13 - minimum allowed distance between the two atoms in the final dumbbell.
@@ -20,6 +21,9 @@ def collision_self(dbcontainer, jump, cutoff12, cutoff13=None):
     crys, chem = dbcontainer.crys, dbcontainer.chem
     if cutoff13 == None:
         cutoff13 = cutoff12
+
+    if dbcontainer2 is None:
+        dbcontainer2 = dbcontainer
 
     def iscolliding(a0i, a1i, a0j, a1j, cutoff):
         """
@@ -53,15 +57,15 @@ def collision_self(dbcontainer, jump, cutoff12, cutoff13=None):
         R2i = crys.unit2cart(jump.state1.R, crys.basis[chem][dbcontainer.iorlist[jump.state1.iorind][0]]) -\
               (jump.c1 / 2.) * dbcontainer.iorlist[jump.state1.iorind][1]
 
-        R3i = crys.unit2cart(jump.state2.R, crys.basis[chem][dbcontainer.iorlist[jump.state2.iorind][0]])
+        R3i = crys.unit2cart(jump.state2.R, crys.basis[chem][dbcontainer2.iorlist[jump.state2.iorind][0]])
 
-        R1f = crys.unit2cart(jump.state2.R, crys.basis[chem][dbcontainer.iorlist[jump.state2.iorind][0]]) +\
-              (jump.c2 / 2.) * dbcontainer.iorlist[jump.state2.iorind][1]
+        R1f = crys.unit2cart(jump.state2.R, crys.basis[chem][dbcontainer2.iorlist[jump.state2.iorind][0]]) +\
+              (jump.c2 / 2.) * dbcontainer2.iorlist[jump.state2.iorind][1]
 
         R2f = crys.unit2cart(jump.state1.R, crys.basis[chem][dbcontainer.iorlist[jump.state1.iorind][0]])
 
-        R3f = crys.unit2cart(jump.state2.R, crys.basis[chem][dbcontainer.iorlist[jump.state1.iorind][0]]) -\
-              (jump.c2 / 2.) * dbcontainer.iorlist[jump.state2.iorind][1]
+        R3f = crys.unit2cart(jump.state2.R, crys.basis[chem][dbcontainer2.iorlist[jump.state1.iorind][0]]) -\
+              (jump.c2 / 2.) * dbcontainer2.iorlist[jump.state2.iorind][1]
         # print(R1i,R2i,R3i,R1f,R2f,R3f)
     else:
         R1i = crys.unit2cart(jump.state1.db.R, crys.basis[chem][dbcontainer.iorlist[jump.state1.db.iorind][0]]) +\
@@ -70,14 +74,14 @@ def collision_self(dbcontainer, jump, cutoff12, cutoff13=None):
         R2i = crys.unit2cart(jump.state1.db.R, crys.basis[chem][dbcontainer.iorlist[jump.state1.db.iorind][0]]) -\
               (jump.c1 / 2.) * dbcontainer.iorlist[jump.state1.db.iorind][1]
 
-        R3i = crys.unit2cart(jump.state2.db.R, crys.basis[chem][dbcontainer.iorlist[jump.state2.db.iorind][0]])
+        R3i = crys.unit2cart(jump.state2.db.R, crys.basis[chem][dbcontainer2.iorlist[jump.state2.db.iorind][0]])
 
-        R1f = crys.unit2cart(jump.state2.db.R, crys.basis[chem][dbcontainer.iorlist[jump.state2.db.iorind][0]]) +\
-              (jump.c2 / 2.) * dbcontainer.iorlist[jump.state2.db.iorind][1]
+        R1f = crys.unit2cart(jump.state2.db.R, crys.basis[chem][dbcontainer2.iorlist[jump.state2.db.iorind][0]]) +\
+              (jump.c2 / 2.) * dbcontainer2.iorlist[jump.state2.db.iorind][1]
 
         R2f = crys.unit2cart(jump.state1.db.R, crys.basis[chem][dbcontainer.iorlist[jump.state1.db.iorind][0]])
-        R3f = crys.unit2cart(jump.state2.db.R, crys.basis[chem][dbcontainer.iorlist[jump.state2.db.iorind][0]]) -\
-              (jump.c2 / 2.) * dbcontainer.iorlist[jump.state2.db.iorind][1]
+        R3f = crys.unit2cart(jump.state2.db.R, crys.basis[chem][dbcontainer2.iorlist[jump.state2.db.iorind][0]]) -\
+              (jump.c2 / 2.) * dbcontainer2.iorlist[jump.state2.db.iorind][1]
 
     if np.allclose(R1i, R1f):
         return False  # not considering rotations(yet).
@@ -96,17 +100,20 @@ def collision_self(dbcontainer, jump, cutoff12, cutoff13=None):
     return (c12 or c13)
 
 
-def collision_others(container, jmp, closestdistance):
+def collision_others(container, container2, jmp, closestdistance):
     """
     Takes a jump and sees if the moving atom of the dumbbell collides with any other atom.
     params:
-        crys,chem - the crystal and the sublattice under consideration.
+        container - the dumbbell states container (instance of either dbStates or mStates from states.py module)
+        container - the second dumbbell states container in case the jumps are occurring between pure and mixed spaces.
         jmp - the jump object to test.
         supervect - The lattice vectors upto which the jumps extend.
         closestdistance - (A list or a number) minimum allowable distance to other atoms
     Returns:
         True if atoms collide. False otherwise.
     """
+    if container2 is None:
+        container2=container
     crys, chem = container.crys, container.chem
     # Format closestdistance appropriately
     if isinstance(closestdistance, list):
@@ -116,9 +123,9 @@ def collision_others(container, jmp, closestdistance):
 
     # First extract the necessary parameters for calculating the transport vector
     if isinstance(jmp.state1, dumbbell):
-        (i1, i2) = (container.iorlist[jmp.state1.iorind][0], container.iorlist[jmp.state2.iorind][0])
+        (i1, i2) = (container.iorlist[jmp.state1.iorind][0], container2.iorlist[jmp.state2.iorind][0])
     else:
-        (i1, i2) = (container.iorlist[jmp.state1.db.iorind][0], container.iorlist[jmp.state2.db.iorind][0])
+        (i1, i2) = (container.iorlist[jmp.state1.db.iorind][0], container2.iorlist[jmp.state2.db.iorind][0])
 
     if isinstance(jmp.state1, dumbbell):
         (R1, R2) = (jmp.state1.R, jmp.state2.R)
@@ -126,9 +133,9 @@ def collision_others(container, jmp, closestdistance):
         (R1, R2) = (jmp.state1.db.R, jmp.state2.db.R)
 
     if isinstance(jmp.state1, dumbbell):
-        (o1, o2) = (container.iorlist[jmp.state1.iorind][1], container.iorlist[jmp.state2.iorind][1])
+        (o1, o2) = (container.iorlist[jmp.state1.iorind][1], container2.iorlist[jmp.state2.iorind][1])
     else:
-        (o1, o2) = (container.iorlist[jmp.state1.db.iorind][1], container.iorlist[jmp.state2.db.iorind][1])
+        (o1, o2) = (container.iorlist[jmp.state1.db.iorind][1], container2.iorlist[jmp.state2.db.iorind][1])
 
     c1, c2 = jmp.c1, jmp.c2
     dvec = (c2 / 2.) * o2 - (c1 / 2.) * o1
