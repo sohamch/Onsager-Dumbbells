@@ -27,12 +27,12 @@ class StarSet(object):
         Index objects contained in the starset
         All the indexing are done into the following four lists
         ->pdbcontainer.iorlist, mdbcontainer.iorlist - the list of (site, orientation) tuples allowed for pure and mixed dumbbells respectively.
-        ->purestates,mixedstates - the list SdPair objects, containing the complex and mixed dumbbells that make up the starset
+        ->complexStates,mixedstates - the list SdPair objects, containing the complex and mixed dumbbells that make up the starset
 
         --starindexed -> gives the indices to the states list of the states stored in the starset
-        --pureindex, mixedindex -> tells us which star (via it's index in the pure(or mixed)states list) a state belongs to.
-        --pureindexdict, mixedindexdict -> tell us given a pair state, what is its index in the states list and the starset, as elements of a 2-tuple.
-        --pureStatesToContainer, mixedStatesToContainer -> tell us the index of the (i,o) of a dumbbell in a SdPair in pure/mixedstates in the
+        --complexIndex, mixedindex -> tells us which star (via it's index in the pure(or mixed)states list) a state belongs to.
+        --complexIndexdict, mixedindexdict -> tell us given a pair state, what is its index in the states list and the starset, as elements of a 2-tuple.
+        --complexStatesToContainer, mixedStatesToContainer -> tell us the index of the (i,o) of a dumbbell in a SdPair in pure/mixedstates in the
         respective iorlists.
 
         """
@@ -58,11 +58,11 @@ class StarSet(object):
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
 
-        self.jnet0 = jnet0[0]
-        self.jnet0_ind = jnet0[1]
+        self.jnet0 = jnetwrk0[0]
+        self.jnet0_ind = jnetwrk0[1]
 
-        self.jnet2 = jnet2[0]
-        self.jnet2_ind = jnet2[1]
+        self.jnet2 = jnetwrk2[0]
+        self.jnet2_ind = jnetwrk2[1]
 
         self.jumplist = [j for l in self.jnet0 for j in l]
         # self.jumpset = set(self.jumplist)
@@ -78,15 +78,19 @@ class StarSet(object):
             self.generate(Nshells)
 
     def _sortkey(self, entry):
+        # Single underscore function means that if we import this class separately in another module, through
+        # "from stars import StarSet", then we won't have access to StarSet._sortkey()
+        # However, if we import the module "import stars", then we can access stars.StarSet._sortkey()
+        # Usually, pre-underscored variables are understood as those which are meant only for internal use by the class.
         sol_pos = self.crys.unit2cart(entry.R_s, self.crys.basis[self.chem][entry.i_s])
         db_pos = self.crys.unit2cart(entry.db.R,
                                      self.crys.basis[self.chem][self.pdbcontainer.iorlist[entry.db.iorind][0]])
         return np.dot(db_pos - sol_pos, db_pos - sol_pos)
 
-    def genIndextoContainer(self, purestates, mixedstates):
+    def genIndextoContainer(self, complexStates, mixedstates):
         pureDict = {}
         mixedDict = {}
-        for st in purestates:
+        for st in complexStates:
             db = st.db - st.db.R
             pureDict[st] = self.pdbcontainer.iorindex[db]
 
@@ -144,10 +148,10 @@ class StarSet(object):
                     newstate = state.gop(self.pdbcontainer, gdumb)[0]
                     newstate = newstate - newstate.R_s  # Shift the solute back to the origin unit cell.
                     if newstate in self.stateset:  # Check if this state is allowed to be present.
-                        if not newstate in allset: # Check if this state has already been considered.
+                        if not newstate in allset:  # Check if this state has already been considered.
                             newstar.append(newstate)
                             allset.add(newstate)
-                if len(newstar)==0:
+                if len(newstar) == 0:
                     raise ValueError("A star must have at least one state.")
                 stars.append(newstar)
         self.stars = stars
@@ -176,7 +180,7 @@ class StarSet(object):
                 newlist.append(mdb)
             self.stars.append(newlist)
 
-        self.purestates = sorted(list(self.stateset), key=self._sortkey)
+        self.complexStates = sorted(list(self.stateset), key=self._sortkey)
         self.mixedstates = list(self.mixedstateset)
         # No use sorting - every state is origin state, the mixed state space is periodic.
         self.bareStates = [dumbbell(idx, z) for idx in range(len(self.pdbcontainer.iorlist))]
@@ -185,6 +189,8 @@ class StarSet(object):
         j2initlist = []
         for jt, jlist in enumerate(self.jnet2_ind):
             initindices = defaultdict(list)
+            # defaultdict(list) - dictionary creator. (key, value) pairs are such that the value corresponding to a
+            # given key is a list. If a key is created for the first time, an empty list is created simultaneously.
             for (i, j), dx in jlist:
                 initindices[i].append(j)
             j2initlist.append(initindices)
@@ -193,24 +199,22 @@ class StarSet(object):
         for initdict in j2initlist:
             jtagdict = {}
             for IS, lst in initdict.items():
-                jarr = np.zeros((len(lst), len(self.purestates) + len(self.mixedstates)), dtype=int)
+                jarr = np.zeros((len(lst), len(self.complexStates) + len(self.mixedstates)), dtype=int)
                 for idx, FS in enumerate(lst):
                     if IS == FS:
-                        # jarr[idx][IS+len(self.purestates)]= 1
+                        # jarr[idx][IS+len(self.complexStates)]= 1
                         continue
-                    jarr[idx][IS + len(self.purestates)] += 1
-                    jarr[idx][FS + len(self.purestates)] -= 1
+                    jarr[idx][IS + len(self.complexStates)] += 1
+                    jarr[idx][FS + len(self.complexStates)] -= 1
                 jtagdict[IS] = jarr.copy()
             self.jtags2.append(jtagdict)
 
-        # generate an indexed version of the starset to the iorlists in the container objects - seperate for mixed and pure stars
-        # self.pureStatesToContainer, self.mixedStatesToContainer = self.genIndextoContainer(self.purestates,self.mixedstates)
-
+        # generate an indexed version of the starset to the iorlists in the container objects
         starindexed = []
         for star in self.stars[:self.mixedstartindex]:
             indlist = []
             for state in star:
-                for j, st in enumerate(self.purestates):
+                for j, st in enumerate(self.complexStates):
                     if st == state:
                         indlist.append(j)
             starindexed.append(indlist)
@@ -232,57 +236,49 @@ class StarSet(object):
             # get the dumbbell of the representative state of the star
             db = star[0].db - star[0].db.R
             # now get the symorlist index in which the dumbbell belongs
-            symind = self.pdbcontainer.invmap[self.pdbcontainer.iorindex[db]]
+            symind = self.pdbcontainer.invmap[self.pdbcontainer.iorindex[db.iorind]]
             self.star2symlist[starind] = symind
 
         for starind, star in enumerate(self.stars[self.mixedstartindex:]):
             # get the dumbbell from the representative state of the star
             db = star[0].db - star[0].db.R
             # now get the symorlist index in which the dumbbell belongs
-            symind = self.mdbcontainer.invmap[self.mdbcontainer.iorindex[db]]
+            symind = self.mdbcontainer.invmap[self.mdbcontainer.iorindex[db.iorindex]]
             self.star2symlist[starind + self.mixedstartindex] = symind
 
-        # self.starindexed -> gives the indices into the purestates and mixedstates, of the states stored in the
-        # starset, i.e, an indexed version of the starset.
+        # self.starindexed -> gives the indices into the complexStates and mixedstates, of the states stored in the
+        # starset, i.e, an indexed version of the starset. now generate the index dicts
+        # --indexdict -> tell us given a pair state, what is its index in the states list and which star in the starset
+        # it belongs to.
 
-        # now generate the index dicts
-        # --starindex -> tells us which star (via it's index in the states list) a state belongs to.
-        # --indexdict -> tell us given a pair state, what is its index in the states list and which star in the starset it belongs to.
-
-        self.pureindex = np.zeros(len(self.purestates), dtype=int)
-        self.pureindexdict = {}
+        self.complexIndexdict = {}
         for si, star, starind in zip(itertools.count(), self.stars[:self.mixedstartindex],
                                      self.starindexed[:self.mixedstartindex]):
             for state, ind in zip(star, starind):
-                self.pureindex[ind] = si
-                self.pureindexdict[state] = (ind, si)
+                self.complexIndexdict[state] = (ind, si)
 
-        self.mixedindex = np.zeros(len(self.mixedstates), dtype=int)
         self.mixedindexdict = {}
-        for si, star, starind in zip(itertools.count(), self.stars[self.mixedstartindex:], \
+        for si, star, starind in zip(itertools.count(), self.stars[self.mixedstartindex:],
                                      self.starindexed[self.mixedstartindex:]):
             for state, ind in zip(star, starind):
-                self.mixedindex[ind] = si + self.mixedstartindex
                 self.mixedindexdict[state] = (ind, si + self.mixedstartindex)
 
         # create the starset for the bare dumbbell space
-        self.barePeriodicStars = [[dumbbell(tup[0], tup[1], np.zeros(3, dtype=int)) for tup in tuplist] for tuplist in
-                                  self.pdbcontainer.symorlist]
+        self.barePeriodicStars = [[dumbbell(idx, np.zeros(3, dtype=int)) for idx in idxlist] for idxlist in
+                                  self.pdbcontainer.symIndlist]
 
-        self.bareStarindexed = []
-        for star in self.barePeriodicStars:
-            indlist = []
-            for state in star:
-                for j, st in enumerate(self.bareStates):
-                    if st == state:
-                        indlist.append(j)
-            self.bareStarindexed.append(indlist)
+        self.bareStarindexed = self.pdbcontainer.symIndlist.copy()
+        # for star in self.barePeriodicStars:
+        #     indlist = []
+        #     for state in star:
+        #         for j, st in enumerate(self.bareStates):
+        #             if st == state:
+        #                 indlist.append(j)
+        #     self.bareStarindexed.append(indlist)
 
-        self.bareindex = np.zeros(len(self.bareStates), dtype=int)
         self.bareindexdict = {}
         for si, star, starind in zip(itertools.count(), self.barePeriodicStars, self.bareStarindexed):
             for state, ind in zip(star, starind):
-                self.bareindex[ind] = si
                 self.bareindexdict[state] = (ind, si)
 
     def sortstars(self):
@@ -308,28 +304,27 @@ class StarSet(object):
         jumptype = []
         starpair = []
         jumpset = set([])  # set where newly produced jumps will be stored
-        for jt, j_indices in enumerate(self.jumpindices):
-            for j in [self.jumplist[q] for q in j_indices]:
+        for jt, jlist in enumerate(self.jnet0):
+            for j in jlist:
                 # these contain dumbell->dumbell jumps
                 for pair in self.stateset:
                     try:
                         pairnew = pair.addjump(j)
-                    except:
+                    except ArithmeticError:
+                        # If anything other than ArithmeticError occurs, we'll get the message.
                         continue
-                    # if pairnew.is_zero():#consider only non to-origin jumps
-                    #     continue
+
                     if not pairnew in self.stateset:
                         continue
                     # convert them to pair jumps
                     jpair = jump(pair, pairnew, j.c1, j.c2)
-                    if not jpair in jumpset and not -jpair in jumpset:  # see if the jump has not already been considered
+                    if not jpair in jumpset:  # see if the jump has not already been considered
                         newlist = []
                         indices = []
                         initdict = defaultdict(list)
-                        for g in self.crys.G:
-                            jnew = jpair.gop(self.crys, self.chem, g)
-                            db1new = self.pdbcontainer.gdumb(g, jpair.state1.db)
-                            db2new = self.pdbcontainer.gdumb(g, jpair.state2.db)
+                        for gdumb in self.pdbcontainer.G:
+                            db1new = jpair.state1.db.gop(self.pdbcontainer, gdumb)
+                            db2new = jpair.state2.db.gop(self.pdbcontainer, gdumb)
                             # The solute must be at the origin unit cell - shift it
                             state1new = SdPair(jnew.state1.i_s, jnew.state1.R_s, db1new[0]) - jnew.state1.R_s
                             state2new = SdPair(jnew.state2.i_s, jnew.state2.R_s, db2new[0]) - jnew.state2.R_s
@@ -337,18 +332,19 @@ class StarSet(object):
                                 raise ValueError("symmetrically obtained complex state not found in stateset(?)")
                             jnew = jump(state1new, state2new, jnew.c1 * db1new[1], jnew.c2 * db2new[1])
                             if not jnew in jumpset:
-                                if not (np.allclose(jnew.state1.R_s, 0., atol=self.crys.threshold) and np.allclose(
-                                        jnew.state2.R_s, 0., atol=self.crys.threshold)):
-                                    raise RuntimeError("Solute shifted from origin")
-                                if not (jnew.state1.i_s == jnew.state1.i_s):
-                                    raise RuntimeError(
-                                        "Solute must remain in exactly the same position before and after the jump")
+                                # if not (np.allclose(jnew.state1.R_s, 0., atol=self.crys.threshold) and np.allclose(
+                                #         jnew.state2.R_s, 0., atol=self.crys.threshold)):
+                                #     raise RuntimeError("Solute shifted from origin")
+                                # if not (jnew.state1.i_s == jnew.state1.i_s):
+                                #     raise RuntimeError(
+                                #         "Solute must remain in exactly the same position before and after the jump")
                                 newlist.append(jnew)
-                                newlist.append(
-                                    -jnew)  # we can add the negative since solute always remains at the origin
+                                newlist.append(-jnew)
+                                # we can add the negative since solute always remains at the origin
                                 jumpset.add(jnew)
                                 jumpset.add(-jnew)
-                        if (newlist[0].state1.is_zero() and newlist[0].state2.is_zero()):
+                        if (newlist[0].state1.is_zero(self.pdbcontainer) and
+                                newlist[0].state2.is_zero(self.pdbcontainer)):
                             # remove redundant rotations
                             newnewlist = set([])
                             for j in newlist:
@@ -361,20 +357,21 @@ class StarSet(object):
                                 raise ValueError("state not found in stateset?\n{}".format(jmp.state1))
                             if not (jmp.state2 in self.stateset):
                                 raise ValueError("state not found in stateset?\n{}".format(jmp.state2))
-                            initial = self.pureindexdict[jmp.state1][0]
-                            final = self.pureindexdict[jmp.state2][0]  # key Error
-                            indices.append(((initial, final), disp(self.crys, self.chem, jmp.state1, jmp.state2)))
+                            initial = self.complexIndexdict[jmp.state1][0]
+                            final = self.complexIndexdict[jmp.state2][0]
+                            indices.append(((initial, final), disp(self.pdbcontainer, jmp.state1, jmp.state2)))
                             initdict[initial].append(final)
                         jumpnetwork.append(newlist)
                         jumpindexed.append(indices)
                         initstates.append(initdict)
-                        # so, initdict contains all the initial states as keys, and the values as the lists final states from the initial states.
+                        # initdict contains all the initial states as keys, and the values as the lists final states
+                        # from the initial states for the given jump type.
                         jumptype.append(jt)
         jtags = []
         for initdict in initstates:
             arrdict = {}
             for IS, lst in initdict.items():
-                jtagarr = np.zeros((len(lst), len(self.purestates) + len(self.mixedstates)), dtype=int)
+                jtagarr = np.zeros((len(lst), len(self.complexStates) + len(self.mixedstates)), dtype=int)
                 for jnum, FS in enumerate(lst):
                     jtagarr[jnum][IS] += 1
                     jtagarr[jnum][FS] -= 1
@@ -385,7 +382,7 @@ class StarSet(object):
 
     def jumpnetwork_omega34(self, cutoff, solv_solv_cut, solt_solv_cut, closestdistance):
         # building omega_4 -> association - c2=-1 -> since solvent movement is tracked
-        # cutoff required is solute-solvent as well as solvent solvent
+        # cutoff required - solute-solvent as well as solvent solvent
         alljumpset_omega4 = set([])
         symjumplist_omega4 = []
         symjumplist_omega4_indexed = []
@@ -401,8 +398,8 @@ class StarSet(object):
         symjumplist_omega43_all_indexed = []
         alljumpset_omega43_all = set([])
 
-        for p_pure in self.purestates:
-            if p_pure.is_zero():  # Specator rotating into mixed does not make sense.
+        for p_pure in self.complexStates:
+            if p_pure.is_zero(self.pdbcontainer):  # Specator rotating into mixed does not make sense.
                 continue
             for p_mixed in self.mixedstates:
                 for c1 in [-1, 1]:
@@ -458,7 +455,7 @@ class StarSet(object):
                                 jinitdict4 = defaultdict(list)
 
                                 for jmp in newset:
-                                    pure_ind = self.pureindexdict[jmp.state1][0]
+                                    pure_ind = self.complexIndexdict[jmp.state1][0]
                                     mixed_ind = self.mixedindexdict[jmp.state2][0]
                                     # omega4 has pure as initial, omega3 has pure as final
                                     jinitdict4[pure_ind].append(mixed_ind)
@@ -489,7 +486,7 @@ class StarSet(object):
         # for initdict in initstates:
         #     arrdict = {}
         #     for IS,lst in initdict.items():
-        #         jtagarr = np.zeros((len(lst),len(self.purestates)+len(self.mixedstates)),dtype=int)
+        #         jtagarr = np.zeros((len(lst),len(self.complexStates)+len(self.mixedstates)),dtype=int)
         #         for jnum,FS in enumerate(lst):
         #             jtagarr[jnum][IS] = 1
         #             jtagarr[jnum][FS] = -1
@@ -499,19 +496,19 @@ class StarSet(object):
         for initdict in omega4inits:
             jarrdict = {}
             for IS, lst in initdict.items():
-                jarr = np.zeros((len(lst), len(self.purestates) + len(self.mixedstates)), dtype=int)
+                jarr = np.zeros((len(lst), len(self.complexStates) + len(self.mixedstates)), dtype=int)
                 for idx, FS in enumerate(lst):
                     jarr[idx][IS] += 1
-                    jarr[idx][FS + len(self.purestates)] -= 1
+                    jarr[idx][FS + len(self.complexStates)] -= 1
                 jarrdict[IS] = jarr.copy()
             jtags4.append(jarrdict)
 
         for initdict in omega3inits:
             jarrdict = {}
             for IS, lst in initdict.items():
-                jarr = np.zeros((len(lst), len(self.purestates) + len(self.mixedstates)), dtype=int)
+                jarr = np.zeros((len(lst), len(self.complexStates) + len(self.mixedstates)), dtype=int)
                 for idx, FS in enumerate(lst):
-                    jarr[idx][IS + len(self.purestates)] += 1
+                    jarr[idx][IS + len(self.complexStates)] += 1
                     jarr[idx][FS] -= 1
                 jarrdict[IS] = jarr.copy()
             jtags3.append(jarrdict)
