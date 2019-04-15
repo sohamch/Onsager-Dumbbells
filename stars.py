@@ -116,7 +116,7 @@ class StarSet(object):
                 # One by one, keeping the solute at the basis sites of the origin unit cell, put those dumbbell states
                 # at those positions, as are dictated by the the jumps.
                 # The idea is that a valid jump must be able to bring a dumbbell to a solute site.
-                pair = SdPair(pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, j.state2)
+                pair = SdPair(self.pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, j.state2)
                 stateset.add(pair)
         lastshell = stateset.copy()
         # Now build the next shells:
@@ -160,7 +160,7 @@ class StarSet(object):
         # Keep the indices of the origin states. May be necessary when dealing with their rates and probabilities
         self.originstates = []
         for starind, star in enumerate(self.stars):
-            if star[0].is_zero():
+            if star[0].is_zero(self.pdbcontainer):
                 self.originstates.append(starind)
 
         self.mixedstartindex = len(self.stars)
@@ -181,8 +181,6 @@ class StarSet(object):
             self.stars.append(newlist)
 
         self.complexStates = sorted(list(self.stateset), key=self._sortkey)
-        self.mixedstates = list(self.mixedstateset)
-        # No use sorting - every state is origin state, the mixed state space is periodic.
         self.bareStates = [dumbbell(idx, z) for idx in range(len(self.pdbcontainer.iorlist))]
 
         # Next, we build up the jtags for omega2 (see Onsager_calc_db module).
@@ -236,14 +234,14 @@ class StarSet(object):
             # get the dumbbell of the representative state of the star
             db = star[0].db - star[0].db.R
             # now get the symorlist index in which the dumbbell belongs
-            symind = self.pdbcontainer.invmap[self.pdbcontainer.iorindex[db.iorind]]
+            symind = self.pdbcontainer.invmap[db.iorind]
             self.star2symlist[starind] = symind
 
         for starind, star in enumerate(self.stars[self.mixedstartindex:]):
             # get the dumbbell from the representative state of the star
             db = star[0].db - star[0].db.R
             # now get the symorlist index in which the dumbbell belongs
-            symind = self.mdbcontainer.invmap[self.mdbcontainer.iorindex[db.iorindex]]
+            symind = self.mdbcontainer.invmap[db.iorind]
             self.star2symlist[starind + self.mixedstartindex] = symind
 
         # self.starindexed -> gives the indices into the complexStates and mixedstates, of the states stored in the
