@@ -103,7 +103,7 @@ class SdPair(namedtuple('SdPair', "i_s R_s db")):
         """
         return self.i_s == container.iorlist[self.db.iorind][0] and np.allclose(self.R_s, self.db.R)
 
-    def addjump(self, j, container, mixed=False):
+    def addjump(self, j, mixed=False):
 
         if not mixed and isinstance(j.state1, SdPair):
             raise TypeError("Only dumbbell -> dumbbell transitions can be added to complexes, not pair -> pair")
