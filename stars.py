@@ -15,7 +15,7 @@ class StarSet(object):
     """
 
     def __init__(self, pdbcontainer, mdbcontainer, jnetwrk0, jnetwrk2,
-                 Nshells=None):  # ,originstates=False):
+                 Nshells=None):
         """
         Parameters:
         pdbcontainer,mdbcontainer:
@@ -72,6 +72,8 @@ class StarSet(object):
         for l in self.jnet0:
             self.jumpindices.append([])
             for j in l:
+                if isinstance(j.state1, SdPair):
+                    raise TypeError("The jumpnetwork for bare dumbbells cannot have Sdpairs")
                 self.jumpindices[-1].append(count)
                 count += 1
         if not Nshells == None:
@@ -303,32 +305,31 @@ class StarSet(object):
         starpair = []
         jumpset = set([])  # set where newly produced jumps will be stored
         for jt, jlist in enumerate(self.jnet0):
-            for j in jlist:
+            for jnum, j0 in enumerate(jlist):
                 # these contain dumbell->dumbell jumps
-                for pair in self.stateset:
+                for pairind, pair in enumerate(self.complexStates):
                     try:
-                        pairnew = pair.addjump(j)
+                        pairnew = pair.addjump(j0)
                     except ArithmeticError:
                         # If anything other than ArithmeticError occurs, we'll get the message.
                         continue
-
-                    if not pairnew in self.stateset:
+                    if pairnew not in self.stateset:
                         continue
                     # convert them to pair jumps
-                    jpair = jump(pair, pairnew, j.c1, j.c2)
+                    jpair = jump(pair, pairnew, j0.c1, j0.c2)
                     if not jpair in jumpset:  # see if the jump has not already been considered
                         newlist = []
                         indices = []
                         initdict = defaultdict(list)
                         for gdumb in self.pdbcontainer.G:
-                            db1new = jpair.state1.db.gop(self.pdbcontainer, gdumb)
-                            db2new = jpair.state2.db.gop(self.pdbcontainer, gdumb)
                             # The solute must be at the origin unit cell - shift it
-                            state1new = SdPair(jnew.state1.i_s, jnew.state1.R_s, db1new[0]) - jnew.state1.R_s
-                            state2new = SdPair(jnew.state2.i_s, jnew.state2.R_s, db2new[0]) - jnew.state2.R_s
+                            state1new, flip1 = jpair.state1.gop(self.pdbcontainer, gdumb)
+                            state2new, flip2 = jpair.state2.gop(self.pdbcontainer, gdumb)
+                            state1new -= state1new.R_s
+                            state2new -= state2new.R_s
                             if (not state1new in self.stateset) or (not state2new in self.stateset):
                                 raise ValueError("symmetrically obtained complex state not found in stateset(?)")
-                            jnew = jump(state1new, state2new, jnew.c1 * db1new[1], jnew.c2 * db2new[1])
+                            jnew = jump(state1new, state2new, jpair.c1 * flip1, jpair.c2 * flip2)
                             if not jnew in jumpset:
                                 # if not (np.allclose(jnew.state1.R_s, 0., atol=self.crys.threshold) and np.allclose(
                                 #         jnew.state2.R_s, 0., atol=self.crys.threshold)):
@@ -341,9 +342,11 @@ class StarSet(object):
                                 # we can add the negative since solute always remains at the origin
                                 jumpset.add(jnew)
                                 jumpset.add(-jnew)
-                        if (newlist[0].state1.is_zero(self.pdbcontainer) and
-                                newlist[0].state2.is_zero(self.pdbcontainer)):
-                            # remove redundant rotations
+
+                        # remove redundant rotations, if present
+                        if (np.allclose(disp(self.pdbcontainer, newlist[0].state1, newlist[0].state2), np.zeros(3),
+                                       atol=self.pdbcontainer.crys.threshold) and
+                                newlist[0].state1.i_s == newlist[0].state2.i_s):
                             newnewlist = set([])
                             for j in newlist:
                                 j_equiv = jump(j.state1, j.state2, -1 * j.c1, -1 * j.c2)
@@ -417,58 +420,66 @@ class StarSet(object):
                                                                                       self.mdbcontainer, j,
                                                                                       closestdistance):
                             newset = set([])
-                            for gdumb_pure in self.pdbcontainer.G:
-                                for gdumb_mixed in self.mdbcontainer.G:
-                                    if not self.pdbcontainer.G_crys[gdumb_pure] ==\
-                                           self.mdbcontainer.G_crys[gdumb_mixed]:
-                                        continue
-                                    state1new, flip1 = j.state1.gop(self.pdbcontainer, gdumb_pure)
-                                    state2new = j.state2.gop(self.mdbcontainer, gdumb_mixed, complex=False)
-                                    jnew = jump(state1new - state1new.R_s, state2new - state2new.R_s, j.c1*flip1, -1)
-                                    if not jnew in newset:
-                                        if jnew.state1.i_s == self.pdbcontainer.iorlist[jnew.state1.db.iorind][0]:
-                                            if np.allclose(jnew.state1.R_s, jnew.state1.db.R, atol=self.crys.threshold):
-                                                raise RuntimeError("Initial state mixed")
-                                        if not (jnew.state2.i_s == self.mdbcontainer.iorlist[jnew.state2.db.iorind][0]
-                                                and np.allclose(jnew.state2.R_s, jnew.state2.db.R, self.crys.threshold)):
-                                            raise RuntimeError("Final state not mixed")
-                                        newset.add(jnew)
-                                        alljumpset_omega4.add(jnew)
-                                newset = list(newset)
-                                newnegset = [-jmp for jmp in newset]
-                                newallset = []
-                                for i in range(len(newset)):
-                                    newallset.append(newset[i])
-                                    newallset.append(newnegset[i])
+                            for g in self.crys.G:
+                                for gdumb, gval in self.pdbcontainer.G_crys.items():
+                                    if gval == g:
+                                        gdumb_pure = gdumb
 
-                                new4index = []
-                                new3index = []
-                                newallindex = []
-                                jinitdict3 = defaultdict(list)
-                                jinitdict4 = defaultdict(list)
+                                for gdumb, gval in self.mdbcontainer.G_crys.items():
+                                    if gval == g:
+                                        gdumb_mixed = gdumb
 
-                                for jmp in newset:
-                                    pure_ind = self.complexIndexdict[jmp.state1][0]
-                                    mixed_ind = self.mixedindexdict[jmp.state2][0]
-                                    # omega4 has pure as initial, omega3 has pure as final
-                                    jinitdict4[pure_ind].append(mixed_ind)
-                                    jinitdict3[mixed_ind].append(pure_ind)
-                                    dx = disp4(self.pdbcontainer, self.mdbcontainer, jmp.state1, jmp.state2)
-                                    new4index.append(((pure_ind, mixed_ind), dx.copy()))
-                                    new3index.append(((mixed_ind, pure_ind), -dx))
-                                    newallindex.append(((pure_ind, mixed_ind), dx.copy()))
-                                    newallindex.append(((mixed_ind, pure_ind), -dx))
+                                if not self.pdbcontainer.G_crys[gdumb_pure] ==\
+                                       self.mdbcontainer.G_crys[gdumb_mixed]:
+                                    continue
+                                state1new, flip1 = j.state1.gop(self.pdbcontainer, gdumb_pure)
+                                state2new = j.state2.gop(self.mdbcontainer, gdumb_mixed, complex=False)
+                                jnew = jump(state1new - state1new.R_s, state2new - state2new.R_s, j.c1*flip1, -1)
+                                if not jnew in newset:
+                                    if jnew.state1.i_s == self.pdbcontainer.iorlist[jnew.state1.db.iorind][0]:
+                                        if np.allclose(jnew.state1.R_s, jnew.state1.db.R, atol=self.crys.threshold):
+                                            raise RuntimeError("Initial state mixed")
+                                    if not (jnew.state2.i_s == self.mdbcontainer.iorlist[jnew.state2.db.iorind][0]
+                                            and np.allclose(jnew.state2.R_s, jnew.state2.db.R, self.crys.threshold)):
+                                        raise RuntimeError("Final state not mixed")
+                                    newset.add(jnew)
+                                    alljumpset_omega4.add(jnew)
 
-                                symjumplist_omega4.append(newset)
-                                omega4inits.append(jinitdict4)
-                                symjumplist_omega4_indexed.append(new4index)
+                            newset = list(newset)
+                            newnegset = [-jmp for jmp in newset]
+                            newallset = []
+                            for i in range(len(newset)):
+                                newallset.append(newset[i])
+                                newallset.append(newnegset[i])
 
-                                symjumplist_omega3.append(newnegset)
-                                omega3inits.append(jinitdict3)
-                                symjumplist_omega3_indexed.append(new3index)
+                            new4index = []
+                            new3index = []
+                            newallindex = []
+                            jinitdict3 = defaultdict(list)
+                            jinitdict4 = defaultdict(list)
 
-                                symjumplist_omega43_all.append(newallset)
-                                symjumplist_omega43_all_indexed.append(newallindex)
+                            for jmp in newset:
+                                pure_ind = self.complexIndexdict[jmp.state1][0]
+                                mixed_ind = self.mixedindexdict[jmp.state2][0]
+                                # omega4 has pure as initial, omega3 has pure as final
+                                jinitdict4[pure_ind].append(mixed_ind)
+                                jinitdict3[mixed_ind].append(pure_ind)
+                                dx = disp4(self.pdbcontainer, self.mdbcontainer, jmp.state1, jmp.state2)
+                                new4index.append(((pure_ind, mixed_ind), dx.copy()))
+                                new3index.append(((mixed_ind, pure_ind), -dx))
+                                newallindex.append(((pure_ind, mixed_ind), dx.copy()))
+                                newallindex.append(((mixed_ind, pure_ind), -dx))
+
+                            symjumplist_omega4.append(newset)
+                            omega4inits.append(jinitdict4)
+                            symjumplist_omega4_indexed.append(new4index)
+
+                            symjumplist_omega3.append(newnegset)
+                            omega3inits.append(jinitdict3)
+                            symjumplist_omega3_indexed.append(new3index)
+
+                            symjumplist_omega43_all.append(newallset)
+                            symjumplist_omega43_all_indexed.append(newallindex)
 
         # Now build the jtags
         jtags4 = []
