@@ -35,10 +35,10 @@ def disp4(pdbcontainer, mdbcontainer, obj1, obj2):
         obj1,obj2 - the initial and final state objects of a jump - must be of Omega4 type
         Return - displacement when going from obj1 to obj2
     """
-    true_crys = np.allclose(pdbcontainer.crys.latt, mdbcontainer.crys.latt, atol=pdbcontainer.crys.threshold)
+    true_crys = np.allclose(pdbcontainer.crys.lattice, mdbcontainer.crys.lattice, atol=pdbcontainer.crys.threshold)
 
     true_basis_len = len(pdbcontainer.crys.basis) == len(mdbcontainer.crys.basis)
-    if not (true_basis and true_crys):
+    if not (true_basis_len and true_crys):
         raise TypeError("Different crystal structures entered for pure and dumbbell states")
 
     true_site_len = all([len(chem1) == len(chem2) for chem1, chem2 in
@@ -52,7 +52,7 @@ def disp4(pdbcontainer, mdbcontainer, obj1, obj2):
     if not true_site_locs:
         raise TypeError("basis sites are at different locations for the two containers.")
 
-    crys, chem = dbcontainer.crys, dbcontainer.chem
+    crys, chem = pdbcontainer.crys, pdbcontainer.chem
     (i1, i2) = (pdbcontainer.iorlist[obj1.db.iorind][0], mdbcontainer.iorlist[obj2.db.iorind][0])
     (R1, R2) = (obj1.db.R, obj2.db.R)
 
