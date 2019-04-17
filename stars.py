@@ -171,6 +171,8 @@ class StarSet(object):
         for idx, tup in enumerate(self.mdbcontainer.iorlist):
             db = dumbbell(idx, z)
             mdb = SdPair(tup[0], z, db)
+            if not mdb.is_zero(self.mdbcontainer):
+                raise ValueError("mdb not origin state")
             self.mixedstates.append(mdb)
 
         for l in self.mdbcontainer.symIndlist:
@@ -403,6 +405,8 @@ class StarSet(object):
             if p_pure.is_zero(self.pdbcontainer):  # Specator rotating into mixed does not make sense.
                 continue
             for p_mixed in self.mixedstates:
+                if not p_mixed.is_zero(self.mdbcontainer):  # Specator rotating into mixed does not make sense.
+                    raise ValueError("Mixed dumbbell must be origin state")
                 if not (np.allclose(p_pure.R_s, 0, atol=self.crys.threshold)
                         and np.allclose(p_mixed.R_s, 0, atol=self.crys.threshold)):
                     raise RuntimeError("Solute shifted from origin - cannot happen")
