@@ -89,7 +89,8 @@ class SdPair(namedtuple('SdPair', "i_s R_s db")):
 
     def gop(self, container, gdumb, complex=True):  # apply group operation
         # If we have a complex, return a flip indicator as well, else, just return the new pair
-        R_s_new, (ch, i_s_new) = container.crys.g_pos(container.G_crys[gdumb], self.R_s, (container.chem, self.i_s))
+        R_s_new, (ch, i_s_new) = container.crys.g_pos(container.G_crys[gdumb], self.R_s,
+                                                      (container.chem, self.i_s))
         if complex:
             dbnew, flip = self.db.gop(container, gdumb, pure=True)
             return self.__class__(i_s_new, R_s_new, dbnew), flip
