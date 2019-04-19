@@ -259,3 +259,9 @@ class connector(namedtuple('connector', 'state1 state2')):
             return self.__class__(db1new, db2new)
         else:
             return self.__class__(state1new - state1new.R, state2new - state1new.R)
+
+    def shift(self):
+        """
+        :return: returns a translated connector with the initial state at the origin unit cell.
+        """
+        return self.__class__(self.state1 - self.state1.R, self.state2 - self.state1.R)
