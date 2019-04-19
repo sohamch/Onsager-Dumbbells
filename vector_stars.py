@@ -219,7 +219,7 @@ class vectorStars(VectorStarSet):
                 # Bring the initial dumbbell to the origin unit cell
                 s = connector(s.state1 - s.state1.R, s.state2 - s.state1.R)
                 if not s in connectset:
-                    connectset.append(s)
+                    connectset.add(s)
 
         # Now group the connections
         GFstarset_pure=[]
@@ -238,7 +238,7 @@ class vectorStars(VectorStarSet):
                 if snew in GFPureStarInd:
                     continue
 
-                dx = disp(self.starset.pdbcontainer, db1new, db2new)
+                dx = disp(self.starset.pdbcontainer, snew.state1, snew.state2)
                 ind1 = self.starset.pdbcontainer.db2ind(snew.state1)
                 # db2ind does not care about which unit cell the dumbbell is at
                 ind2 = self.starset.pdbcontainer.db2ind(snew.state2)

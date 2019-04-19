@@ -105,7 +105,7 @@ class test_vecstars(unittest.TestCase):
             self.assertEqual(count, count_eigs, msg="{}".format(testvecstate))
 
     def test_state_indexing(self):
-        for st in self.vec_stars.starset.purestates:
+        for st in self.vec_stars.starset.complexStates:
             indToVecStars = self.vec_stars.stateToVecStar_pure[st]
             for tup in indToVecStars:
                 self.assertEqual(st, self.vec_stars.vecpos[tup[0]][tup[1]])
@@ -468,43 +468,63 @@ class test_vecstars(unittest.TestCase):
         self.assertEqual(sm, len(GFMixedStarInd))
 
         # First for the complex states
-        for st1 in self.vec_stars.starset.purestates:
-            for st2 in self.vec_stars.starset.purestates:
+        for st1 in self.vec_stars.starset.complexStates:
+            for st2 in self.vec_stars.starset.complexStates:
                 try:
                     s = st1 ^ st2
+                    s.shift()
                 except:
                     continue
-                dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, s.state1, s.state2)
-                ind1 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state1 - s.state1.R)
-                ind2 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state2 - s.state2.R)
-                self.assertFalse(ind1 == None)
-                self.assertFalse(ind2 == None)
-                found = \
-                    any(ind1 == tup[0][0] and ind2 == tup[0][1] and np.allclose(tup[1], dx,
-                                                                                atol=self.vec_stars.starset.crys.threshold)
-                        for tlist in GFstarset_pure for tup in tlist)
-
-                self.assertTrue(found, msg="\n{}\n{}".format(s.state1, s.state2))
-
-        for st1 in self.vec_stars.starset.mixedstates:
-            for st2 in self.vec_stars.starset.mixedstates:
-                try:
-                    s = st1 ^ st2
-                except:
-                    continue
-                dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, s.state1, s.state2)
-                ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state1 - s.state1.R)
-                ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state2 - s.state2.R)
-                self.assertFalse(ind1 == None)
-                self.assertFalse(ind2 == None)
-                found = \
-                    any(ind1 == tup[0][0] and ind2 == tup[0][1] and np.allclose(tup[1], dx,
-                                                                                atol=self.vec_stars.starset.crys.threshold)
-                        for tlist in GFstarset_mixed for tup in tlist)
-
-                self.assertTrue(found, msg="\n{}\n{}".format(s.state1, s.state2))
-        self.assertFalse(len(GFstarset_pure) == 0)
-        self.assertFalse(len(GFstarset_mixed) == 0)
+                dx = disp(self.vec_stars.starset.pdbcontainer, s.state1, s.state2)
+                ind1 = self.vec_stars.starset.pdbcontainer.db2ind(s.state1)
+                ind2 = self.vec_stars.starset.pdbcontainer.db2ind(s.state2)
+                self.assertFalse(ind1 is None)
+                self.assertFalse(ind2 is None)
+                snewlist = []
+                listind = None
+                count = 0
+                for star, tlist in enumerate(GFstarset_pure):
+                    for tup in tlist:
+                        if tup[0][0] == ind1 and tup[0][1] == ind2:
+                            if np.allclose(tup[1], dx, atol=self.vec_stars.starset.crys.threshold):
+                                listind = star
+                                count += 1
+                self.assertTrue(listind is not None)
+                # Now check symmetries
+                self.assertEqual(count, 1)
+                # Now build up the symmetric list
+                for gdumb in self.vec_stars.starset.pdbcontainer.G:
+                    ind1new = gdumb.indexmap[0][ind1]
+                    ind2new = gdumb.indexmap[0][ind2]
+                    dxnew = self.vec_stars.starset.crys.g_direc(self.vec_stars.starset.pdbcontainer.G_crys[gdumb], dx)
+                    if not any(ind1new == t[0][0] and ind2new == t[0][1] and np.allclose(dxnew, t[1])for t in snewlist):
+                        snewlist.append(((ind1new, ind2new), dxnew))
+                self.assertEqual(len(snewlist), len(GFstarset_pure[listind]))
+                count = 0
+                for s in snewlist:
+                    for s2 in GFstarset_pure[listind]:
+                        if s[0][0] == s2[0][0] and s[0][1] == s2[0][1] and np.allclose(s[1], s2[1]):
+                            count += 1
+                self.assertEqual(count, len(GFstarset_pure[listind]), msg="\n{}\n{}".format(snewlist, GFstarset_pure[listind]))
+        # for st1 in self.vec_stars.starset.mixedstates:
+        #     for st2 in self.vec_stars.starset.mixedstates:
+        #         try:
+        #             s = st1 ^ st2
+        #         except:
+        #             continue
+        #         dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, s.state1, s.state2)
+        #         ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state1 - s.state1.R)
+        #         ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state2 - s.state2.R)
+        #         self.assertFalse(ind1 == None)
+        #         self.assertFalse(ind2 == None)
+        #         found = \
+        #             any(ind1 == tup[0][0] and ind2 == tup[0][1] and np.allclose(tup[1], dx,
+        #                                                                         atol=self.vec_stars.starset.crys.threshold)
+        #                 for tlist in GFstarset_mixed for tup in tlist)
+        #
+        #         self.assertTrue(found, msg="\n{}\n{}".format(s.state1, s.state2))
+        # self.assertFalse(len(GFstarset_pure) == 0)
+        # self.assertFalse(len(GFstarset_mixed) == 0)
 
     def test_GF_expansions(self):
         """
