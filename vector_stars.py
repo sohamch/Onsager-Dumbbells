@@ -50,11 +50,11 @@ class vectorStars(VectorStarSet):
             pair0 = star[0]
             glist = []
             # Find group operations that leave state unchanged
-            for g in starset.crys.G:
-                pairnew = pair0.gop(starset.crys, starset.chem, g)
+            for gdumb in starset.pdbcontainer.G:
+                pairnew = pair0.gop(starset.pdbcontainer, gdumb)[0]
                 pairnew = pairnew - pairnew.R_s
-                if pairnew == pair0 or pairnew == -pair0:
-                    glist.append(g)
+                if pairnew == pair0:
+                    glist.append(starset.pdbcontainer.G_crys[gdumb])  # Although appending gdumb itself also works
             # Find the intersected vector basis for these group operations
             vb = reduce(crystal.CombineVectorBasis, [crystal.VectorBasis(*g.eigen()) for g in glist])
             # Get orthonormal vectors
@@ -63,7 +63,7 @@ class vectorStars(VectorStarSet):
             vlist = [v * scale for v in vlist]  # see equation 80 in the paper - (there is a typo, this is correct).
             Nvect = len(vlist)
             if Nvect > 0:
-                if pair0.is_zero():
+                if pair0.is_zero(self.starset.pdbcontainer):
                     self.Nvstars_spec += Nvect
                 for v in vlist:
                     self.vecpos.append(star)
@@ -71,15 +71,15 @@ class vectorStars(VectorStarSet):
                     # implement a copy function like in case of vacancies
                     veclist = []
                     for pairI in star:
-                        for g in starset.crys.G:
-                            pairnew = pair0.gop(starset.crys, starset.chem, g)
+                        for gdumb in starset.pdbcontainer.G:
+                            pairnew = pair0.gop(starset.pdbcontainer, gdumb)[0]
                             pairnew = pairnew - pairnew.R_s  # translate solute back to origin
                             # This is because the vectors associated with a state are translationally invariant.
-                            # Wherever the solute is, if the relative position of the solute and the solvent is the same,
-                            # The vector remains unchanged due to that group op.
+                            # Wherever the solute is, if the relative position of the solute and the solvent is the
+                            # same, the vector remains unchanged due to that group op.
                             # Remember that only the rotational part of the group op will act on the vector.
-                            if pairnew == pairI or pairnew == -pairI:
-                                veclist.append(starset.crys.g_direc(g, v))
+                            if pairnew == pairI:
+                                veclist.append(starset.crys.g_direc(starset.pdbcontainer.G_crys[gdumb], v))
                                 break
                     self.vecvec.append(veclist)
 
@@ -91,17 +91,17 @@ class vectorStars(VectorStarSet):
             pair0 = star[0]
             glist = []
             # Find group operations that leave state unchanged
-            for g in starset.crys.G:
-                pairnew = pair0.gop(starset.crys, starset.chem, g)
+            for gdumb in starset.mdbcontainer.G:
+                pairnew = pair0.gop(starset.mdbcontainer, gdumb, complex=False)
                 pairnew = pairnew - pairnew.R_s  # again, only the rotation part matters.
                 # what about dumbbell rotations? Does not matter - the state has to remain unchanged
                 # Is this valid for origin states too? verify - because we have origin states.
                 if pairnew == pair0:
-                    glist.append(g)
+                    glist.append(starset.mdbcontainer.G_crys[gdumb])
             # Find the intersected vector basis for these group operations
             vb = reduce(crystal.CombineVectorBasis, [crystal.VectorBasis(*g.eigen()) for g in glist])
             # Get orthonormal vectors
-            vlist = starset.crys.vectlist(vb)  # This also nomalizes with respect to length of the vectors.
+            vlist = starset.crys.vectlist(vb)  # This also normalizes with respect to length of the vectors.
             scale = 1. / np.sqrt(len(star))
             vlist = [v * scale for v in vlist]
             Nvect = len(vlist)
@@ -112,11 +112,11 @@ class vectorStars(VectorStarSet):
                     self.vecpos_indexed.append(indstar)
                     veclist = []
                     for pairI in star:
-                        for g in starset.crys.G:
-                            pairnew = pair0.gop(starset.crys, starset.chem, g)
+                        for gdumb in starset.mdbcontainer.G:
+                            pairnew = pair0.gop(starset.mdbcontainer, gdumb, complex=False)
                             pairnew = pairnew - pairnew.R_s  # translate solute back to origin
                             if pairnew == pairI:
-                                veclist.append(starset.crys.g_direc(g, v))
+                                veclist.append(starset.crys.g_direc(starset.mdbcontainer.G_crys[gdumb], v))
                                 break
                     self.vecvec.append(veclist)
 
@@ -128,11 +128,11 @@ class vectorStars(VectorStarSet):
         for star in starset.barePeriodicStars:
             db0 = star[0]
             glist = []
-            for g in starset.crys.G:
-                dbnew = db0.gop(starset.crys, starset.chem, g)
+            for gdumb in starset.pdbcontainer.G:
+                dbnew = db0.gop(starset.pdbcontainer, gdumb)[0]
                 dbnew = dbnew - dbnew.R  # cancel out the translation
-                if dbnew == db0 or dbnew == -db0:  # Dealing with pure dumbbells, need to account for negative orientations
-                    glist.append(g)
+                if dbnew == db0:
+                    glist.append(starset.pdbcontainer.G_crys[gdumb])
             vb = reduce(crystal.CombineVectorBasis, [crystal.VectorBasis(*g.eigen()) for g in glist])
             # Get orthonormal vectors
             vlist = starset.crys.vectlist(vb)  # This also nomalizes with respect to length of the vectors.
@@ -144,17 +144,17 @@ class vectorStars(VectorStarSet):
                     veclist = []
                     self.vecpos_bare.append(star)
                     for st in star:
-                        for g in starset.crys.G:
-                            dbnew = db0.gop(starset.crys, starset.chem, g)
+                        for gdumb in starset.pdbcontainer.G:
+                            dbnew = db0.gop(starset.pdbcontainer, gdumb)[0]
                             dbnew = dbnew - dbnew.R
-                            if dbnew == st or dbnew == -st:
-                                veclist.append(starset.crys.g_direc(g, v))
+                            if dbnew == st:
+                                veclist.append(starset.crys.g_direc(starset.pdbcontainer.G_crys[gdumb], v))
                                 break
                     self.vecvec_bare.append(veclist)
 
         # index the states into the vector stars - required in OnsagerCalc
         self.stateToVecStar_pure = {}
-        for st in self.starset.purestates:
+        for st in self.starset.complexStates:
             indlist = []
             for IndOfStar, crStar in enumerate(self.vecpos[:self.Nvstars_pure]):
                 for IndOfState, state in enumerate(crStar):
@@ -188,7 +188,7 @@ class vectorStars(VectorStarSet):
         self.vstar2star = np.zeros(self.Nvstars, dtype=int)
         for vstindex, vst in enumerate(self.vecpos[:self.Nvstars_pure]):
             # get the crystal star of the representative state of the vector star
-            starindex = self.starset.pureindexdict[vst[0]][1]
+            starindex = self.starset.complexIndexdict[vst[0]][1]
             self.vstar2star[vstindex] = starindex
 
         for vstindex, vst in enumerate(self.vecpos[self.Nvstars_pure:]):
@@ -203,13 +203,13 @@ class vectorStars(VectorStarSet):
         The connections must lie within the starset and must connect only those states that are connected by omega_0 or omega_2 jumps.
         The GFstarset is to be returned in the form of (i,j),dx. where the indices i and j correspond to the states in the iorset
         """
-        purestates = self.starset.purestates
+        complexStates = self.starset.complexStates
         mixedstates = self.starset.mixedstates
         # Connect the states
         GFstarset_pure = []
         GFPureStarInd = {}
-        for st1 in purestates:
-            for st2 in purestates:
+        for st1 in complexStates:
+            for st2 in complexStates:
                 try:
                     s = st1 ^ st2
                 except:
@@ -358,7 +358,7 @@ class vectorStars(VectorStarSet):
         """
         z = np.zeros(3, dtype=float)
 
-        biasBareExpansion = np.zeros((len(self.vecpos_bare), len(self.starset.jumpnetwork_omega0)))
+        biasBareExpansion = np.zeros((len(self.vecpos_bare), len(self.starset.jnet0)))
         # Expansion of pure dumbbell initial state bias vectors and complex state bias vectors
         bias0expansion = np.zeros((self.Nvstars_pure, len(self.starset.jumpindices)))
         bias1expansion_solvent = np.zeros((self.Nvstars_pure, len(jumpnetwork_omega1)))
@@ -376,11 +376,11 @@ class vectorStars(VectorStarSet):
 
         # First, let's build the periodic bias expansions
         for i, star, vectors in zip(itertools.count(), self.vecpos_bare, self.vecvec_bare):
-            for k, jumplist in zip(itertools.count(), self.starset.jumpnetwork_omega0):
+            for k, jumplist in zip(itertools.count(), self.starset.jnet0):
                 for j in jumplist:
                     IS = j.state1
                     if star[0] == IS:
-                        dx = disp(self.starset.crys, self.starset.chem, j.state1, j.state2)
+                        dx = disp(self.starset.pdbcontainer, j.state1, j.state2)
                         geom_bias_solvent = np.dot(vectors[0], dx) * len(star)
                         biasBareExpansion[i, k] += geom_bias_solvent
 
@@ -399,7 +399,7 @@ class vectorStars(VectorStarSet):
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if purestar[0] == IS:
                         # sees if there is a jump of the kth type with purestar[0] as the initial state.
-                        dx = disp(self.starset.crys, self.starset.chem, j.state1, j.state2)
+                        dx = disp(self.starset.pdbcontainer, j.state1, j.state2)
                         dx_solute = z
                         dx_solvent = dx.copy()  # just for clarity that the solvent mass transport is dx itself.
 
@@ -416,17 +416,17 @@ class vectorStars(VectorStarSet):
                         # to the bias vector along v_i, for bare dumbbells
                         # so to find the total bias along v_i, we sum over k.
             # Next, omega_4: complex -> mixed
-            # The correction delta_bias = bias4 + bias1 - bias0
             for k, jumplist in zip(itertools.count(), jumpnetwork_omega34):
                 for j in jumplist:
                     IS = j.state1
-                    if IS.is_zero():  # check if initial state is mixed dumbbell -> then skip - it's omega_3
+                    if IS.is_zero(self.starset.mdbcontainer):
+                        # check if initial state is mixed dumbbell -> then skip - it's omega_3
                         continue
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if purestar[0] == IS:
-                        dx = disp(self.starset.crys, self.starset.chem, j.state1, j.state2)
-                        dx_solute = j.state2.db.o / 2.
-                        dx_solvent = dx - j.state2.db.o / 2.
+                        dx = disp4(self.starset.pdbcontainer, self.starset.mdbcontainer, j.state1, j.state2)
+                        dx_solute = self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                        dx_solvent = dx - self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute) * len(purestar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent) * len(purestar)
                         bias4expansion_solute[i, k] += geom_bias_solute
@@ -445,9 +445,11 @@ class vectorStars(VectorStarSet):
                     IS = j.state1
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if mixedstar[0] == IS:
-                        dx = disp(self.starset.crys, self.starset.chem, j.state1, j.state2)
-                        dx_solute = dx + j.state2.db.o / 2. - j.state1.db.o / 2.
-                        dx_solvent = dx - j.state2.db.o / 2. + j.state1.db.o / 2.
+                        dx = disp(self.starset.mdbcontainer, j.state1, j.state2)
+                        dx_solute = dx + self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. - \
+                                    self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solvent = dx - self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. + \
+                                     self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute) * len(mixedstar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent) * len(mixedstar)
                         bias2expansion_solute[i, k] += geom_bias_solute
@@ -456,19 +458,25 @@ class vectorStars(VectorStarSet):
             for k, jumplist in zip(itertools.count(), jumpnetwork_omega34):
                 for j in jumplist:
                     IS = j.state1
-                    if not IS.is_zero():  # check if initial state is not a mixed state -> skip if not mixed
+                    if not IS.is_zero(self.starset.mdbcontainer):
+                        # check if initial state is not a mixed state -> skip if not mixed
                         continue
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if mixedstar[0] == IS:
-                        dx = disp(self.starset.crys, self.starset.chem, j.state1, j.state2)
-                        dx_solute = -j.state1.db.o / 2.
-                        dx_solvent = dx + j.state1.db.o / 2.
+                        try:
+                            dx = -disp4(self.starset.pdbcontainer, self.starset.mdbcontainer, j.state2, j.state1)
+                        except IndexError:
+                            print(len(self.starset.pdbcontainer), len(self.starset.mdbcontainer))
+                            print(len(j.state2.db.iorind), len(j.state1.db.iorind))
+                            raise IndexError("list index out of range")
+                        dx_solute = -self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solvent = dx + self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute) * len(mixedstar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent) * len(mixedstar)
                         bias3expansion_solute[i, k] += geom_bias_solute
                         bias3expansion_solvent[i, k] += geom_bias_solvent
 
-        if (len(self.vecpos_bare) == 0):
+        if len(self.vecpos_bare) == 0:
             return zeroclean(bias0expansion), (zeroclean(bias1expansion_solute), zeroclean(bias1expansion_solvent)), \
                    (zeroclean(bias2expansion_solute), zeroclean(bias2expansion_solvent)), \
                    (zeroclean(bias3expansion_solute), zeroclean(bias3expansion_solvent)), \

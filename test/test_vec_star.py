@@ -10,554 +10,592 @@ from test_structs import *
 import unittest
 from collections import defaultdict
 
+
 class test_vecstars(unittest.TestCase):
     def setUp(self):
-        latt = np.array([[0.,0.5,0.5],[0.5,0.,0.5],[0.5,0.5,0.]])*0.55
-        self.DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
-        self.cube = cube
-        #keep it simple with [1.,0.,0.] type orientations for now
-        o = np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126
+        latt = np.array([[0., 0.1, 0.5], [0.3, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
+        self.DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
+        # keep it simple with [1.,0.,0.] type orientations for now
+        o = np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126
         famp0 = [o.copy()]
         family = [famp0]
 
-        self.pdbcontainer_si = dbStates(self.DC_Si,0,family)
-        self.mdbcontainer_si = mStates(self.DC_Si,0,family)
+        self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
+        self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
 
-        self.jset0,self.jset2 = self.pdbcontainer_si.jumpnetwork(0.3,0.01,0.01), self.mdbcontainer_si.jumpnetwork(0.3,0.01,0.01)
+        self.jset0, self.jset2 = self.pdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01), self.mdbcontainer_si.jumpnetwork(
+            0.3, 0.01, 0.01)
 
-        self.crys_stars = StarSet(self.pdbcontainer_si,self.mdbcontainer_si,self.jset0,self.jset2, Nshells=1)
+        self.crys_stars = StarSet(self.pdbcontainer_si, self.mdbcontainer_si, self.jset0, self.jset2, Nshells=1)
         self.vec_stars = vectorStars(self.crys_stars)
 
         self.om2tags = self.vec_stars.starset.jtags2
-        #generate 1, 3 and 4 jumpnetworks
-        (self.jnet_1,self.jnet_1_indexed,self.om1tags), self.jtype = self.crys_stars.jumpnetwork_omega1()
-        (self.symjumplist_omega43_all,self.symjumplist_omega43_all_indexed),(self.symjumplist_omega4,self.symjumplist_omega4_indexed,self.om4tags),(self.symjumplist_omega3,self.symjumplist_omega3_indexed,self.om3tags)=self.crys_stars.jumpnetwork_omega34(0.3,0.01,0.01,0.01)
+        # generate 1, 3 and 4 jumpnetworks
+        (self.jnet_1, self.jnet_1_indexed, self.om1tags), self.jtype = self.crys_stars.jumpnetwork_omega1()
+        (self.symjumplist_omega43_all, self.symjumplist_omega43_all_indexed), (
+            self.symjumplist_omega4, self.symjumplist_omega4_indexed, self.om4tags), (
+            self.symjumplist_omega3, self.symjumplist_omega3_indexed,
+            self.om3tags) = self.crys_stars.jumpnetwork_omega34(
+            0.3, 0.01, 0.01, 0.01)
 
-        self.W0list = np.random.rand(len(self.vec_stars.starset.jumpnetwork_omega0))
+        self.W0list = np.random.rand(len(self.vec_stars.starset.jnet0))
         self.W1list = np.random.rand(len(self.jnet_1))
         self.W2list = np.random.rand(len(self.jset2[0]))
         self.W3list = np.random.rand(len(self.symjumplist_omega3))
         self.W4list = np.random.rand(len(self.symjumplist_omega4))
 
-        #generate all the bias expansions - will separate out later
-        self.biases = self.vec_stars.biasexpansion(self.jnet_1,self.jset2[0],self.jtype,self.symjumplist_omega43_all)
+        # generate all the bias expansions - will separate out later
+        self.biases = self.vec_stars.biasexpansion(self.jnet_1, self.jset2[0], self.jtype, self.symjumplist_omega43_all)
 
     def test_basis(self):
-        self.assertEqual(len(self.vec_stars.vecpos),len(self.vec_stars.vecvec))
-        self.assertEqual(len(self.vec_stars.vecpos_bare),len(self.vec_stars.vecvec_bare))
-        #choose a random vector star
+        self.assertEqual(len(self.vec_stars.vecpos), len(self.vec_stars.vecvec))
+        self.assertEqual(len(self.vec_stars.vecpos_bare), len(self.vec_stars.vecvec_bare))
+        # choose a random vector star
         for vecstarind in range(len(self.vec_stars.vecpos)):
-            #get the representative state of the star
+            # get the representative state of the star
             testvecstate = self.vec_stars.vecpos[vecstarind][0]
-            count=0
+            count = 0
             for i in range(len(self.vec_stars.vecpos)):
                 if self.vec_stars.vecpos[vecstarind][0] == self.vec_stars.vecpos[i][0]:
                     count += 1
-                    #The number of times the position list is repeated is also the dimensionality of the basis.
+                    # The number of times the position list is repeated is also the dimensionality of the basis.
 
-            #Next see what is the algaebric multiplicity of the eigenvalue 1.
-            glist=[]
+            # Next see what is the algaebric multiplicity of the eigenvalue 1.
+            glist = []
             for g in self.crys_stars.crys.G:
                 pairnew = testvecstate.gop(self.crys_stars.crys, self.crys_stars.chem, g)
                 pairnew = pairnew - pairnew.R_s
                 if vecstarind < self.vec_stars.Nvstars_pure:
-                    if pairnew == testvecstate or pairnew==-testvecstate:
+                    if pairnew == testvecstate or pairnew == -testvecstate:
                         glist.append(g)
                 else:
                     if pairnew == testvecstate:
                         glist.append(g)
-            sumg = sum([g.cartrot for g in glist])/len(glist)
-            vals,vecs = np.linalg.eig(sumg)
-            count_eigs=0
+            sumg = sum([g.cartrot for g in glist]) / len(glist)
+            vals, vecs = np.linalg.eig(sumg)
+            count_eigs = 0
             for val in vals:
-                if np.allclose(val,1.0,atol=1e-8):
-                    count_eigs+=1
-            self.assertEqual(count,count_eigs,msg="{}".format(testvecstate))
+                if np.allclose(val, 1.0, atol=1e-8):
+                    count_eigs += 1
+            self.assertEqual(count, count_eigs, msg="{}".format(testvecstate))
 
-        #Let's also do this for the bare vector stars
+        # Let's also do this for the bare vector stars
         for vecstarind in range(len(self.vec_stars.vecpos_bare)):
-            #get the representative state of the star
+            # get the representative state of the star
             testvecstate = self.vec_stars.vecpos_bare[vecstarind][0]
-            count=0
+            count = 0
             for i in range(len(self.vec_stars.vecpos_bare)):
                 if self.vec_stars.vecpos_bare[vecstarind][0] == self.vec_stars.vecpos_bare[i][0]:
                     count += 1
-                    #The number of times the position list is repeated is also the dimensionality of the basis.
+                    # The number of times the position list is repeated is also the dimensionality of the basis.
 
-            #Next see what is the algaebric multiplicity of the eigenvalue 1.
-            glist=[]
+            # Next see what is the algaebric multiplicity of the eigenvalue 1.
+            glist = []
             for g in self.crys_stars.crys.G:
                 dbnew = testvecstate.gop(self.crys_stars.crys, self.crys_stars.chem, g)
                 dbnew = dbnew - dbnew.R
-                if dbnew == testvecstate or dbnew==-testvecstate:
+                if dbnew == testvecstate or dbnew == -testvecstate:
                     glist.append(g)
-            sumg = sum([g.cartrot for g in glist])/len(glist)
-            vals,vecs = np.linalg.eig(sumg)
-            count_eigs=0
+            sumg = sum([g.cartrot for g in glist]) / len(glist)
+            vals, vecs = np.linalg.eig(sumg)
+            count_eigs = 0
             for val in vals:
-                if np.allclose(val,1.0,atol=1e-8):
-                    count_eigs+=1
-            self.assertEqual(count,count_eigs,msg="{}".format(testvecstate))
+                if np.allclose(val, 1.0, atol=1e-8):
+                    count_eigs += 1
+            self.assertEqual(count, count_eigs, msg="{}".format(testvecstate))
 
     def test_state_indexing(self):
         for st in self.vec_stars.starset.purestates:
             indToVecStars = self.vec_stars.stateToVecStar_pure[st]
             for tup in indToVecStars:
-                self.assertEqual(st,self.vec_stars.vecpos[tup[0]][tup[1]])
+                self.assertEqual(st, self.vec_stars.vecpos[tup[0]][tup[1]])
 
         for st in self.vec_stars.starset.mixedstates:
             indToVecStars = self.vec_stars.stateToVecStar_mixed[st]
             for tup in indToVecStars:
-                self.assertEqual(st,self.vec_stars.vecpos[tup[0]][tup[1]])
+                self.assertEqual(st, self.vec_stars.vecpos[tup[0]][tup[1]])
 
     def test_bare_bias_expansion(self):
-        latt = np.array([[0.,0.1,0.5],[0.3,0.,0.5],[0.5,0.5,0.]])*0.55
-        self.DC_Si = crystal.Crystal(latt,[[np.array([0.,0.,0.]),np.array([0.25,0.25,0.25])]],["Si"])
-        self.cube = cube
-        #keep it simple with [1.,0.,0.] type orientations for now
-        o = np.array([1.,0.,0.])/np.linalg.norm(np.array([1.,0.,0.]))*0.126
-        famp0 = [o.copy()]
-        family = [famp0]
-
-        self.pdbcontainer_si = dbStates(self.DC_Si,0,family)
-        self.mdbcontainer_si = mStates(self.DC_Si,0,family)
-
-        self.jset0,self.jset2 = self.pdbcontainer_si.jumpnetwork(0.3,0.01,0.01), self.mdbcontainer_si.jumpnetwork(0.3,0.01,0.01)
-
-        self.crys_stars = StarSet(self.pdbcontainer_si,self.mdbcontainer_si,self.jset0,self.jset2, Nshells=1)
-        self.vec_stars = vectorStars(self.crys_stars)
-        self.W0list = np.random.rand(len(self.vec_stars.starset.jumpnetwork_omega0))
-        self.biases = self.vec_stars.biasexpansion(self.jnet_1,self.jset2[0],self.jtype,self.symjumplist_omega43_all)
-        if(len(self.vec_stars.vecpos_bare)>0):
+        if len(self.vec_stars.vecpos_bare) > 0:
             for i in range(len(self.vec_stars.vecpos_bare)):
                 starind = i
                 st = self.vec_stars.vecpos_bare[starind][0]
-                n = np.random.randint(0,len(self.vec_stars.vecpos_bare[starind]))
+                n = np.random.randint(1, len(self.vec_stars.vecpos_bare[starind]))
                 st2 = self.vec_stars.vecpos_bare[starind][n]
                 bias_st = np.zeros(3)
                 bias_st2 = np.zeros(3)
-                count=0
-                for jt,jumplist in enumerate(self.vec_stars.starset.jumpnetwork_omega0):
+                count = 0
+                for jt, jumplist in enumerate(self.vec_stars.starset.jnet0):
                     for j in jumplist:
-                        if st==j.state1:
-                            count+=1
-                            dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                            bias_st += dx*self.W0list[jt]
-                        if st2==j.state1:
-                            dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                            bias_st2 += dx*self.W0list[jt]
+                        if st == j.state1:
+                            count += 1
+                            dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+                            bias_st += dx * self.W0list[jt]
+                        if st2 == j.state1:
+                            dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+                            bias_st2 += dx * self.W0list[jt]
 
                 biasBareExp = self.biases[-1]
-                self.assertTrue(count>=1)
-                tot_bias_bare = np.dot(biasBareExp,self.W0list)
+                self.assertTrue(count >= 1)
+                tot_bias_bare = np.dot(biasBareExp, self.W0list)
                 indlist = []
-                for ind,starlist in enumerate(self.vec_stars.vecpos_bare):
+                for ind, starlist in enumerate(self.vec_stars.vecpos_bare):
                     if starlist[0] == st:
                         indlist.append(ind)
-                bias_bare_cartesian = sum([tot_bias_bare[i]*self.vec_stars.vecvec[i][0] for i in indlist])
-                bias_bare_cartesian2 = sum([tot_bias_bare[i]*self.vec_stars.vecvec[i][n] for i in indlist])
-                self.assertTrue(np.allclose(bias_bare_cartesian,bias_st))
-                self.assertTrue(np.allclose(bias_bare_cartesian2,bias_st2))
+                bias_bare_cartesian = sum([tot_bias_bare[i] * self.vec_stars.vecvec[i][0] for i in indlist])
+                bias_bare_cartesian2 = sum([tot_bias_bare[i] * self.vec_stars.vecvec[i][n] for i in indlist])
+                self.assertTrue(np.allclose(bias_bare_cartesian, bias_st))
+                self.assertTrue(np.allclose(bias_bare_cartesian2, bias_st2))
 
-        else: #we have to check the non-local bias vectors coming out are zero
+        else:  # we have to check the non-local bias vectors coming out are zero
             print("checking zero non-local")
             for star in self.vec_stars.starset.barePeriodicStars:
                 for st in star:
                     bias_st = np.zeros(3)
-                    count=0
-                    for jt,jumplist in enumerate(self.vec_stars.starset.jumpnetwork_omega0):
+                    count = 0
+                    for jt, jumplist in enumerate(self.vec_stars.starset.jnet0):
                         for j in jumplist:
-                            if st==j.state1:
-                                count+=1
-                                dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                                bias_st += dx*self.W0list[jt]
+                            if st == j.state1:
+                                count += 1
+                                dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+                                bias_st += dx * self.W0list[jt]
                                 # print(bias_st)
-                    self.assertTrue(np.allclose(bias_st,np.zeros(3)))
-                    self.assertTrue(count>=1)
+                    self.assertTrue(np.allclose(bias_st, np.zeros(3)))
+                    self.assertTrue(count >= 1)
 
     def test_bias1expansions(self):
+
         for i in range(self.vec_stars.Nvstars_pure):
-            #test bias_1
-            #select a representative state and another state in the same star at random
-            #from complex state space
+            # test bias_1
+            # select a representative state and another state in the same star at random
+            # from complex state space
             starind = i
-            st = self.vec_stars.vecpos[starind][0] #get the representative state.
-            n = np.random.randint(0,len(self.vec_stars.vecpos[starind]))
+            st = self.vec_stars.vecpos[starind][0]  # get the representative state.
+            n = np.random.randint(1, len(self.vec_stars.vecpos[starind]))
             st2 = self.vec_stars.vecpos[starind][n]
-            #Now, we calculate the total bias vector - zero for solute in complex space
-            bias_st_solvent=np.zeros(3)
-            bias_st_solvent2=np.zeros(3)
-            count=0
-            for jt,jlist in enumerate(self.jnet_1):
+            # Now, we calculate the total bias vector - zero for solute in complex space
+            bias_st_solvent = np.zeros(3)
+            bias_st_solvent2 = np.zeros(3)
+            count = 0
+            for jt, jlist in enumerate(self.jnet_1):
                 for j in jlist:
-                    if st==j.state1:
-                        count+=1
-                        dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                        bias_st_solvent += self.W1list[jt]*dx
-                    if st2==j.state1:
-                        dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                        bias_st_solvent2 += self.W1list[jt]*dx
+                    if st == j.state1:
+                        count += 1
+                        dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+                        bias_st_solvent += self.W1list[jt] * dx
+                    if st2 == j.state1:
+                        dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+                        bias_st_solvent2 += self.W1list[jt] * dx
 
-            bias1expansion_solute,bias1expansion_solvent = self.biases[1]
-            self.assertTrue(count>=1)
-            self.assertTrue(np.allclose(bias1expansion_solute,np.zeros_like(bias1expansion_solute)),msg="{}\n{}".format(bias1expansion_solute,bias1expansion_solute))
-            self.assertEqual(bias1expansion_solvent.shape[1],len(self.W1list))
+            bias1expansion_solute, bias1expansion_solvent = self.biases[1]
+            self.assertTrue(count >= 1)
+            self.assertTrue(np.allclose(bias1expansion_solute, np.zeros_like(bias1expansion_solute)),
+                            msg="{}\n{}".format(bias1expansion_solute, bias1expansion_solute))
+            self.assertEqual(bias1expansion_solvent.shape[1], len(self.W1list))
 
-            #get the total bias vector
-            bias1expansion_solute,bias1expansion_solvent = self.biases[1]
-            tot_bias_solvent = np.dot(bias1expansion_solvent,self.W1list)
-            #now get the components of the given states
-            indlist=[]
+            # get the total bias vector
+            bias1expansion_solute, bias1expansion_solvent = self.biases[1]
+            tot_bias_solvent = np.dot(bias1expansion_solvent, self.W1list)
+            # now get the components of the given states
+            indlist = []
             # bias_cartesian = np.zeros(3)
-            for ind,starlist in enumerate(self.vec_stars.vecpos):
-                if starlist[0]==st:
+            for ind, starlist in enumerate(self.vec_stars.vecpos):
+                if starlist[0] == st:
                     indlist.append(ind)
 
-            bias_cartesian = sum([tot_bias_solvent[i]*self.vec_stars.vecvec[i][0] for i in indlist])
-            bias_cartesian2 = sum([tot_bias_solvent[i]*self.vec_stars.vecvec[i][n] for i in indlist])
+            bias_cartesian = sum([tot_bias_solvent[i] * self.vec_stars.vecvec[i][0] for i in indlist])
+            bias_cartesian2 = sum([tot_bias_solvent[i] * self.vec_stars.vecvec[i][n] for i in indlist])
 
-            self.assertTrue(np.allclose(bias_cartesian,bias_st_solvent))
-            self.assertTrue(np.allclose(bias_cartesian2,bias_st_solvent2))
+            self.assertTrue(np.allclose(bias_cartesian, bias_st_solvent))
+            self.assertTrue(np.allclose(bias_cartesian2, bias_st_solvent2))
 
     def test_bias2expansions(self):
 
-        for i in range(self.vec_stars.Nvstars_pure,self.vec_stars.Nvstars):
-            #test omega2 expansion
-            starind = i#np.random.randint(self.vec_stars.Nvstars_pure,self.vec_stars.Nvstars)
-            st = self.vec_stars.vecpos[starind][0] #get the representative state.
-            n = np.random.randint(0,len(self.vec_stars.vecpos[starind]))
-            st2 = self.vec_stars.vecpos[starind][n]
-            #Now, we calculate the total bias vector
-            bias_st_solute=np.zeros(3)
-            bias_st_solute2=np.zeros(3)
-            bias_st_solvent=np.zeros(3)
-            bias_st_solvent2=np.zeros(3)
-            count=0
-            for jt,jlist in enumerate(self.jset2[0]):
+        for i in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
+            # test omega2 expansion
+            st = self.vec_stars.vecpos[i][0]  # get the representative state.
+            n = np.random.randint(1, len(self.vec_stars.vecpos[i]))
+            st2 = self.vec_stars.vecpos[i][n]
+            # Now, we calculate the total bias vector
+            bias_st_solute = np.zeros(3)
+            bias_st_solute2 = np.zeros(3)
+            bias_st_solvent = np.zeros(3)
+            bias_st_solvent2 = np.zeros(3)
+            count = 0
+            for jt, jlist in enumerate(self.vec_stars.starset.jnet2):
                 for j in jlist:
-                    if st==j.state1:
-                        count+=1
-                        dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                        dx_solute = dx + j.state2.db.o/2. - j.state1.db.o/2.
-                        dx_solvent = dx - j.state2.db.o/2. + j.state1.db.o/2.
-                        bias_st_solute += self.W2list[jt]*dx_solute
-                        bias_st_solvent += self.W2list[jt]*dx_solvent
-                    if st2==j.state1:
-                        dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                        dx_solute = dx + j.state2.db.o/2. - j.state1.db.o/2.
-                        dx_solvent = dx - j.state2.db.o/2. + j.state1.db.o/2.
-                        bias_st_solute2 += self.W2list[jt]*dx_solute
-                        bias_st_solvent2 += self.W2list[jt]*dx_solvent
+                    if st == j.state1:
+                        count += 1
+                        dx = disp(self.vec_stars.starset.mdbcontainer, j.state1, j.state2)
+                        dx_solute = dx + self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. - \
+                                    self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solvent = dx - self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. + \
+                                     self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        bias_st_solute += self.W2list[jt] * dx_solute
+                        bias_st_solvent += self.W2list[jt] * dx_solvent
+                    if st2 == j.state1:
+                        dx = disp(self.vec_stars.starset.mdbcontainer, j.state1, j.state2)
+                        dx_solute = dx + self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. - \
+                                    self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solvent = dx - self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. + \
+                                     self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        bias_st_solute2 += self.W2list[jt] * dx_solute
+                        bias_st_solvent2 += self.W2list[jt] * dx_solvent
 
-            bias2expansion_solute,bias2expansion_solvent = self.biases[2]
-            self.assertTrue(count>=1)
-            self.assertEqual(bias2expansion_solvent.shape[1],len(self.W2list))
+            bias2expansion_solute, bias2expansion_solvent = self.biases[2]
+            self.assertTrue(count >= 1)
+            self.assertEqual(bias2expansion_solvent.shape[1], len(self.W2list))
             # vectors
-            tot_bias_solvent = np.dot(bias2expansion_solvent,self.W2list)
-            tot_bias_solute = np.dot(bias2expansion_solute,self.W2list)
+            tot_bias_solvent = np.dot(bias2expansion_solvent, self.W2list)
+            tot_bias_solute = np.dot(bias2expansion_solute, self.W2list)
 
-            #now get the components
-            indlist=[]
+            # now get the components
+            indlist = []
             # bias_cartesian = np.zeros(3)
-            for ind,starlist in enumerate(self.vec_stars.vecpos):
-                if starlist[0]==st:
-                    indlist.append(ind)
+            for ind, starlist in enumerate(self.vec_stars.vecpos[self.vec_stars.Nvstars_pure:]):
+                if starlist[0] == st:
+                    indlist.append(ind + self.vec_stars.Nvstars_pure)
 
-            bias_cartesian_solvent = sum([tot_bias_solvent[i-self.vec_stars.Nvstars_pure]*self.vec_stars.vecvec[i][0] for i in indlist])
-            bias_cartesian_solvent2 = sum([tot_bias_solvent[i-self.vec_stars.Nvstars_pure]*self.vec_stars.vecvec[i][n] for i in indlist])
+            bias_cartesian_solvent = sum(
+                [tot_bias_solvent[idx - self.vec_stars.Nvstars_pure] * self.vec_stars.vecvec[idx][0] for idx in indlist])
+            bias_cartesian_solvent2 = sum(
+                [tot_bias_solvent[idx - self.vec_stars.Nvstars_pure] * self.vec_stars.vecvec[idx][n] for idx in indlist])
 
-            bias_cartesian_solute = sum([tot_bias_solute[i-self.vec_stars.Nvstars_pure]*self.vec_stars.vecvec[i][0] for i in indlist])
-            bias_cartesian_solute2 = sum([tot_bias_solute[i-self.vec_stars.Nvstars_pure]*self.vec_stars.vecvec[i][n] for i in indlist])
+            bias_cartesian_solute = sum(
+                [tot_bias_solute[idx - self.vec_stars.Nvstars_pure] * self.vec_stars.vecvec[idx][0] for idx in indlist])
+            bias_cartesian_solute2 = sum(
+                [tot_bias_solute[idx - self.vec_stars.Nvstars_pure] * self.vec_stars.vecvec[idx][n] for idx in indlist])
 
-            self.assertTrue(np.allclose(bias_cartesian_solvent,bias_st_solvent),msg="{}\n{}".format(bias_cartesian_solvent,bias_st_solvent)) #should get the same bias vector anyway
-            self.assertTrue(np.allclose(bias_cartesian_solvent2,bias_st_solvent2),msg="{}\n{}".format(bias_cartesian_solvent2,bias_st_solvent2))
+            self.assertTrue(np.allclose(bias_cartesian_solvent, bias_st_solvent),
+                            msg="{}\n{}".format(bias_cartesian_solvent,
+                                                bias_st_solvent))  # should get the same bias vector anyway
+            self.assertTrue(np.allclose(bias_cartesian_solvent2, bias_st_solvent2),
+                            msg="{}\n{}".format(bias_cartesian_solvent2, bias_st_solvent2))
 
-            self.assertTrue(np.allclose(bias_cartesian_solute,bias_st_solute),msg="{}\n{}".format(bias_cartesian_solute,bias_st_solute)) #should get the same bias vector anyway
-            self.assertTrue(np.allclose(bias_cartesian_solute2,bias_st_solute2),msg="{}\n{}".format(bias_cartesian_solute2,bias_st_solute2))
+            self.assertTrue(np.allclose(bias_cartesian_solute, bias_st_solute),
+                            msg="{}\n{}".format(bias_cartesian_solute,
+                                                bias_st_solute))  # should get the same bias vector anyway
+            self.assertTrue(np.allclose(bias_cartesian_solute2, bias_st_solute2),
+                            msg="{}\n{}".format(bias_cartesian_solute2, bias_st_solute2))
 
     def test_bias43expansions(self):
 
         for pureind in range(self.vec_stars.Nvstars_pure):
-            for mixind in range(self.vec_stars.Nvstars_pure,self.vec_stars.Nvstars):
-            #test omega2 expansion
-                starindpure = pureind #np.random.randint(0,self.vec_stars.Nvstars_pure)
-                starindmixed = mixind #np.random.randint(self.vec_stars.Nvstars_pure,self.vec_stars.Nvstars)
+            for mixind in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
+                starindpure = pureind  # np.random.randint(0,self.vec_stars.Nvstars_pure)
+                starindmixed = mixind  # np.random.randint(self.vec_stars.Nvstars_pure,self.vec_stars.Nvstars)
 
-                st_pure = self.vec_stars.vecpos[starindpure][0] #get the representative state.
-                n_pure = np.random.randint(0,len(self.vec_stars.vecpos[starindpure]))
+                st_pure = self.vec_stars.vecpos[starindpure][0]  # get the representative state.
+                n_pure = np.random.randint(0, len(self.vec_stars.vecpos[starindpure]))
                 st2_pure = self.vec_stars.vecpos[starindpure][n_pure]
 
-                st_mixed = self.vec_stars.vecpos[starindmixed][0] #get the representative state.
-                n_mixed = np.random.randint(0,len(self.vec_stars.vecpos[starindmixed]))
+                st_mixed = self.vec_stars.vecpos[starindmixed][0]  # get the representative state.
+                n_mixed = np.random.randint(0, len(self.vec_stars.vecpos[starindmixed]))
                 st2_mixed = self.vec_stars.vecpos[starindmixed][n_mixed]
 
-                #Now, we calculate the total bias vector
-                bias4_st_solute=np.zeros(3)
-                bias4_st_solute2=np.zeros(3)
-                bias4_st_solvent=np.zeros(3)
-                bias4_st_solvent2=np.zeros(3)
+                # Now, we calculate the total bias vector
+                bias4_st_solute = np.zeros(3)
+                bias4_st_solute2 = np.zeros(3)
+                bias4_st_solvent = np.zeros(3)
+                bias4_st_solvent2 = np.zeros(3)
 
-                bias3_st_solute=np.zeros(3)
-                bias3_st_solute2=np.zeros(3)
-                bias3_st_solvent=np.zeros(3)
-                bias3_st_solvent2=np.zeros(3)
+                bias3_st_solute = np.zeros(3)
+                bias3_st_solute2 = np.zeros(3)
+                bias3_st_solvent = np.zeros(3)
+                bias3_st_solvent2 = np.zeros(3)
 
-                count=0
-                for jt,jlist in enumerate(self.symjumplist_omega4):
-                    #In omega_4, the intial state should be a complex
+                count = 0
+                for jt, jlist in enumerate(self.symjumplist_omega4):
+                    # In omega_4, the intial state should be a complex
                     for j in jlist:
-                        if st_pure==j.state1:
-                            count+=1
-                            dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                            dx_solute = j.state2.db.o/2. #state2 is the mixed dumbbell.
-                            dx_solvent = dx - j.state2.db.o/2.
-                            bias4_st_solute += self.W4list[jt]*dx_solute
-                            bias4_st_solvent += self.W4list[jt]*dx_solvent
-                        if st2_pure==j.state1:
-                            dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                            dx_solute = j.state2.db.o/2. #state2 is the mixed dumbbell.
-                            dx_solvent = dx - j.state2.db.o/2.
-                            bias4_st_solute2 += self.W4list[jt]*dx_solute
-                            bias4_st_solvent2 += self.W4list[jt]*dx_solvent
+                        if st_pure == j.state1:
+                            count += 1
+                            dx = disp4(self.vec_stars.starset.pdbcontainer, self.vec_stars.starset.mdbcontainer,
+                                       j.state1, j.state2)
+                            dx_solute = self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                            # state2 is the mixed dumbbell.
+                            dx_solvent = dx - self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                            bias4_st_solute += self.W4list[jt] * dx_solute
+                            bias4_st_solvent += self.W4list[jt] * dx_solvent
+                        if st2_pure == j.state1:
+                            dx = disp4(self.vec_stars.starset.pdbcontainer, self.vec_stars.starset.mdbcontainer,
+                                        j.state1, j.state2)
+                            dx_solute = self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                            # state2 is the mixed dumbbell.
+                            dx_solvent = dx - self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                            bias4_st_solute2 += self.W4list[jt] * dx_solute
+                            bias4_st_solvent2 += self.W4list[jt] * dx_solvent
 
-                bias4expansion_solute,bias4expansion_solvent = self.biases[4]
-                self.assertTrue(count>=1)
-                self.assertEqual(bias4expansion_solvent.shape[1],len(self.W4list))
-                self.assertEqual(bias4expansion_solute.shape[1],len(self.W4list))
+                bias4expansion_solute, bias4expansion_solvent = self.biases[4]
+                self.assertTrue(count >= 1)
+                self.assertEqual(bias4expansion_solvent.shape[1], len(self.W4list))
+                self.assertEqual(bias4expansion_solute.shape[1], len(self.W4list))
                 # vectors
-                tot_bias_solvent = np.dot(bias4expansion_solvent,self.W4list)
-                tot_bias_solute = np.dot(bias4expansion_solute,self.W4list)
+                tot_bias_solvent = np.dot(bias4expansion_solvent, self.W4list)
+                tot_bias_solute = np.dot(bias4expansion_solute, self.W4list)
 
-                #now get the components
-                indlist=[]
+                # now get the components
+                indlist = []
                 # bias_cartesian = np.zeros(3)
-                for ind,starlist in enumerate(self.vec_stars.vecpos):
-                    if starlist[0]==st_pure:
+                for ind, starlist in enumerate(self.vec_stars.vecpos):
+                    if starlist[0] == st_pure:
                         indlist.append(ind)
 
-                bias_cartesian_solvent = sum([tot_bias_solvent[i]*self.vec_stars.vecvec[i][0] for i in indlist])
-                bias_cartesian_solvent2 = sum([tot_bias_solvent[i]*self.vec_stars.vecvec[i][n_pure] for i in indlist])
+                bias_cartesian_solvent = sum([tot_bias_solvent[i] * self.vec_stars.vecvec[i][0] for i in indlist])
+                bias_cartesian_solvent2 = sum([tot_bias_solvent[i] * self.vec_stars.vecvec[i][n_pure] for i in indlist])
 
-                bias_cartesian_solute = sum([tot_bias_solute[i]*self.vec_stars.vecvec[i][0] for i in indlist])
-                bias_cartesian_solute2 = sum([tot_bias_solute[i]*self.vec_stars.vecvec[i][n_pure] for i in indlist])
+                bias_cartesian_solute = sum([tot_bias_solute[i] * self.vec_stars.vecvec[i][0] for i in indlist])
+                bias_cartesian_solute2 = sum([tot_bias_solute[i] * self.vec_stars.vecvec[i][n_pure] for i in indlist])
 
-                self.assertTrue(np.allclose(bias_cartesian_solvent,bias4_st_solvent),msg="{}\n{}".format(bias_cartesian_solvent,bias4_st_solvent)) #should get the same bias vector anyway
-                self.assertTrue(np.allclose(bias_cartesian_solvent2,bias4_st_solvent2),msg="{}\n{}".format(bias_cartesian_solvent2,bias4_st_solvent2))
+                self.assertTrue(np.allclose(bias_cartesian_solvent, bias4_st_solvent),
+                                msg="\n{}\n{}".format(bias_cartesian_solvent, bias4_st_solvent))
 
-                self.assertTrue(np.allclose(bias_cartesian_solute,bias4_st_solute),msg="{}\n{}".format(bias_cartesian_solute,bias4_st_solute)) #should get the same bias vector anyway
-                self.assertTrue(np.allclose(bias_cartesian_solute2,bias4_st_solute2),msg="{}\n{}".format(bias_cartesian_solute2,bias4_st_solute2))
+                self.assertTrue(np.allclose(bias_cartesian_solvent2, bias4_st_solvent2),
+                                msg="\n{}\n{}".format(bias_cartesian_solvent2, bias4_st_solvent2))
 
-                count=0
-                for jt,jlist in enumerate(self.symjumplist_omega3):
-                    #In omega_3, the intial state should be a mixed dumbbell
+                self.assertTrue(np.allclose(bias_cartesian_solute, bias4_st_solute),
+                                msg="\n{}\n{}".format(bias_cartesian_solute, bias4_st_solute))
+
+                self.assertTrue(np.allclose(bias_cartesian_solute2, bias4_st_solute2),
+                                msg="\n{}\n{}".format(bias_cartesian_solute2, bias4_st_solute2))
+
+                count = 0
+                for jt, jlist in enumerate(self.symjumplist_omega3):
+                    # In omega_3, the intial state should be a mixed dumbbell
                     for j in jlist:
-                        if st_mixed==j.state1:
-                            count+=1
-                            dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                            dx_solute = -j.state1.db.o/2.
-                            dx_solvent = dx + j.state1.db.o/2.
-                            bias3_st_solute += self.W3list[jt]*dx_solute
-                            bias3_st_solvent += self.W3list[jt]*dx_solvent
-                        if st2_mixed==j.state1:
-                            dx = disp(self.crys_stars.crys,self.crys_stars.chem,j.state1,j.state2)
-                            dx_solute = -j.state1.db.o/2.
-                            dx_solvent = dx + j.state1.db.o/2.
-                            bias3_st_solute2 += self.W3list[jt]*dx_solute
-                            bias3_st_solvent2 += self.W3list[jt]*dx_solvent
+                        if st_mixed == j.state1:
+                            count += 1
+                            dx = -disp4(self.vec_stars.starset.pdbcontainer, self.vec_stars.starset.mdbcontainer,
+                                        j.state2, j.state1)
+                            dx_solute = -self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                            dx_solvent = dx + self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                            bias3_st_solute += self.W3list[jt] * dx_solute
+                            bias3_st_solvent += self.W3list[jt] * dx_solvent
+                        if st2_mixed == j.state1:
+                            dx = -disp4(self.vec_stars.starset.pdbcontainer, self.vec_stars.starset.mdbcontainer,
+                                        j.state2, j.state1)
+                            dx_solute = -self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                            dx_solvent = dx + self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                            bias3_st_solute2 += self.W3list[jt] * dx_solute
+                            bias3_st_solvent2 += self.W3list[jt] * dx_solvent
 
-                bias3expansion_solute,bias3expansion_solvent = self.biases[3]
-                self.assertTrue(count>=1)
-                self.assertEqual(bias3expansion_solvent.shape[1],len(self.W3list))
-                self.assertEqual(bias3expansion_solute.shape[1],len(self.W3list))
+                bias3expansion_solute, bias3expansion_solvent = self.biases[3]
+                self.assertTrue(count >= 1)
+                self.assertEqual(bias3expansion_solvent.shape[1], len(self.W3list))
+                self.assertEqual(bias3expansion_solute.shape[1], len(self.W3list))
                 # vectors
-                tot_bias_solvent = np.dot(bias3expansion_solvent,self.W3list)
-                tot_bias_solute = np.dot(bias3expansion_solute,self.W3list)
+                tot_bias_solvent = np.dot(bias3expansion_solvent, self.W3list)
+                tot_bias_solute = np.dot(bias3expansion_solute, self.W3list)
 
-                #now get the components
-                indlist=[]
+                # now get the components
+                indlist = []
                 # bias_cartesian = np.zeros(3)
-                for ind,starlist in enumerate(self.vec_stars.vecpos):
-                    if starlist[0]==st_mixed:
+                for ind, starlist in enumerate(self.vec_stars.vecpos):
+                    if starlist[0] == st_mixed:
                         indlist.append(ind)
                 # print(indlist)
-                bias_cartesian_solvent = sum([tot_bias_solvent[i-self.vec_stars.Nvstars_pure]*self.vec_stars.vecvec[i][0] for i in indlist])
-                bias_cartesian_solvent2 = sum([tot_bias_solvent[i-self.vec_stars.Nvstars_pure]*self.vec_stars.vecvec[i][n_mixed] for i in indlist])
+                bias_cartesian_solvent = sum(
+                    [tot_bias_solvent[i - self.vec_stars.Nvstars_pure] * self.vec_stars.vecvec[i][0] for i in indlist])
+                bias_cartesian_solvent2 = sum(
+                    [tot_bias_solvent[i - self.vec_stars.Nvstars_pure] * self.vec_stars.vecvec[i][n_mixed] for i in
+                     indlist])
 
-                bias_cartesian_solute = sum([tot_bias_solute[i-self.vec_stars.Nvstars_pure]*self.vec_stars.vecvec[i][0] for i in indlist])
-                bias_cartesian_solute2 = sum([tot_bias_solute[i-self.vec_stars.Nvstars_pure]*self.vec_stars.vecvec[i][n_mixed] for i in indlist])
+                bias_cartesian_solute = sum(
+                    [tot_bias_solute[i - self.vec_stars.Nvstars_pure] * self.vec_stars.vecvec[i][0] for i in indlist])
+                bias_cartesian_solute2 = sum(
+                    [tot_bias_solute[i - self.vec_stars.Nvstars_pure] * self.vec_stars.vecvec[i][n_mixed] for i in
+                     indlist])
 
-                self.assertTrue(np.allclose(bias_cartesian_solvent,bias3_st_solvent),msg="{}\n{}".format(bias_cartesian_solvent,bias3_st_solvent)) #should get the same bias vector anyway
-                self.assertTrue(np.allclose(bias_cartesian_solvent2,bias3_st_solvent2),msg="{}\n{}".format(bias_cartesian_solvent2,bias3_st_solvent2))
+                self.assertTrue(np.allclose(bias_cartesian_solvent, bias3_st_solvent),
+                                msg="{}\n{}".format(bias_cartesian_solvent,
+                                                    bias3_st_solvent))  # should get the same bias vector anyway
+                self.assertTrue(np.allclose(bias_cartesian_solvent2, bias3_st_solvent2),
+                                msg="{}\n{}".format(bias_cartesian_solvent2, bias3_st_solvent2))
 
-                self.assertTrue(np.allclose(bias_cartesian_solute,bias3_st_solute),msg="{}\n{}".format(bias_cartesian_solute,bias3_st_solute)) #should get the same bias vector anyway
-                self.assertTrue(np.allclose(bias_cartesian_solute2,bias3_st_solute2),msg="{}\n{}".format(bias_cartesian_solute2,bias3_st_solute2))
+                self.assertTrue(np.allclose(bias_cartesian_solute, bias3_st_solute),
+                                msg="{}\n{}".format(bias_cartesian_solute,
+                                                    bias3_st_solute))  # should get the same bias vector anyway
+                self.assertTrue(np.allclose(bias_cartesian_solute2, bias3_st_solute2),
+                                msg="{}\n{}".format(bias_cartesian_solute2, bias3_st_solute2))
 
     def test_tags(self):
         """
         See that the arrays tagging the jumps are produced properly
         """
-        #First let us go through the omega1 jump network.
-        for jt,jlist,jindlist in zip(itertools.count(),self.jnet_1,self.jnet_1_indexed):
+        # First let us go through the omega1 jump network.
+        for jt, jlist, jindlist in zip(itertools.count(), self.jnet_1, self.jnet_1_indexed):
             # indDictlist = self.om1tags[jt]
             count_dict = defaultdict(int)
-            for (i,j),dx in jindlist:
-                count_dict[i]+=1
-            for key,arr in self.om1tags[jt].items():
-                self.assertEqual(len(arr),count_dict[key])
+            for (i, j), dx in jindlist:
+                count_dict[i] += 1
+            for key, arr in self.om1tags[jt].items():
+                self.assertEqual(len(arr), count_dict[key])
 
-        for jt,jlist,jindlist in zip(itertools.count(),self.vec_stars.starset.jumpnetwork_omega2,self.vec_stars.starset.jumpnetwork_omega2_indexed):
+        for jt, jlist, jindlist in zip(itertools.count(), self.vec_stars.starset.jnet2,
+                                       self.vec_stars.starset.jnet2_ind):
             # indDictlist = self.om1tags[jt]
             count_dict = defaultdict(int)
-            for (i,j),dx in jindlist:
-                count_dict[i]+=1
-            for key,arr in self.om2tags[jt].items():
-                self.assertEqual(len(arr),count_dict[key])
+            for (i, j), dx in jindlist:
+                count_dict[i] += 1
+            for key, arr in self.om2tags[jt].items():
+                self.assertEqual(len(arr), count_dict[key])
 
-        for jt,jlist,jindlist in zip(itertools.count(),self.symjumplist_omega4,self.symjumplist_omega4_indexed):
+        for jt, jlist, jindlist in zip(itertools.count(), self.symjumplist_omega4, self.symjumplist_omega4_indexed):
             # indDictlist = self.om1tags[jt]
             count_dict = defaultdict(int)
-            for (i,j),dx in jindlist:
-                count_dict[i]+=1
-            for key,arr in self.om4tags[jt].items():
-                self.assertEqual(len(arr),count_dict[key])
+            for (i, j), dx in jindlist:
+                count_dict[i] += 1
+            for key, arr in self.om4tags[jt].items():
+                self.assertEqual(len(arr), count_dict[key])
 
-        for jt,jlist,jindlist in zip(itertools.count(),self.symjumplist_omega3,self.symjumplist_omega3_indexed):
+        for jt, jlist, jindlist in zip(itertools.count(), self.symjumplist_omega3, self.symjumplist_omega3_indexed):
             # indDictlist = self.om1tags[jt]
             count_dict = defaultdict(int)
-            for (i,j),dx in jindlist:
-                count_dict[i]+=1
-            for key,arr in self.om3tags[jt].items():
-                self.assertEqual(len(arr),count_dict[key])
+            for (i, j), dx in jindlist:
+                count_dict[i] += 1
+            for key, arr in self.om3tags[jt].items():
+                self.assertEqual(len(arr), count_dict[key])
 
     def test_GFstars(self):
-        #Check that every possible pair has been considered in the gfstarsets
-        GFstarset_pure,GFPureStarInd,GFstarset_mixed,GFMixedStarInd = self.vec_stars.genGFstarset()
+        # Check that every possible pair has been considered in the gfstarsets
+        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.vec_stars.genGFstarset()
 
-        #Check that every state in the GFstarsets is present as keys in in the starinds
+        # Check that every state in the GFstarsets is present as keys in in the starinds
         sm = sum([len(star) for star in GFstarset_pure])
-        self.assertEqual(sm,len(GFPureStarInd))
+        self.assertEqual(sm, len(GFPureStarInd))
 
         sm = sum([len(star) for star in GFstarset_mixed])
-        self.assertEqual(sm,len(GFMixedStarInd))
+        self.assertEqual(sm, len(GFMixedStarInd))
 
-        #First for the complex states
+        # First for the complex states
         for st1 in self.vec_stars.starset.purestates:
             for st2 in self.vec_stars.starset.purestates:
                 try:
-                    s = st1^st2
+                    s = st1 ^ st2
                 except:
                     continue
-                dx = disp(self.vec_stars.starset.crys,self.vec_stars.starset.chem,s.state1,s.state2)
-                ind1 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state1-s.state1.R)
-                ind2 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state2-s.state2.R)
-                self.assertFalse(ind1==None)
-                self.assertFalse(ind2==None)
-                found =\
-                any(ind1==tup[0][0] and ind2==tup[0][1] and np.allclose(tup[1],dx,atol=self.vec_stars.starset.crys.threshold)for tlist in GFstarset_pure for tup in tlist)
+                dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, s.state1, s.state2)
+                ind1 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state1 - s.state1.R)
+                ind2 = self.vec_stars.starset.pdbcontainer.iorindex.get(s.state2 - s.state2.R)
+                self.assertFalse(ind1 == None)
+                self.assertFalse(ind2 == None)
+                found = \
+                    any(ind1 == tup[0][0] and ind2 == tup[0][1] and np.allclose(tup[1], dx,
+                                                                                atol=self.vec_stars.starset.crys.threshold)
+                        for tlist in GFstarset_pure for tup in tlist)
 
-                self.assertTrue(found,msg = "\n{}\n{}".format(s.state1,s.state2))
+                self.assertTrue(found, msg="\n{}\n{}".format(s.state1, s.state2))
 
         for st1 in self.vec_stars.starset.mixedstates:
             for st2 in self.vec_stars.starset.mixedstates:
                 try:
-                    s = st1^st2
+                    s = st1 ^ st2
                 except:
                     continue
-                dx = disp(self.vec_stars.starset.crys,self.vec_stars.starset.chem,s.state1,s.state2)
-                ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state1-s.state1.R)
-                ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state2-s.state2.R)
+                dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, s.state1, s.state2)
+                ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state1 - s.state1.R)
+                ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state2 - s.state2.R)
                 self.assertFalse(ind1 == None)
                 self.assertFalse(ind2 == None)
-                found =\
-                any(ind1==tup[0][0] and ind2==tup[0][1] and np.allclose(tup[1],dx,atol=self.vec_stars.starset.crys.threshold)for tlist in GFstarset_mixed for tup in tlist)
+                found = \
+                    any(ind1 == tup[0][0] and ind2 == tup[0][1] and np.allclose(tup[1], dx,
+                                                                                atol=self.vec_stars.starset.crys.threshold)
+                        for tlist in GFstarset_mixed for tup in tlist)
 
-                self.assertTrue(found,msg = "\n{}\n{}".format(s.state1,s.state2))
-        self.assertFalse(len(GFstarset_pure)==0)
-        self.assertFalse(len(GFstarset_mixed)==0)
+                self.assertTrue(found, msg="\n{}\n{}".format(s.state1, s.state2))
+        self.assertFalse(len(GFstarset_pure) == 0)
+        self.assertFalse(len(GFstarset_mixed) == 0)
 
     def test_GF_expansions(self):
         """
         Here we will test with the slow but sure version of GFexpansion
         """
-        def getstar(tup,star):
-            for starind,list in enumerate(star):
+
+        def getstar(tup, star):
+            for starind, list in enumerate(star):
                 for t in list:
-                    if (t[0][0]==tup[0][0] and t[0][1]==tup[0][1] and np.allclose(t[1],tup[1],atol = self.vec_stars.starset.crys.threshold)):
+                    if (t[0][0] == tup[0][0] and t[0][1] == tup[0][1] and np.allclose(t[1], tup[1],
+                                                                                      atol=self.vec_stars.starset.crys.threshold)):
                         return starind
             return None
 
-        #First, pure GF expansion
-        self.GFstarset_pure,self.GFPureStarInd,self.GFstarset_mixed,self.GFMixedStarInd = self.vec_stars.genGFstarset()
+        # First, pure GF expansion
+        self.GFstarset_pure, self.GFPureStarInd, self.GFstarset_mixed, self.GFMixedStarInd = self.vec_stars.genGFstarset()
 
         Nvstars_pure = self.vec_stars.Nvstars_pure
         Nvstars_mixed = self.vec_stars.Nvstars - self.vec_stars.Nvstars_pure
-        GFexpansion_pure = np.zeros((Nvstars_pure,Nvstars_pure,len(self.GFstarset_pure)))
-        GFexpansion_mixed = np.zeros((Nvstars_mixed,Nvstars_mixed,len(self.GFstarset_mixed)))
-        GFexpansion_pure_calc,GFexpansion_mixed_calc = self.vec_stars.GFexpansion()
-        #build up the pure GFexpansion
+        GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(self.GFstarset_pure)))
+        GFexpansion_mixed = np.zeros((Nvstars_mixed, Nvstars_mixed, len(self.GFstarset_mixed)))
+        GFexpansion_pure_calc, GFexpansion_mixed_calc = self.vec_stars.GFexpansion()
+        # build up the pure GFexpansion
         for i in range(Nvstars_pure):
-            for si,vi in zip(self.vec_stars.vecpos[i],self.vec_stars.vecvec[i]):
+            for si, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
                 for j in range(Nvstars_pure):
-                    for sj,vj in zip(self.vec_stars.vecpos[j],self.vec_stars.vecvec[j]):
+                    for sj, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
                         try:
-                            ds = si^sj
+                            ds = si ^ sj
                         except:
                             continue
                         # print(ds)
-                        dx=disp(self.vec_stars.starset.crys,self.vec_stars.starset.chem,ds.state1,ds.state2)
+                        dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, ds.state1, ds.state2)
                         dR = ds.state2.R - ds.state1.R
-                        ind1 = self.vec_stars.starset.pdbcontainer.iorindex.get(ds.state1-ds.state1.R)
-                        ind2 = self.vec_stars.starset.pdbcontainer.iorindex.get(ds.state2-ds.state2.R)
-                        if ind1==None or ind2==None:
+                        ind1 = self.vec_stars.starset.pdbcontainer.iorindex.get(ds.state1 - ds.state1.R)
+                        ind2 = self.vec_stars.starset.pdbcontainer.iorindex.get(ds.state2 - ds.state2.R)
+                        if ind1 == None or ind2 == None:
                             raise KeyError("enpoint subtraction within starset not found in iorlist")
-                        k = getstar(((ind1,ind2),dx),self.GFstarset_pure)
-                        k1 = self.GFPureStarInd[(ind1,ind2,dR[0],dR[1],dR[2])]
+                        k = getstar(((ind1, ind2), dx), self.GFstarset_pure)
+                        k1 = self.GFPureStarInd[(ind1, ind2, dR[0], dR[1], dR[2])]
                         # print("here")
-                        self.assertEqual(k,k1)
+                        self.assertEqual(k, k1)
                         if k is None:
-                            raise ArithmeticError("complex GF starset not big enough to accomodate state pair {}".format(tup))
+                            raise ArithmeticError(
+                                "complex GF starset not big enough to accomodate state pair {}".format(tup))
                         GFexpansion_pure[i, j, k] += np.dot(vi, vj)
-        #symmetrize
+        # symmetrize
         for i in range(Nvstars_pure):
-            for j in range(0,i):
-                GFexpansion_pure[i,j,:] = GFexpansion_pure[j,i,:]
+            for j in range(0, i):
+                GFexpansion_pure[i, j, :] = GFexpansion_pure[j, i, :]
 
-        self.assertTrue(np.allclose(zeroclean(GFexpansion_pure),GFexpansion_pure_calc))
+        self.assertTrue(np.allclose(zeroclean(GFexpansion_pure), GFexpansion_pure_calc))
 
         for i in range(Nvstars_mixed):
-            for si,vi in zip(self.vec_stars.vecpos[Nvstars_pure+i],self.vec_stars.vecvec[Nvstars_pure+i]):
+            for si, vi in zip(self.vec_stars.vecpos[Nvstars_pure + i], self.vec_stars.vecvec[Nvstars_pure + i]):
                 for j in range(Nvstars_mixed):
-                    for sj,vj in zip(self.vec_stars.vecpos[Nvstars_pure+j],self.vec_stars.vecvec[Nvstars_pure+j]):
+                    for sj, vj in zip(self.vec_stars.vecpos[Nvstars_pure + j], self.vec_stars.vecvec[Nvstars_pure + j]):
                         try:
-                            ds = si^sj
+                            ds = si ^ sj
                         except:
                             continue
-                        dx=disp(self.vec_stars.starset.crys,self.vec_stars.starset.chem,ds.state1,ds.state2)
+                        dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, ds.state1, ds.state2)
                         dR = ds.state2.R - ds.state1.R
-                        ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(ds.state1-ds.state1.R)
-                        ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(ds.state2-ds.state2.R)
-                        if ind1==None or ind2==None:
+                        ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(ds.state1 - ds.state1.R)
+                        ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(ds.state2 - ds.state2.R)
+                        if ind1 == None or ind2 == None:
                             raise KeyError("enpoint subtraction within starset not found in iorlist")
-                        k = getstar(((ind1,ind2),dx),self.GFstarset_mixed)
-                        k1 = self.GFMixedStarInd[(ind1,ind2,dR[0],dR[1],dR[2])]
-                        self.assertEqual(k,k1)
+                        k = getstar(((ind1, ind2), dx), self.GFstarset_mixed)
+                        k1 = self.GFMixedStarInd[(ind1, ind2, dR[0], dR[1], dR[2])]
+                        self.assertEqual(k, k1)
                         if k is None:
-                            raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}".format(tup))
+                            raise ArithmeticError(
+                                "mixed GF starset not big enough to accomodate state pair {}".format(tup))
                         GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
 
         for i in range(Nvstars_mixed):
-            for j in range(0,i):
-                GFexpansion_mixed[i,j,:] = GFexpansion_mixed[j,i,:]
+            for j in range(0, i):
+                GFexpansion_mixed[i, j, :] = GFexpansion_mixed[j, i, :]
 
-        self.assertTrue(np.allclose(zeroclean(GFexpansion_mixed),GFexpansion_mixed_calc))
+        self.assertTrue(np.allclose(zeroclean(GFexpansion_mixed), GFexpansion_mixed_calc))
 
     def test_order(self):
         "test that we have the origin spectator states at the begining"
         dx_list = []
         for sts in zip(self.vec_stars.vecpos[:self.vec_stars.Nvstars_pure]):
             st0 = sts[0][0]
-            sol_pos = self.vec_stars.starset.crys.unit2cart(st0.R_s,self.vec_stars.starset.crys.basis[self.vec_stars.starset.chem][st0.i_s])
-            db_pos = self.vec_stars.starset.crys.unit2cart(st0.db.R,self.vec_stars.starset.crys.basis[self.vec_stars.starset.chem][st0.db.i])
-            dx = np.linalg.norm(db_pos-sol_pos)
+            sol_pos = self.vec_stars.starset.crys.unit2cart(st0.R_s, self.vec_stars.starset.crys.basis[
+                self.vec_stars.starset.chem][st0.i_s])
+            db_pos = self.vec_stars.starset.crys.unit2cart(st0.db.R, self.vec_stars.starset.crys.basis[
+                self.vec_stars.starset.chem][self.vec_stars.starset.pdbcontainer.iorlist[st0.db.iorind][0]])
+            dx = np.linalg.norm(db_pos - sol_pos)
             dx_list.append(dx)
-        self.assertTrue(np.allclose(zeroclean(np.array(dx_list)),zeroclean(np.array(sorted(dx_list)))),msg="\n{}\n{}".format(dx_list,sorted(dx_list)))
+        self.assertTrue(np.allclose(zeroclean(np.array(dx_list)), zeroclean(np.array(sorted(dx_list)))),
+                        msg="\n{}\n{}".format(dx_list, sorted(dx_list)))
