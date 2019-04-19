@@ -255,10 +255,11 @@ class vectorStars(VectorStarSet):
                 db1 = jmp.state1.db
                 db2 = jmp.state2.db
                 s = connector(db1 - db1.R, db2 - db1.R)
-                connectset.add(s)
+                connectset_mixed.add(s)
         # Now add in the diagonal elements.
         for state in self.starset.mixedstates:
             s = connector(state.db, state.db)
+            connectset_mixed.add(s)
 
         # Now, group them symmetrically
         for s in connectset_mixed:
