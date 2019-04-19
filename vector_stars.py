@@ -199,15 +199,17 @@ class vectorStars(VectorStarSet):
 
     def genGFstarset(self):
         """
-        Makes symmetrically grouped connections between the states in the starset, to be used as GFstarset for the pure and mixed state spaces.
-        The connections must lie within the starset and must connect only those states that are connected by omega_0 or omega_2 jumps.
-        The GFstarset is to be returned in the form of (i,j),dx. where the indices i and j correspond to the states in the iorset
+        Makes symmetrically grouped connections between the states in the starset, to be used as GFstarset for the pure
+        and mixed state spaces.
+        The connections must lie within the starset and must connect only those states that are connected by omega_0 or
+        omega_2 jumps.
+        The GFstarset is to be returned in the form of (i,j),dx. where the indices i and j correspond to the states in
+        the iorlist
         """
         complexStates = self.starset.complexStates
         mixedstates = self.starset.mixedstates
         # Connect the states
-        GFstarset_pure = []
-        GFPureStarInd = {}
+        connectset= set([])
         for st1 in complexStates:
             for st2 in complexStates:
                 try:
@@ -216,63 +218,79 @@ class vectorStars(VectorStarSet):
                     continue
                 # Bring the initial dumbbell to the origin unit cell
                 s = connector(s.state1 - s.state1.R, s.state2 - s.state1.R)
-                ind1 = self.starset.pdbcontainer.iorindex.get(s.state1)
-                ind2 = self.starset.pdbcontainer.iorindex.get(s.state2 - s.state2.R)
-                if ind1 is None or ind2 is None:
-                    raise KeyError("dumbbell not found in iorlist")
-                # dR = s.state2.R - s.state1.R
-                if s in GFPureStarInd:
-                    continue
-                connectlist = []
-                for g in self.starset.crys.G:
-                    db1new = self.starset.pdbcontainer.gdumb(g, s.state1)[0]
-                    db2new = self.starset.pdbcontainer.gdumb(g, s.state2)[0]
-                    # Bring the dumbbell of the initial state to the origin
-                    db2new = db2new - db1new.R
-                    db1new = db1new - db1new.R
-                    dx = disp(self.starset.crys, self.starset.chem, db1new, db2new)
-                    snew = connector(db1new, db2new)
-                    if snew in GFPureStarInd:
-                        continue
-                    ind1 = self.starset.pdbcontainer.iorindex.get(db1new)
-                    ind2 = self.starset.pdbcontainer.iorindex.get(db2new - db2new.R)
-                    if ind1 is None or ind2 is None:
-                        raise KeyError("dumbbell not found in iorlist")
-                    tup = ((ind1, ind2), dx.copy())
-                    connectlist.append(tup)
-                    GFPureStarInd[snew] = len(GFstarset_pure)
-                GFstarset_pure.append(connectlist)
+                if not s in connectset:
+                    connectset.append(s)
 
+        # Now group the connections
+        GFstarset_pure=[]
+        GFPureStarInd = {}
+        for s in connectset:
+            if s in GFPureStarInd:
+                continue
+            connectlist = []
+            for gdumb in self.starset.pdbcontainer.G:
+                db1new, flip1 = s.state1.gop(self.starset.pdbcontainer, g)
+                db2new, flip2 = s.state1.gop(self.starset.pdbcontainer, g)
+                # Bring the dumbbell of the initial state to the origin
+                dx = disp(self.starset.pdbcontainer, db1new, db2new)
+                snew = connector(db1new - db1new.R, db2new - db1new.R)
+
+                if snew not in connectset:
+                    raise TypeError("list of connections is not closed under symmetry operations.")
+                if snew in GFPureStarInd:
+                    continue
+
+                ind1 = self.starset.pdbcontainer.db2ind(snew.state1)
+                # db2ind does not care about which unit cell the dumbbell is at
+                ind2 = self.starset.pdbcontainer.db2ind(snew.state2)
+                tup = ((ind1, ind2), dx.copy())
+                connectlist.append(tup)
+                GFPureStarInd[snew] = len(GFstarset_pure)
+            GFstarset_pure.append(connectlist)
+
+        # for st1 in mixedstates:
+        #     for st2 in mixedstates:
+        #         # The mixed states are origin states - must make so after gop
+        #         s = connector(st1.db, st2.db)
+        #         ind1 = self.starset.mdbcontainer.iorindex.get(s.state1)
+        #         ind2 = self.starset.mdbcontainer.iorindex.get(s.state2)
+        #         if ind1 == None or ind2 == None:
+        #             raise KeyError("dumbbell not found in iorlist")
+        #         # dR = s.state2.R - s.state1.R
+        #         if s in GFMixedStarInd:
+        #             continue
+        #         connectlist = []
+        #         for g in self.starset.crys.G:
+        #             snew = s.gop(self.starset.crys, self.starset.chem, g)
+        #             # Bring back to 0th unit cell
+        #             snew = connector(snew.state1 - snew.state1.R, snew.state2 - snew.state2.R)
+        #             if snew in GFMixedStarInd:
+        #                 continue
+        #             # dR = snew.state2.R - snew.state1.R
+        #             dx = disp(self.starset.crys, self.starset.chem, snew.state1, snew.state2)
+        #             ind1 = self.starset.mdbcontainer.iorindex.get(snew.state1)
+        #             ind2 = self.starset.mdbcontainer.iorindex.get(snew.state2)
+        #             if ind1 == None or ind2 == None:
+        #                 raise KeyError("dumbbell not found in iorlist")
+        #             tup = ((ind1, ind2), dx)
+        #             connectlist.append(tup)
+        #             GFMixedStarInd[snew] = len(GFstarset_mixed)
+        #         GFstarset_mixed.append(connectlist)
+        connectset_mixed = set([])
+        # For the mixed GF starset, the mixed jumpnetwork is the one that creates the GF starset
         GFstarset_mixed = []
         GFMixedStarInd = {}
-        for st1 in mixedstates:
-            for st2 in mixedstates:
-                # The mixed states are origin states - must make so after gop
-                s = connector(st1.db, st2.db)
-                ind1 = self.starset.mdbcontainer.iorindex.get(s.state1)
-                ind2 = self.starset.mdbcontainer.iorindex.get(s.state2)
-                if ind1 == None or ind2 == None:
-                    raise KeyError("dumbbell not found in iorlist")
-                # dR = s.state2.R - s.state1.R
-                if s in GFMixedStarInd:
-                    continue
-                connectlist = []
-                for g in self.starset.crys.G:
-                    snew = s.gop(self.starset.crys, self.starset.chem, g)
-                    # Bring back to 0th unit cell
-                    snew = connector(snew.state1 - snew.state1.R, snew.state2 - snew.state2.R)
-                    if snew in GFMixedStarInd:
-                        continue
-                    # dR = snew.state2.R - snew.state1.R
-                    dx = disp(self.starset.crys, self.starset.chem, snew.state1, snew.state2)
-                    ind1 = self.starset.mdbcontainer.iorindex.get(snew.state1)
-                    ind2 = self.starset.mdbcontainer.iorindex.get(snew.state2)
-                    if ind1 == None or ind2 == None:
-                        raise KeyError("dumbbell not found in iorlist")
-                    tup = ((ind1, ind2), dx)
-                    connectlist.append(tup)
-                    GFMixedStarInd[snew] = len(GFstarset_mixed)
-                GFstarset_mixed.append(connectlist)
+        for jlist in self.starset.jnet2:
+            for jmp in jlist:
+                db1 = jmp.state1.db
+                db2 = jmp.state2.db
+                s = connector(db1 - db1.R, db2 - db1.R)
+                connectset.add(s)
+        # Now add in the diagonal elements.
+        for state in self.starset.mixedstates:
+            s = connector(state.db, state.db)
+
+
 
         return GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd
 
@@ -299,9 +317,9 @@ class vectorStars(VectorStarSet):
                         # Bring the initial dumbbell back to the origin
                         R_ref = ds.state1.R.copy()
                         ds = connector(ds.state1 - R_ref, ds.state2 - R_ref)
-                        dx = disp(self.starset.crys, self.starset.chem, ds.state1, ds.state2)
-                        ind1 = self.starset.pdbcontainer.iorindex.get(ds.state1)
-                        ind2 = self.starset.pdbcontainer.iorindex.get(ds.state2 - ds.state2.R)
+                        dx = disp(self.starset.pdbcontainer, ds.state1, ds.state2)
+                        ind1 = self.starset.pdbcontainer.db2ind(ds.state1)
+                        ind2 = self.starset.pdbcontainer.db2ind(ds.state2 - ds.state2.R)
                         if ind1 == None or ind2 == None:
                             raise KeyError("enpoint subtraction within starset not found in iorlist")
                         # k = getstar(((ind1,ind2),dx),GFstarset_pure)
