@@ -416,45 +416,46 @@ class StarSet(object):
                 for c1 in [-1, 1]:
                     j = jump(p_pure, p_mixed, c1, -1)
                     dx = disp4(self.pdbcontainer, self.mdbcontainer, j.state1, j.state2)
-                    if np.dot(dx, dx) > cutoff ** 2: continue
-                    if not j in alljumpset_omega4:  # check if jump already considered
+                    if np.dot(dx, dx) > cutoff ** 2:
+                        continue
+                    if not j in alljumpset_omega4:
+                        # check if jump already considered
                         # if a jump is in alljumpset_omega4, it's negative will have to be in alljumpset_omega3
                         if not collision_self(self.pdbcontainer, self.mdbcontainer, j, solv_solv_cut,
                                               solt_solv_cut) and not collision_others(self.pdbcontainer,
                                                                                       self.mdbcontainer, j,
                                                                                       closestdistance):
-                            newset = set([])
+                            newlist = []
+                            newneglist = []
+                            newalllist = []
                             for g in self.crys.G:
-                                for gdumb, gval in self.pdbcontainer.G_crys.items():
+                                for pgdumb, gval in self.pdbcontainer.G_crys.items():
                                     if gval == g:
-                                        gdumb_pure = gdumb
+                                        gdumb_pure = pgdumb
 
-                                for gdumb, gval in self.mdbcontainer.G_crys.items():
+                                for mgdumb, gval in self.mdbcontainer.G_crys.items():
                                     if gval == g:
-                                        gdumb_mixed = gdumb
+                                        gdumb_mixed = mgdumb
 
-                                if not self.pdbcontainer.G_crys[gdumb_pure] ==\
-                                       self.mdbcontainer.G_crys[gdumb_mixed]:
-                                    continue
                                 state1new, flip1 = j.state1.gop(self.pdbcontainer, gdumb_pure)
                                 state2new = j.state2.gop(self.mdbcontainer, gdumb_mixed, complex=False)
-                                jnew = jump(state1new - state1new.R_s, state2new - state2new.R_s, j.c1*flip1, -1)
-                                if not jnew in newset:
+                                if not (np.allclose(state1new.R_s, state2new.R_s)):
+                                    raise ValueError("Same group op but different resultant solute sites")
+                                state1new -= state1new.R_s
+                                state2new -= state2new.R_s
+                                jnew = jump(state1new, state2new, j.c1*flip1, -1)
+                                if not jnew in alljumpset_omega4:
                                     if jnew.state1.i_s == self.pdbcontainer.iorlist[jnew.state1.db.iorind][0]:
                                         if np.allclose(jnew.state1.R_s, jnew.state1.db.R, atol=self.crys.threshold):
                                             raise RuntimeError("Initial state mixed")
                                     if not (jnew.state2.i_s == self.mdbcontainer.iorlist[jnew.state2.db.iorind][0]
                                             and np.allclose(jnew.state2.R_s, jnew.state2.db.R, self.crys.threshold)):
                                         raise RuntimeError("Final state not mixed")
-                                    newset.add(jnew)
+                                    newlist.append(jnew)
+                                    newneglist.append(-jnew)
+                                    newalllist.append(jnew)
+                                    newalllist.append(-jnew)
                                     alljumpset_omega4.add(jnew)
-
-                            newset = list(newset)
-                            newnegset = [-jmp for jmp in newset]
-                            newallset = []
-                            for i in range(len(newset)):
-                                newallset.append(newset[i])
-                                newallset.append(newnegset[i])
 
                             new4index = []
                             new3index = []
@@ -462,7 +463,7 @@ class StarSet(object):
                             jinitdict3 = defaultdict(list)
                             jinitdict4 = defaultdict(list)
 
-                            for jmp in newset:
+                            for jmp in newlist:
                                 pure_ind = self.complexIndexdict[jmp.state1][0]
                                 mixed_ind = self.mixedindexdict[jmp.state2][0]
                                 # omega4 has pure as initial, omega3 has pure as final
@@ -474,15 +475,15 @@ class StarSet(object):
                                 newallindex.append(((pure_ind, mixed_ind), dx.copy()))
                                 newallindex.append(((mixed_ind, pure_ind), -dx))
 
-                            symjumplist_omega4.append(newset)
+                            symjumplist_omega4.append(newlist)
                             omega4inits.append(jinitdict4)
                             symjumplist_omega4_indexed.append(new4index)
 
-                            symjumplist_omega3.append(newnegset)
+                            symjumplist_omega3.append(newneglist)
                             omega3inits.append(jinitdict3)
                             symjumplist_omega3_indexed.append(new3index)
 
-                            symjumplist_omega43_all.append(newallset)
+                            symjumplist_omega43_all.append(newalllist)
                             symjumplist_omega43_all_indexed.append(newallindex)
 
         # Now build the jtags
