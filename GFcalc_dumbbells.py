@@ -40,6 +40,7 @@ class GF_dumbbells(GFCrystalcalc):
         if all(x is None for x in (container, jumpnetwork)): return
         if any(len(tup) != 2 for l in jumpnetwork for tup in l):
             raise TypeError("Need the indexed form of the jumpnetwork.")
+        self.container = container
         self.crys = container.crys
         self.chem = container.chem
         self.iorlist = container.iorlist.copy()
@@ -172,10 +173,10 @@ class GF_dumbbells(GFCrystalcalc):
         # Soham - change required in index mapping
         grouparray = np.zeros((self.NG, self.crys.dim, self.crys.dim))
         indexpair = np.zeros((self.N, self.N, self.NG, 2), dtype=int)
-        for ng, g in enumerate(self.crys.G):
+        for ng, g in enumerate(self.container.G):
             grouparray[ng, :, :] = g.cartrot[:, :]
             # first construct the indexmap of the group operations for dumbbells
-            indexmap = self.indexmap[g]
+            indexmap = g.indexmap[0]
             for i in range(self.N):
                 for j in range(self.N):
                     indexpair[i, j, ng, 0], indexpair[i, j, ng, 1] = indexmap[i], indexmap[j]
