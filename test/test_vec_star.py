@@ -490,8 +490,9 @@ class test_vecstars(unittest.TestCase):
                                 listind = star
                                 count += 1
                 self.assertTrue(listind is not None)
-                # Now check symmetries
+                self.assertEqual(listind, GFPureStarInd[s])
                 self.assertEqual(count, 1)
+                # Now check symmetries
                 # Now build up the symmetric list
                 for gdumb in self.vec_stars.starset.pdbcontainer.G:
                     ind1new = gdumb.indexmap[0][ind1]
@@ -505,26 +506,48 @@ class test_vecstars(unittest.TestCase):
                     for s2 in GFstarset_pure[listind]:
                         if s[0][0] == s2[0][0] and s[0][1] == s2[0][1] and np.allclose(s[1], s2[1]):
                             count += 1
-                self.assertEqual(count, len(GFstarset_pure[listind]), msg="\n{}\n{}".format(snewlist, GFstarset_pure[listind]))
-        # for st1 in self.vec_stars.starset.mixedstates:
-        #     for st2 in self.vec_stars.starset.mixedstates:
-        #         try:
-        #             s = st1 ^ st2
-        #         except:
-        #             continue
-        #         dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, s.state1, s.state2)
-        #         ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state1 - s.state1.R)
-        #         ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(s.state2 - s.state2.R)
-        #         self.assertFalse(ind1 == None)
-        #         self.assertFalse(ind2 == None)
-        #         found = \
-        #             any(ind1 == tup[0][0] and ind2 == tup[0][1] and np.allclose(tup[1], dx,
-        #                                                                         atol=self.vec_stars.starset.crys.threshold)
-        #                 for tlist in GFstarset_mixed for tup in tlist)
-        #
-        #         self.assertTrue(found, msg="\n{}\n{}".format(s.state1, s.state2))
-        # self.assertFalse(len(GFstarset_pure) == 0)
-        # self.assertFalse(len(GFstarset_mixed) == 0)
+                self.assertEqual(count, len(GFstarset_pure[listind]), msg="\n{}\n{}".format(snewlist,
+                                                                                            GFstarset_pure[listind]))
+
+        # Now, we do the same tests for the mixed GF starset
+        for jlist in self.vec_stars.starset.jnet2:
+            for jmp in jlist:
+                s = connector(jmp.state1.db, jmp.state2.db)
+                s.shift()
+                ind1 = self.vec_stars.starset.mdbcontainer.db2ind(s.state1)
+                ind2 = self.vec_stars.starset.mdbcontainer.db2ind(s.state2)
+                dx = disp(self.vec_stars.starset.mdbcontainer, s.state1, s.state2)
+                # Now see if this connection is present in the GF starset
+                listind = None
+                count = 0
+                for starind, tlist in enumerate(GFstarset_mixed):
+                    for t in tlist:
+                        if t[0][0] == ind1 and t[0][1] == ind2 and np.allclose(t[1], dx, atol=1e-8):
+                            count += 1
+                            listind = starind
+
+                self.assertTrue(listind is not None)
+                self.assertEqual(listind, GFMixedStarInd[s])
+                self.assertEqual(count, 1)
+
+                # Now check the symmetries
+                snewlist = []
+                for gdumb in self.vec_stars.starset.mdbcontainer.G:
+                    ind1new = gdumb.indexmap[0][ind1]
+                    ind2new = gdumb.indexmap[0][ind2]
+                    dxnew = self.vec_stars.starset.crys.g_direc(self.vec_stars.starset.mdbcontainer.G_crys[gdumb],dx)
+                    if not any(t[0][0] == ind1new and t[0][1] == ind2new and np.allclose(t[1], dxnew, atol=1e-8)
+                               for t in snewlist):
+                        snewlist.append(((ind1new, ind2new), dxnew))
+
+                self.assertEqual(len(snewlist), len(GFstarset_mixed[listind]))
+                count = 0
+                for s1 in snewlist:
+                    for s2 in GFstarset_mixed[listind]:
+                        if s1[0][0] == s2[0][0] and s1[0][1] == s2[0][1] and np.allclose(s1[1], s2[1], atol=1e-8):
+                            count += 1
+
+                self.assertEqual(count, len(GFstarset_mixed[listind]))
 
     def test_GF_expansions(self):
         """
