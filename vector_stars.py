@@ -229,17 +229,16 @@ class vectorStars(VectorStarSet):
                 continue
             connectlist = []
             for gdumb in self.starset.pdbcontainer.G:
-                db1new, flip1 = s.state1.gop(self.starset.pdbcontainer, g)
-                db2new, flip2 = s.state1.gop(self.starset.pdbcontainer, g)
+                snew = s.gop(self.starset.pdbcontainer, gdumb, pure=True)
                 # Bring the dumbbell of the initial state to the origin
-                dx = disp(self.starset.pdbcontainer, db1new, db2new)
-                snew = connector(db1new - db1new.R, db2new - db1new.R)
+                snew.shift()
 
                 if snew not in connectset:
-                    raise TypeError("list of connections is not closed under symmetry operations.")
+                    raise TypeError("connector list is not closed under symmetry operations for the complex starset.")
                 if snew in GFPureStarInd:
                     continue
 
+                dx = disp(self.starset.pdbcontainer, db1new, db2new)
                 ind1 = self.starset.pdbcontainer.db2ind(snew.state1)
                 # db2ind does not care about which unit cell the dumbbell is at
                 ind2 = self.starset.pdbcontainer.db2ind(snew.state2)
@@ -276,10 +275,14 @@ class vectorStars(VectorStarSet):
         #             connectlist.append(tup)
         #             GFMixedStarInd[snew] = len(GFstarset_mixed)
         #         GFstarset_mixed.append(connectlist)
-        connectset_mixed = set([])
+
         # For the mixed GF starset, the mixed jumpnetwork is the one that creates the GF starset
+        # Since the mixed starsets are periodic, their states are at the 0th unit cell. So, unlike the compleStates
+        # there are no omega2 jumps that connect two states in the mixed starset. Rather, the omega2 jumpnetwork
+        # and the mixed GF starset have to be created separately.
         GFstarset_mixed = []
         GFMixedStarInd = {}
+        connectset_mixed = set([])
         for jlist in self.starset.jnet2:
             for jmp in jlist:
                 db1 = jmp.state1.db
@@ -290,6 +293,28 @@ class vectorStars(VectorStarSet):
         for state in self.starset.mixedstates:
             s = connector(state.db, state.db)
 
+        # Now, group them symmetrically
+        for s in connectset_mixed:
+            if s in GFMixedStarInd:
+                continue
+            connectlist =[]
+            for gdumb in self.starset.mdbcontainer.G:
+                snew = s.gop(self.starset.mdbcontainer, gdumb, pure=False)
+                snew.shift()
+
+                if snew not in connectset_mixed:
+                    raise ValueError("the connector list for mixed dumbbells is not closed under symmetry")
+                if snew in GFMixedStarInd:
+                    continue
+
+                dx = disp(self.starset.mdbcontainer, snew.state1, snew.state2)
+                ind1 = self.starset.mdbcontainer.db2ind(snew.state1)
+                # db2ind does not care about which unit cell the dumbbell is at
+                ind2 = self.starset.mdbcontainer.db2ind(snew.state2)
+                tup = ((ind1, ind2), dx.copy())
+                connectlist.append(tup)
+                GFMixedStarInd[snew] = len(GFstarset_mixed)
+            GFstarset_mixed.append(connectlist)
 
 
         return GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd
@@ -330,25 +355,55 @@ class vectorStars(VectorStarSet):
                         GFexpansion_pure[i, j, k] += np.dot(vi, vj)
 
         # Build up the mixed GF expansion
-        for i in range(Nvstars_mixed):
-            for si, vi in zip(self.vecpos[Nvstars_pure + i], self.vecvec[Nvstars_pure + i]):
-                for j in range(Nvstars_mixed):
-                    for sj, vj in zip(self.vecpos[Nvstars_pure + j], self.vecvec[Nvstars_pure + j]):
-                        # Both si and sj are origin states
-                        ds = connector(si.db, sj.db)
-                        # except:
-                        #     continue
-                        dx = disp(self.starset.crys, self.starset.chem, ds.state1, ds.state2)
-                        ind1 = self.starset.mdbcontainer.iorindex.get(ds.state1)
-                        ind2 = self.starset.mdbcontainer.iorindex.get(ds.state2)
-                        if ind1 == None or ind2 == None:
-                            raise KeyError("endpoint subtraction within starset not found in iorlist")
-                        # k = getstar(((ind1,ind2),dx),GFstarset_mixed)
-                        k = GFMixedStarInd[ds]
-                        if k is None:
-                            raise ArithmeticError(
-                                "mixed GF starset not big enough to accomodate state pair {}".format(tup))
+        # In this case too, we need to build up from the jump network, and include the origin states later on.
+
+        # First, we build up the terms from the jump network
+        for jlist in self.starset.jnet2:
+            for jmp in jlist:
+                try:
+                    ds = jmp.state1.db ^ jmp.state2.db
+                    ds.shift()
+                except:
+                    raise ValueError("jump from the mixed jumps list cannot be converted to connector")
+
+                # Now get the vector stars for the states
+                si = jmp.state1 - jmp.state1.R_s
+                sj = jmp.state2 - jmp.state2.R_s
+
+                viList = self.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
+                vjList = self.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
+                k = GFMixedStarInd[ds]
+                if k is None:
+                    raise ArithmeticError(
+                        "mixed GF starset not big enough to accomodate state pair {}".format((si, sj)))
+
+                for i, vi in [(tup[0], self.vecpos[tup[0]][tup[1]]) for tup in viList]:
+                    for j, vj in [(tup[0], self.vecpos[tup[0]][tup[1]]) for tup in viList]:
                         GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
+
+
+
+
+
+        # for i in range(Nvstars_mixed):
+        #     for si, vi in zip(self.vecpos[Nvstars_pure + i], self.vecvec[Nvstars_pure + i]):
+        #         for j in range(Nvstars_mixed):
+        #             for sj, vj in zip(self.vecpos[Nvstars_pure + j], self.vecvec[Nvstars_pure + j]):
+        #                 # Both si and sj are origin states
+        #                 ds = connector(si.db, sj.db)
+        #                 # except:
+        #                 #     continue
+        #                 dx = disp(self.starset.mdbcontainer, ds.state1, ds.state2)
+        #                 ind1 = self.starset.mdbcontainer.iorindex.get(ds.state1)
+        #                 ind2 = self.starset.mdbcontainer.iorindex.get(ds.state2)
+        #                 if ind1 == None or ind2 == None:
+        #                     raise KeyError("endpoint subtraction within starset not found in iorlist")
+        #                 # k = getstar(((ind1,ind2),dx),GFstarset_mixed)
+        #                 k = GFMixedStarInd[ds]
+        #                 if k is None:
+        #                     raise ArithmeticError(
+        #                         "mixed GF starset not big enough to accomodate state pair {}".format(tup))
+        #                 GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
 
         # symmetrize
         for i in range(Nvstars_pure):
