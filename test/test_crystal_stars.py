@@ -167,7 +167,6 @@ class test_StarSet(unittest.TestCase):
                                 self.assertTrue(any(i == IS and j == column for (i, j), dx in jlist))
                                 # If any is true, then that means only one is true, since a jump b/w two states is
                                 # present only once.
-            # select a jump list in random
             for x in range(len(omega1_network)):
                 # select any jump from this list at random. Idea is that we must get back the same jump list.
                 y = np.random.randint(0, len(omega1_network[x]))
@@ -224,6 +223,7 @@ class test_StarSet(unittest.TestCase):
                     jmp = omegalist[x][y]
                     jlist = []
                     if i == 0:  # then build omega3
+                        self.assertTrue(jmp.state1.is_zero(crys_stars.mdbcontainer))
                         for gdumb, gcrys in crys_stars.pdbcontainer.G_crys.items():
                             for gd, g in crys_stars.mdbcontainer.G_crys.items():
                                 if g == gcrys:
@@ -234,6 +234,7 @@ class test_StarSet(unittest.TestCase):
                             if not inlist(jnew, jlist):
                                 jlist.append(jnew)
                     else:  # build omega4
+                        self.assertTrue(jmp.state2.is_zero(crys_stars.mdbcontainer))
                         for gdumb, gcrys in crys_stars.pdbcontainer.G_crys.items():
                             for gd, g in crys_stars.mdbcontainer.G_crys.items():
                                 if g == gcrys:
