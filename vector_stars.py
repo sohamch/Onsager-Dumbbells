@@ -329,26 +329,35 @@ class vectorStars(VectorStarSet):
         # First, we build up the terms from the jump network
         for jlist in self.starset.jnet2:
             for jmp in jlist:
-                try:
-                    ds = jmp.state1.db ^ jmp.state2.db
-                    ds.shift()
-                except:
-                    raise ValueError("jump from the mixed jumps list cannot be converted to connector")
+
+                ds = connector(jmp.state1.db, jmp.state2.db)
+                ds.shift()
 
                 # Now get the vector stars for the states
                 si = jmp.state1 - jmp.state1.R_s
                 sj = jmp.state2 - jmp.state2.R_s
 
                 viList = self.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
-                vjList = self.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
+                vjList = self.stateToVecStar_mixed[sj]  # (IndOfStar, IndOfState) format
                 k = GFMixedStarInd[ds]
                 if k is None:
                     raise ArithmeticError(
                         "mixed GF starset not big enough to accomodate state pair {}".format((si, sj)))
 
-                for i, vi in [(tup[0], self.vecpos[tup[0]][tup[1]]) for tup in viList]:
-                    for j, vj in [(tup[0], self.vecpos[tup[0]][tup[1]]) for tup in viList]:
+                for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0] - self.Nvstars_pure][tup[1]])
+                              for tup in viList]:
+                    for j, vj in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0] - self.Nvstars_pure][tup[1]])
+                                  for tup in viList]:
                         GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
+
+        # Now, add in the diagonals
+        for st in self.starset.mixedstates:
+            ds = connector(st.db, st.db)
+            vList = self.stateToVecStar_mixed[st]
+            k = GFMixedStarInd[ds]
+            for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0] - self.Nvstars_pure][tup[1]])
+                          for tup in vList]:
+                GFexpansion_mixed[i, i, k] += np.dot(vi, vj)
 
         # symmetrize
         for i in range(Nvstars_pure):

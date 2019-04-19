@@ -557,18 +557,18 @@ class test_vecstars(unittest.TestCase):
         def getstar(tup, star):
             for starind, list in enumerate(star):
                 for t in list:
-                    if (t[0][0] == tup[0][0] and t[0][1] == tup[0][1] and np.allclose(t[1], tup[1],
-                                                                                      atol=self.vec_stars.starset.crys.threshold)):
+                    if (t[0][0] == tup[0][0] and t[0][1] == tup[0][1] and
+                            np.allclose(t[1], tup[1], atol=self.vec_stars.starset.crys.threshold)):
                         return starind
             return None
 
         # First, pure GF expansion
-        self.GFstarset_pure, self.GFPureStarInd, self.GFstarset_mixed, self.GFMixedStarInd = self.vec_stars.genGFstarset()
+        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.vec_stars.genGFstarset()
 
         Nvstars_pure = self.vec_stars.Nvstars_pure
         Nvstars_mixed = self.vec_stars.Nvstars - self.vec_stars.Nvstars_pure
-        GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(self.GFstarset_pure)))
-        GFexpansion_mixed = np.zeros((Nvstars_mixed, Nvstars_mixed, len(self.GFstarset_mixed)))
+        GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
+        GFexpansion_mixed = np.zeros((Nvstars_mixed, Nvstars_mixed, len(GFstarset_mixed)))
         GFexpansion_pure_calc, GFexpansion_mixed_calc = self.vec_stars.GFexpansion()
         # build up the pure GFexpansion
         for i in range(Nvstars_pure):
@@ -580,14 +580,14 @@ class test_vecstars(unittest.TestCase):
                         except:
                             continue
                         # print(ds)
-                        dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, ds.state1, ds.state2)
-                        dR = ds.state2.R - ds.state1.R
-                        ind1 = self.vec_stars.starset.pdbcontainer.iorindex.get(ds.state1 - ds.state1.R)
-                        ind2 = self.vec_stars.starset.pdbcontainer.iorindex.get(ds.state2 - ds.state2.R)
-                        if ind1 == None or ind2 == None:
+                        ds.shift()
+                        dx = disp(self.vec_stars.starset.pdbcontainer, ds.state1, ds.state2)
+                        ind1 = self.vec_stars.starset.pdbcontainer.db2ind(ds.state1)
+                        ind2 = self.vec_stars.starset.pdbcontainer.db2ind(ds.state2)
+                        if ind1 is None or ind2 is None:
                             raise KeyError("enpoint subtraction within starset not found in iorlist")
-                        k = getstar(((ind1, ind2), dx), self.GFstarset_pure)
-                        k1 = self.GFPureStarInd[(ind1, ind2, dR[0], dR[1], dR[2])]
+                        k = getstar(((ind1, ind2), dx), GFstarset_pure)
+                        k1 = GFPureStarInd[ds]
                         # print("here")
                         self.assertEqual(k, k1)
                         if k is None:
@@ -599,35 +599,54 @@ class test_vecstars(unittest.TestCase):
             for j in range(0, i):
                 GFexpansion_pure[i, j, :] = GFexpansion_pure[j, i, :]
 
-        self.assertTrue(np.allclose(zeroclean(GFexpansion_pure), GFexpansion_pure_calc))
+        self.assertTrue(np.allclose(zeroclean(GFexpansion_pure), GFexpansion_pure_calc[2]))
 
-        for i in range(Nvstars_mixed):
-            for si, vi in zip(self.vec_stars.vecpos[Nvstars_pure + i], self.vec_stars.vecvec[Nvstars_pure + i]):
-                for j in range(Nvstars_mixed):
-                    for sj, vj in zip(self.vec_stars.vecpos[Nvstars_pure + j], self.vec_stars.vecvec[Nvstars_pure + j]):
-                        try:
-                            ds = si ^ sj
-                        except:
-                            continue
-                        dx = disp(self.vec_stars.starset.crys, self.vec_stars.starset.chem, ds.state1, ds.state2)
-                        dR = ds.state2.R - ds.state1.R
-                        ind1 = self.vec_stars.starset.mdbcontainer.iorindex.get(ds.state1 - ds.state1.R)
-                        ind2 = self.vec_stars.starset.mdbcontainer.iorindex.get(ds.state2 - ds.state2.R)
-                        if ind1 == None or ind2 == None:
-                            raise KeyError("enpoint subtraction within starset not found in iorlist")
-                        k = getstar(((ind1, ind2), dx), self.GFstarset_mixed)
-                        k1 = self.GFMixedStarInd[(ind1, ind2, dR[0], dR[1], dR[2])]
-                        self.assertEqual(k, k1)
-                        if k is None:
-                            raise ArithmeticError(
-                                "mixed GF starset not big enough to accomodate state pair {}".format(tup))
+        for jlist in self.vec_stars.starset.jnet2:
+            for jmp in jlist:
+
+                ds = connector(jmp.state1.db, jmp.state2.db)
+                ds.shift()
+
+                ind1, ind2 = self.vec_stars.starset.mdbcontainer.db2ind(ds.state1),\
+                             self.vec_stars.starset.mdbcontainer.db2ind(ds.state2)
+                dx = disp(self.vec_stars.starset.mdbcontainer, ds.state1, ds.state2)
+
+                si = jmp.state1 - jmp.state1.R_s
+                sj = jmp.state2 - jmp.state2.R_s
+
+                # Now get the vector stars for the states
+                viList = self.vec_stars.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
+                vjList = self.vec_stars.stateToVecStar_mixed[sj]  # (IndOfStar, IndOfState) format
+                k = getstar(((ind1, ind2), dx), GFstarset_mixed)
+                k1 = GFMixedStarInd[ds]
+                self.assertEqual(k, k1, msg="\n{}\n{}\n{}\n{}".format(k, ((ind1, ind2), dx), k1, ds))
+
+                for i, vi in [(tup[0] - self.vec_stars.Nvstars_pure,
+                               self.vec_stars.vecvec[tup[0] - self.vec_stars.Nvstars_pure][tup[1]]) for tup in viList]:
+                    for j, vj in [(tup[0] - self.vec_stars.Nvstars_pure,
+                                   self.vec_stars.vecvec[tup[0] - self.vec_stars.Nvstars_pure][tup[1]]) for tup in viList]:
                         GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
+
+        for st in self.vec_stars.starset.mixedstates:
+            ds = connector(st.db, st.db)
+            k = GFMixedStarInd[ds]
+
+            ind1 = self.vec_stars.starset.mdbcontainer.db2ind(ds.state1)
+            dx = np.zeros(3)  # No displacement for the diagonals
+            k1 = getstar(((ind1, ind1), dx), GFstarset_mixed)
+
+            self.assertEqual(k, k1)
+
+            vList = self.vec_stars.stateToVecStar_mixed[st]
+            for i, vi in [(tup[0]- self.vec_stars.Nvstars_pure,
+                           self.vec_stars.vecvec[tup[0] - self.vec_stars.Nvstars_pure][tup[1]]) for tup in vList]:
+                GFexpansion_mixed[i, i, k] += np.dot(vi, vj)
 
         for i in range(Nvstars_mixed):
             for j in range(0, i):
                 GFexpansion_mixed[i, j, :] = GFexpansion_mixed[j, i, :]
 
-        self.assertTrue(np.allclose(zeroclean(GFexpansion_mixed), GFexpansion_mixed_calc))
+        self.assertTrue(np.allclose(zeroclean(GFexpansion_mixed), GFexpansion_mixed_calc[2]))
 
     def test_order(self):
         "test that we have the origin spectator states at the begining"
