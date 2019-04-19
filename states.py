@@ -287,6 +287,7 @@ class dbStates(object):
         """
         :param i: input site index
         :param o: input orientation
+        (i, o) contained in t
         :return: idx (integer) - the index of (i, o) in the iorlist, if it exists.
         """
         for idx,tup in enumerate(self.iorlist):
@@ -295,6 +296,17 @@ class dbStates(object):
                 return idx
         raise ValueError("The given site orientation pair {} is not present in the container".format(t))
 
+    def db2ind(self, db):
+        """
+        :param db: dumbbell object
+        :return:
+        """
+        if not isinstance(db, dumbbell):
+            raise TypeError("Input object must be dumbbell")
+        i = self.iorlist[db.iorind][0]
+        o = self.iorlist[db.iorind][1]
+
+        return self.getIndex((i,o))
 
 class mStates(object):
 
@@ -472,11 +484,22 @@ class mStates(object):
 
     def getIndex(self, t):
         """
-        :param i: input site index
-        :param o: input orientation
+        :param t = (i, o) - (site, orientation) tuple
         :return: idx (integer) - the index of (i, o) in the iorlist, if it exists.
         """
         for idx,tup in enumerate(self.iorlist):
             if t[0]==tup[0] and np.allclose(t[1],tup[1],atol = 1e-8):
                 return idx
         raise ValueError("The given site orientation pair {} is not present in the container".format(t))
+
+    def db2ind(self, db):
+        """
+        :param db: dumbbell object
+        :return:
+        """
+        if not isinstance(db, dumbbell):
+            raise TypeError("Input object must be dumbbell")
+        i = self.iorlist[db.iorind][0]
+        o = self.iorlist[db.iorind][1]
+
+        return self.getIndex((i, o))
