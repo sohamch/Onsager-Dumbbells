@@ -247,39 +247,6 @@ class vectorStars(VectorStarSet):
                 GFPureStarInd[snew] = len(GFstarset_pure)
             GFstarset_pure.append(connectlist)
 
-        # for st1 in mixedstates:
-        #     for st2 in mixedstates:
-        #         # The mixed states are origin states - must make so after gop
-        #         s = connector(st1.db, st2.db)
-        #         ind1 = self.starset.mdbcontainer.iorindex.get(s.state1)
-        #         ind2 = self.starset.mdbcontainer.iorindex.get(s.state2)
-        #         if ind1 == None or ind2 == None:
-        #             raise KeyError("dumbbell not found in iorlist")
-        #         # dR = s.state2.R - s.state1.R
-        #         if s in GFMixedStarInd:
-        #             continue
-        #         connectlist = []
-        #         for g in self.starset.crys.G:
-        #             snew = s.gop(self.starset.crys, self.starset.chem, g)
-        #             # Bring back to 0th unit cell
-        #             snew = connector(snew.state1 - snew.state1.R, snew.state2 - snew.state2.R)
-        #             if snew in GFMixedStarInd:
-        #                 continue
-        #             # dR = snew.state2.R - snew.state1.R
-        #             dx = disp(self.starset.crys, self.starset.chem, snew.state1, snew.state2)
-        #             ind1 = self.starset.mdbcontainer.iorindex.get(snew.state1)
-        #             ind2 = self.starset.mdbcontainer.iorindex.get(snew.state2)
-        #             if ind1 == None or ind2 == None:
-        #                 raise KeyError("dumbbell not found in iorlist")
-        #             tup = ((ind1, ind2), dx)
-        #             connectlist.append(tup)
-        #             GFMixedStarInd[snew] = len(GFstarset_mixed)
-        #         GFstarset_mixed.append(connectlist)
-
-        # For the mixed GF starset, the mixed jumpnetwork is the one that creates the GF starset
-        # Since the mixed starsets are periodic, their states are at the 0th unit cell. So, unlike the compleStates
-        # there are no omega2 jumps that connect two states in the mixed starset. Rather, the omega2 jumpnetwork
-        # and the mixed GF starset have to be created separately.
         GFstarset_mixed = []
         GFMixedStarInd = {}
         connectset_mixed = set([])
@@ -299,6 +266,7 @@ class vectorStars(VectorStarSet):
                 continue
             connectlist =[]
             for gdumb in self.starset.mdbcontainer.G:
+                
                 snew = s.gop(self.starset.mdbcontainer, gdumb, pure=False)
                 snew.shift()
 
@@ -380,30 +348,6 @@ class vectorStars(VectorStarSet):
                 for i, vi in [(tup[0], self.vecpos[tup[0]][tup[1]]) for tup in viList]:
                     for j, vj in [(tup[0], self.vecpos[tup[0]][tup[1]]) for tup in viList]:
                         GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
-
-
-
-
-
-        # for i in range(Nvstars_mixed):
-        #     for si, vi in zip(self.vecpos[Nvstars_pure + i], self.vecvec[Nvstars_pure + i]):
-        #         for j in range(Nvstars_mixed):
-        #             for sj, vj in zip(self.vecpos[Nvstars_pure + j], self.vecvec[Nvstars_pure + j]):
-        #                 # Both si and sj are origin states
-        #                 ds = connector(si.db, sj.db)
-        #                 # except:
-        #                 #     continue
-        #                 dx = disp(self.starset.mdbcontainer, ds.state1, ds.state2)
-        #                 ind1 = self.starset.mdbcontainer.iorindex.get(ds.state1)
-        #                 ind2 = self.starset.mdbcontainer.iorindex.get(ds.state2)
-        #                 if ind1 == None or ind2 == None:
-        #                     raise KeyError("endpoint subtraction within starset not found in iorlist")
-        #                 # k = getstar(((ind1,ind2),dx),GFstarset_mixed)
-        #                 k = GFMixedStarInd[ds]
-        #                 if k is None:
-        #                     raise ArithmeticError(
-        #                         "mixed GF starset not big enough to accomodate state pair {}".format(tup))
-        #                 GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
 
         # symmetrize
         for i in range(Nvstars_pure):
@@ -566,7 +510,7 @@ class vectorStars(VectorStarSet):
         (Note to self) - Refer to earlier notes for details.
         """
         # See my slides of Sept. 10 for diagram
-        rate0expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(self.starset.jumpnetwork_omega0)))
+        rate0expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(self.starset.jnet0)))
         rate1expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(jumpnetwork_omega1)))
         rate0escape = np.zeros((self.Nvstars_pure, len(self.starset.jumpindices)))
         rate1escape = np.zeros((self.Nvstars_pure, len(jumpnetwork_omega1)))
@@ -615,8 +559,26 @@ class vectorStars(VectorStarSet):
                                         rate3expansion[j - self.Nvstars_pure, i, k] += np.dot(vj, vi)
                                         # The jump type remains the same because they have the same transition state
 
-        return (zeroclean(rate0expansion), zeroclean(rate0escape)), (zeroclean(rate1expansion), zeroclean(rate1escape)), \
-               (zeroclean(rate3expansion), zeroclean(rate3escape)), (zeroclean(rate4expansion), zeroclean(rate4escape))
+        rate2expansion = np.zeros((self.Nvstars - self.Nvstars_pure, self.Nvstars - self.Nvstars_pure,
+                                   len(self.starset.jumpnetwork_omega2)))
+        rate2escape = np.zeros((self.Nvstars - self.Nvstars_pure, len(self.starset.jumpnetwork_omega2)))
+        for k, jumplist in zip(itertools.count(), self.starset.jumpnetwork_omega2):
+            for jmp in jumplist:
+                for i in range(self.Nvstars_pure, self.Nvstars):
+                    for chi_i, vi in zip(self.vecpos[i], self.vecvec[i]):
+                        if chi_i == jmp.state1:
+                            rate2escape[i, k] -= np.dot(vi, vi)
+                            for j in range(self.Nvstars_pure, self.Nvstars):
+                                for chi_j, vj in zip(self.vecpos[j], self.vecvec[j]):
+                                    if chi_j == jmp.state2 - jmp.state2.R_s:
+                                        rate2expansion[i - self.Nvstars_pure, j - self.Nvstars_pure, k] +=\
+                                            np.dot(vi, vj)
+
+        return (zeroclean(rate0expansion), zeroclean(rate0escape)),\
+               (zeroclean(rate1expansion), zeroclean(rate1escape)),\
+               (zeroclean(rate2expansion), zeroclean(rate2escape)),\
+               (zeroclean(rate3expansion), zeroclean(rate3escape)),\
+               (zeroclean(rate4expansion), zeroclean(rate4escape))
 
     def outer(self):
         outerprods = np.zeros((3, 3, self.Nvstars, self.Nvstars))
