@@ -197,14 +197,21 @@ class test_statemaking(unittest.TestCase):
                 self.assertTrue(np.allclose(mstates1.iorlist[idx][1], state[1], atol=mstates1.crys.threshold))
 
     def test_mixedjumps(self):
-        famp0 = [np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126]
+        latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
+        DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
+        famp0 = [np.array([1., 1., 0.]) / np.sqrt(2) * 0.2]
         family = [famp0]
-        mdbcontainer = mStates(cube, 0, family)
-        # check for the correct number of states
-        jset, jind = mdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
-        test_dbi = dumbbell(mdbcontainer.getIndex((0, np.array([0.126, 0., 0.]))), np.array([0, 0, 0]))
-        test_dbf = dumbbell(mdbcontainer.getIndex((0, np.array([0.126, 0., 0.]))), np.array([0, 1, 0]))
+        mdbcontainer = mStates(DC_Si, 0, family)
+        jset, jind = mdbcontainer.jumpnetwork(0.4, 0.01, 0.01)
+        o1 = np.array([1., 1., 0.]) * 0.2 / np.sqrt(2)
+        # if any(np.allclose(-o1, o) for i, o in pdbcontainer.iorlist):
+        #     o1 = -o1.copy()
+        # db1 = dumbbell(pdbcontainer_si.getIndex((0, o1)), np.array([0, 0, 0]))
+        # db2 = dumbbell(pdbcontainer_si.getIndex((0, o1)), np.array([0, 0, 1]))
+        test_dbi = dumbbell(mdbcontainer.getIndex((0, o1)), np.array([0, 0, 0]))
+        test_dbf = dumbbell(mdbcontainer.getIndex((1, o1)), np.array([0, 0, 0]))
         count = 0
+        jtest = None
         for i, jlist in enumerate(jset):
             for q, j in enumerate(jlist):
                 if j.state1.db == test_dbi:
@@ -213,7 +220,7 @@ class test_statemaking(unittest.TestCase):
                             count += 1
                             jtest = jlist
         self.assertEqual(count, 1)  # see that this jump has been taken only once into account
-        self.assertEqual(len(jtest), 24)
+        self.assertEqual(len(jtest), 48)
 
         # check if conditions for mixed dumbbell transitions are satisfied
         count = 0

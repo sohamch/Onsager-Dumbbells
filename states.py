@@ -128,8 +128,8 @@ class dbStates(object):
         return iorlist
 
     def makeDbGops(self, crys, chem, iorlist):
-        G=[]
-        G_crys={}
+        G = []
+        G_crys = {}
         for g in crys.G:
             # Will have indexmap for each groupop
             indexmap = []
@@ -441,8 +441,10 @@ class mStates(object):
                         jindlist = []
                         for gdumb in self.G:
                             p1new = p1.gop(self, gdumb, complex=False)
-                            p2new = p2.gop(self, gdumb, complex=False)
-                            jnew = jump(p1new - p1new.R_s, p2new - p1new.R_s, j.c1, j.c2)
+                            p2new = p2.gop(self, gdumb, complex=False) - p1new.R_s
+                            p1new -= p1new.R_s
+
+                            jnew = jump(p1new, p2new, j.c1, j.c2)
                             # Place some sanity checks for safety, also helpful for tests
                             if not np.allclose(jnew.state1.R_s, np.zeros(3), atol=self.crys.threshold):
                                 raise ValueError("The initial state is not at the origin unit cell")
@@ -455,7 +457,7 @@ class mStates(object):
                                 dx = disp(self, jnew.state1, jnew.state2)
                                 # create the negative jump
                                 p1neg = SdPair(p2new.i_s, p1new.R_s, dumbbell(p2new.db.iorind, p1new.db.R))
-                                p2neg = SdPair(p1new.i_s, - p2new.R_s, dumbbell(p1new.db.iorind, - p2new.db.R))
+                                p2neg = SdPair(p1new.i_s, -p2new.R_s, dumbbell(p1new.db.iorind, -p2new.db.R))
                                 jnewneg = jump(p1neg, p2neg, 1, 1)
                                 # add both the jump and its negative
                                 jlist.append(jnew)
