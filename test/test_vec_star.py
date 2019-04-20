@@ -6,7 +6,6 @@ from states import *
 from representations import *
 from functools import reduce
 from vector_stars import *
-from test_structs import *
 import unittest
 from collections import defaultdict
 
