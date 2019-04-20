@@ -551,7 +551,7 @@ class vectorStars(VectorStarSet):
         # This is because the order of the sum over stars in the rate expansion does not matter (see Sept. 30 slides).
         for k, jumplist in zip(itertools.count(), jumpnetwork_omega34):
             for jmp in jumplist:
-                if jmp.state1.is_zero():  # the initial state must be a complex
+                if jmp.state1.is_zero(self.starset.mdbcontainer):  # the initial state must be a complex
                     # the negative of this jump is an omega_3 jump anyway
                     continue
                 for i in range(self.Nvstars_pure):  # iterate over complex states - the first inner sum
@@ -570,14 +570,14 @@ class vectorStars(VectorStarSet):
                                         # The jump type remains the same because they have the same transition state
 
         rate2expansion = np.zeros((self.Nvstars - self.Nvstars_pure, self.Nvstars - self.Nvstars_pure,
-                                   len(self.starset.jumpnetwork_omega2)))
-        rate2escape = np.zeros((self.Nvstars - self.Nvstars_pure, len(self.starset.jumpnetwork_omega2)))
-        for k, jumplist in zip(itertools.count(), self.starset.jumpnetwork_omega2):
+                                   len(self.starset.jnet2)))
+        rate2escape = np.zeros((self.Nvstars - self.Nvstars_pure, len(self.starset.jnet2)))
+        for k, jumplist in zip(itertools.count(), self.starset.jnet2):
             for jmp in jumplist:
                 for i in range(self.Nvstars_pure, self.Nvstars):
                     for chi_i, vi in zip(self.vecpos[i], self.vecvec[i]):
                         if chi_i == jmp.state1:
-                            rate2escape[i, k] -= np.dot(vi, vi)
+                            rate2escape[i - self.Nvstars_pure, k] -= np.dot(vi, vi)
                             for j in range(self.Nvstars_pure, self.Nvstars):
                                 for chi_j, vj in zip(self.vecpos[j], self.vecvec[j]):
                                     if chi_j == jmp.state2 - jmp.state2.R_s:
