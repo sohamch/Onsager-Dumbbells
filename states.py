@@ -85,7 +85,7 @@ class dbStates(object):
     @staticmethod
     def invmapping(symindlist):
         # Sanity checks between iorlist and symorlist is performed during testing
-        invmap = np.zeros(sum([len(lst) for lst in symindlist]))
+        invmap = np.zeros(sum([len(lst) for lst in symindlist]), dtype=int)
         for symind, symlist in enumerate(symindlist):
             for st_idx in symlist:
                 invmap[st_idx] = symind
@@ -330,7 +330,7 @@ class mStates(object):
     @staticmethod
     def invmapping(symindlist):
         # Sanity checks between iorlist and symorlist is performed during testing
-        invmap = np.zeros(sum([len(lst) for lst in symindlist]))
+        invmap = np.zeros(sum([len(lst) for lst in symindlist]), dtype=int)
         for symind, symlist in enumerate(symindlist):
             for st_idx in symlist:
                 invmap[st_idx] = symind
