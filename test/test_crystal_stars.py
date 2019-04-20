@@ -133,6 +133,23 @@ class test_StarSet(unittest.TestCase):
                 self.assertEqual(key, crys_stars.mixedstates[value[0]])
                 self.assertTrue(crys_stars.mixedstates[value[0]] in crys_stars.stars[value[1]])
 
+            # Now test star2symlist
+            for starind, star in enumerate(crys_stars.stars[:crys_stars.mixedstartindex]):
+                symind = crys_stars.star2symlist[starind]
+                for state in star:
+                    db = state.db - state.db.R
+                    # now get the symorlist index in which the dumbbell belongs
+                    symind_other = crys_stars.pdbcontainer.invmap[db.iorind]
+                    self.assertEqual(symind_other, symind, msg="\n{}".format(db))
+
+            for starind, star in enumerate(crys_stars.stars[crys_stars.mixedstartindex:]):
+                symind = crys_stars.star2symlist[starind]
+                for state in star:
+                    db = state.db - state.db.R
+                    # now get the symorlist index in which the dumbbell belongs
+                    symind_other = crys_stars.mdbcontainer.invmap[db.iorind]
+                    self.assertEqual(symind_other, symind, msg="\n{}".format(db))
+
     def test_jumpnetworks(self):
         def inlist(jmp, jlist):
             return any(j == jmp for j in jlist)
