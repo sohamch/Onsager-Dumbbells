@@ -49,9 +49,9 @@ class GF_dumbbells(GFCrystalcalc):
         self.Ndiff = self.networkcount(jumpnetwork, self.N)
         # Create invmap - which symmety-grouped (i,or) pair list in symorlist
         # does a given (i,or) pair in iorlist belong to
-        self.invmap = container.invmap.copy()  # internalized in the container definition itself
+        self.invmap = container.invmap.copy()
         self.NG = len(self.crys.G)  # number of group operations
-        self.indexmap = container.indexmap
+        # self.invmap = container.invmap
         self.grouparray, self.indexpair = self.BreakdownGroups()
         # modified BreakdownGroups using new indexmap for dumbbells
         bmagn = np.array([np.sqrt(np.dot(self.crys.reciplatt[:, i], self.crys.reciplatt[:, i]))
