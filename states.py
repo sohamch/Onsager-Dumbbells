@@ -218,7 +218,7 @@ class dbStates(object):
                 db1new = db1new - R_ref
 
                 jnew = jump(db1new, db2new, j.c1 * mul1, j.c2 * mul2)  # Check this part
-                dx = disp(self, j.state1, j.state2)
+                dx = disp(self, jnew.state1, jnew.state2)
 
                 db1newneg = dumbbell(jnew.state2.iorind, jnew.state1.R)
                 db2newneg = dumbbell(jnew.state1.iorind, -jnew.state2.R)

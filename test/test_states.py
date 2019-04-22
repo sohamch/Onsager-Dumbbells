@@ -157,6 +157,8 @@ class test_statemaking(unittest.TestCase):
                     self.assertEqual(pdbcontainer.iorlist[jset[lindex][jindex].state2.iorind][0], i2)
                     self.assertTrue(np.allclose(pdbcontainer.iorlist[jset[lindex][jindex].state1.iorind][1], o1))
                     self.assertTrue(np.allclose(pdbcontainer.iorlist[jset[lindex][jindex].state2.iorind][1], o2))
+                    dx = disp(pdbcontainer, jset[lindex][jindex].state1, jset[lindex][jindex].state2)
+                    self.assertTrue(np.allclose(dx, jind[lindex][jindex][1]))
 
     def test_mStates(self):
         dbstates = dbStates(self.crys, 0, self.family)
