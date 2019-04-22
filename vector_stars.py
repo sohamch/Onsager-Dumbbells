@@ -135,7 +135,7 @@ class vectorStars(VectorStarSet):
                     glist.append(starset.pdbcontainer.G_crys[gdumb])
             vb = reduce(crystal.CombineVectorBasis, [crystal.VectorBasis(*g.eigen()) for g in glist])
             # Get orthonormal vectors
-            vlist = starset.crys.vectlist(vb)  # This also nomalizes with respect to length of the vectors.
+            vlist = starset.crys.vectlist(vb)  # This also normalizes with respect to length of the vectors.
             scale = 1. / np.sqrt(len(star))
             vlist = [v * scale for v in vlist]
             Nvect = len(vlist)
@@ -145,7 +145,7 @@ class vectorStars(VectorStarSet):
                     self.vecpos_bare.append(star)
                     for st in star:
                         for gdumb in starset.pdbcontainer.G:
-                            dbnew = db0.gop(starset.pdbcontainer, gdumb)[0]
+                            dbnew, flip = db0.gop(starset.pdbcontainer, gdumb)
                             dbnew = dbnew - dbnew.R
                             if dbnew == st:
                                 veclist.append(starset.crys.g_direc(starset.pdbcontainer.G_crys[gdumb], v))

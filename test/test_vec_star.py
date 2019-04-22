@@ -8,7 +8,7 @@ from functools import reduce
 from vector_stars import *
 import unittest
 from collections import defaultdict
-
+import pickle
 
 class test_vecstars(unittest.TestCase):
     def setUp(self):
@@ -200,13 +200,19 @@ class test_vecstars(unittest.TestCase):
                 biasBareExp = self.biases[-1]
                 self.assertTrue(count >= 1)
                 tot_bias_bare = np.dot(biasBareExp, self.W0list)
-                indlist = []
-                for ind, starlist in enumerate(self.vec_stars.vecpos_bare):
-                    if starlist[0] == st:
-                        indlist.append(ind)
-                bias_bare_cartesian = sum([tot_bias_bare[i] * self.vec_stars.vecvec[i][0] for i in indlist])
-                bias_bare_cartesian2 = sum([tot_bias_bare[i] * self.vec_stars.vecvec[i][n] for i in indlist])
-                self.assertTrue(np.allclose(bias_bare_cartesian, bias_st))
+                indlist = self.vec_stars.stateToVecStar_bare[st]
+                # for ind, starlist in enumerate(self.vec_stars.vecpos_bare):
+                #     if starlist[0] == st:
+                #         indlist.append(ind)
+                bias_bare_cartesian = sum([tot_bias_bare[tup[0]] * self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
+                self.assertTrue(np.allclose(bias_bare_cartesian, bias_st), msg="\n{}\n{}\n{}\n{}".
+                                format(bias_bare_cartesian, bias_st,
+                                       [tot_bias_bare[tup[0]] * self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in
+                                        indlist],
+                                       tot_bias_bare))
+
+                indlist = self.vec_stars.stateToVecStar_bare[st2]
+                bias_bare_cartesian2 = sum([tot_bias_bare[tup[0]] * self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
                 self.assertTrue(np.allclose(bias_bare_cartesian2, bias_st2))
 
         else:  # we have to check that the non-local bias vectors coming out are zero
@@ -741,7 +747,7 @@ class test_vecstars(unittest.TestCase):
         self.assertTrue(np.allclose(zeroclean(np.array(dx_list)), zeroclean(np.array(sorted(dx_list)))),
                         msg="\n{}\n{}".format(dx_list, sorted(dx_list)))
 
-class test_Si(test_vecstars):
+class test_Si(unittest.TestCase):
 
     def setUp(self):
         latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
@@ -759,6 +765,9 @@ class test_Si(test_vecstars):
 
         self.crys_stars = StarSet(self.pdbcontainer_si, self.mdbcontainer_si, self.jset0, self.jset2, Nshells=1)
         self.vec_stars = vectorStars(self.crys_stars)
+
+        with open('vec_star_si_pkl.pkl', 'wb') as fl:
+            pickle.dump(self.vec_stars, fl)
 
         self.om2tags = self.vec_stars.starset.jtags2
         # generate 1, 3 and 4 jumpnetworks
@@ -778,4 +787,59 @@ class test_Si(test_vecstars):
         # generate all the bias expansions - will separate out later
         self.biases = self.vec_stars.biasexpansion(self.jnet_1, self.jset2[0], self.jtype, self.symjumplist_omega43_all)
         print("Instantiated")
+
+    def test_bare_bias_expansion(self):
+        if len(self.vec_stars.vecpos_bare) > 0:
+            for i in range(len(self.vec_stars.vecpos_bare)):
+                starind = i
+                st = self.vec_stars.vecpos_bare[starind][0]
+                n = np.random.randint(1, len(self.vec_stars.vecpos_bare[starind]))
+                st2 = self.vec_stars.vecpos_bare[starind][n]
+                bias_st = np.zeros(3)
+                bias_st2 = np.zeros(3)
+                count = 0
+                for jt, jumplist in enumerate(self.vec_stars.starset.jnet0):
+                    for j in jumplist:
+                        if st == j.state1:
+                            count += 1
+                            dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+                            bias_st += dx * self.W0list[jt]
+                        if st2 == j.state1:
+                            dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+                            bias_st2 += dx * self.W0list[jt]
+
+                biasBareExp = self.biases[-1]
+                self.assertTrue(count >= 1)
+                tot_bias_bare = np.dot(biasBareExp, self.W0list)
+                indlist = self.vec_stars.stateToVecStar_bare[st]
+                # for ind, starlist in enumerate(self.vec_stars.vecpos_bare):
+                #     if starlist[0] == st:
+                #         indlist.append(ind)
+                bias_bare_cartesian = sum(
+                    [tot_bias_bare[tup[0]] * self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
+                self.assertTrue(np.allclose(bias_bare_cartesian, bias_st), msg="\n{}\n{}\n{}\n{}".
+                                format(bias_bare_cartesian, bias_st,
+                                       [self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist],
+                                       self.vec_stars.starset.pdbcontainer.iorlist[st.iorind]))
+
+                indlist = self.vec_stars.stateToVecStar_bare[st2]
+                bias_bare_cartesian2 = sum(
+                    [tot_bias_bare[tup[0]] * self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
+                self.assertTrue(np.allclose(bias_bare_cartesian2, bias_st2))
+
+        else:  # we have to check that the non-local bias vectors coming out are zero
+            # print("checking zero non-local")
+            for star in self.vec_stars.starset.barePeriodicStars:
+                for st in star:
+                    bias_st = np.zeros(3)
+                    count = 0
+                    for jt, jumplist in enumerate(self.vec_stars.starset.jnet0):
+                        for j in jumplist:
+                            if st == j.state1:
+                                count += 1
+                                dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+                                bias_st += dx * self.W0list[jt]
+                                # print(bias_st)
+                    self.assertTrue(np.allclose(bias_st, np.zeros(3)))
+                    self.assertTrue(count >= 1)
 
