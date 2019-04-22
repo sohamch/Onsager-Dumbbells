@@ -118,8 +118,20 @@ class StarSet(object):
                 # One by one, keeping the solute at the basis sites of the origin unit cell, put those dumbbell states
                 # at those positions, as are dictated by the the jumps.
                 # The idea is that a valid jump must be able to bring a dumbbell to a solute site.
+                # We won't put in origin states just yet.
+                # In many unsymmetric cases, there may not be any on site rotation possible.
+                # So, it is best to add in the origin states later on.
+                dx = disp(self.pdbcontainer, j.state1, j.state2)
+                if np.allclose(dx, np.zeros(3, dtype=int), atol=self.pdbcontainer.crys.threshold):
+                    continue
                 pair = SdPair(self.pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, j.state2)
                 stateset.add(pair)
+
+            # Now, we add in the origin states
+            for ind, tup in enumerate(self.pdbcontainer.iorlist):
+                pair = SdPair(tup[0], np.zeros(3, dtype=int), dumbbell(ind,np.zeros(3, dtype=int)))
+                stateset.add(pair)
+
         lastshell = stateset.copy()
         # Now build the next shells:
         for step in range(Nshells - 1):
@@ -402,7 +414,7 @@ class StarSet(object):
         alljumpset_omega43_all = set([])
 
         for p_pure in self.complexStates:
-            if p_pure.is_zero(self.pdbcontainer):  # Specator rotating into mixed does not make sense.
+            if p_pure.is_zero(self.pdbcontainer):  # Spectator rotating into mixed dumbbell does not make sense.
                 continue
             for p_mixed in self.mixedstates:
                 if not p_mixed.is_zero(self.mdbcontainer):  # Specator rotating into mixed does not make sense.
