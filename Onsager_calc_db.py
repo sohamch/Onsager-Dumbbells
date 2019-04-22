@@ -302,11 +302,11 @@ class dumbbellMediated(VacancyMediated):
         Note - for mixed dumbbells, indexing to the iorlist is the same as indexing to mixedstates, as the latter is
         just the former in the form of SdPair objects, all of which are origin states.
         """
-        # first omega0 and omega2 - indexed to purestates and mixed states
+        # first omega0 and omega2 - indexed to complexStates and mixed states
         # self.jnet2_indexed = self.vkinetic.starset.jnet2_indexed
         # self.omeg2types = self.vkinetic.starset.jnet2_types
         self.jtags2 = self.vkinetic.starset.jtags2
-        # Next - omega1 - indexed to purestates
+        # Next - omega1 - indexed to complexStates
         (self.jnet_1, self.jnet1_indexed, self.jtags1), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
 
         # next, omega3 and omega_4, indexed to pure and mixed states
@@ -322,7 +322,7 @@ class dumbbellMediated(VacancyMediated):
         self.thermo.generate(Nthermo)
         self.kinetic.generate(Nthermo + 1)
         # self.Nmixedstates = len(self.kinetic.mixedstates)
-        # self.Npurestates = len(self.kinetic.purestates)
+        # self.NcomplexStates = len(self.kinetic.complexStates)
         self.vkinetic.generate(self.kinetic)  # we generate the vector star out of the kinetic shell
         # Now generate the pure and mixed dumbbell Green functions expnsions - internalized within vkinetic.
         # (self.GFexpansion_pure,self.GFstarset_pure,self.GFPureStarInd), (self.GFexpansion_mixed,self.GFstarset_mixed,self.GFMixedStarInd)\
@@ -360,8 +360,8 @@ class dumbbellMediated(VacancyMediated):
         # get the biasBare and bias2 expansions First check if non-local biases should be zero anyway (as is the case
         # with highly symmetric lattice - in that case vecpos_bare should be zero)
         if len(self.vkinetic.vecpos_bare) == 0:
-            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.purestates), 3))
-            self.eta00_solute = np.zeros((len(self.vkinetic.starset.purestates), 3))
+            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), 3))
+            self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), 3))
         # otherwise, we need to build the bare bias expansion
         else:
             # First we build up for just the bare starset
@@ -369,6 +369,7 @@ class dumbbellMediated(VacancyMediated):
             self.NlsolventBias_bare = np.zeros((len(self.vkinetic.starset.bareStates), 3))
             bias0SolventTotNonLoc = np.dot(self.biasBareExpansion,
                                            np.array([rate0list[i][0] for i in range(len(self.jnet0))]))
+
             for st in self.vkinetic.starset.bareStates:
                 indlist = self.vkinetic.stateToVecStar_bare[st]
                 if len(indlist) != 0:
@@ -379,7 +380,7 @@ class dumbbellMediated(VacancyMediated):
             # Next build up W0_ij
             omega0_nonloc = np.zeros((len(self.vkinetic.starset.bareStates), len(self.vkinetic.starset.bareStates)))
             # use the indexed omega2 to fill this up - need omega2 indexed to mixed subspace of starset
-            for rate0, jlist in zip(rate0list, self.vkinetic.starset.jumpnetwork_omega0_indexed):
+            for rate0, jlist in zip(rate0list, self.jnet0_indexed):
                 for (i, j), dx in jlist:
                     omega0_nonloc[i, j] += rate0[0]
                     omega0_nonloc[i, i] -= rate0[0]
@@ -390,12 +391,12 @@ class dumbbellMediated(VacancyMediated):
             self.eta00_solute_bare = np.zeros_like(self.eta00_solvent_bare)
 
             # Now match the non-local biases for complex states to the pure states
-            self.eta00_solute = np.zeros((len(self.vkinetic.starset.purestates), 3))
-            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.purestates), 3))
-            self.NlsolventBias0 = np.zeros((len(self.vkinetic.starset.purestates), 3))
+            self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), 3))
+            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), 3))
+            self.NlsolventBias0 = np.zeros((len(self.vkinetic.starset.complexStates), 3))
 
-            for i in range(len(self.vkinetic.starset.purestates)):
-                db = self.vkinetic.starset.purestates[i].db
+            for i in range(len(self.vkinetic.starset.complexStates)):
+                db = self.vkinetic.starset.complexStates[i].db
                 db = db - db.R
                 for j in range(len(self.vkinetic.starset.bareStates)):
                     if db == self.vkinetic.starset.bareStates[j]:
@@ -455,16 +456,16 @@ class dumbbellMediated(VacancyMediated):
 
         # noinspection PyAttributeOutsideInit
         self.eta0total_solute = np.zeros(
-            (len(self.vkinetic.starset.purestates) + len(self.vkinetic.starset.mixedstates), 3))
+            (len(self.vkinetic.starset.complexStates) + len(self.vkinetic.starset.mixedstates), 3))
         # noinspection PyAttributeOutsideInit
         self.eta0total_solvent = np.zeros(
-            (len(self.vkinetic.starset.purestates) + len(self.vkinetic.starset.mixedstates), 3))
+            (len(self.vkinetic.starset.complexStates) + len(self.vkinetic.starset.mixedstates), 3))
 
-        self.eta0total_solute[:len(self.vkinetic.starset.purestates), :] = self.eta00_solute.copy()
-        self.eta0total_solute[len(self.vkinetic.starset.purestates):, :] = self.eta02_solute.copy()
+        self.eta0total_solute[:len(self.vkinetic.starset.complexStates), :] = self.eta00_solute.copy()
+        self.eta0total_solute[len(self.vkinetic.starset.complexStates):, :] = self.eta02_solute.copy()
 
-        self.eta0total_solvent[:len(self.vkinetic.starset.purestates), :] = self.eta00_solvent.copy()
-        self.eta0total_solvent[len(self.vkinetic.starset.purestates):, :] = self.eta02_solvent.copy()
+        self.eta0total_solvent[:len(self.vkinetic.starset.complexStates), :] = self.eta00_solvent.copy()
+        self.eta0total_solvent[len(self.vkinetic.starset.complexStates):, :] = self.eta02_solvent.copy()
 
         # create updated bias expansions
         # to get warmed up, let's do it for bias1expansion
@@ -475,9 +476,9 @@ class dumbbellMediated(VacancyMediated):
         self.delbias4expansion_solute = np.zeros_like(self.biases[4][0])
         self.delbias4expansion_solvent = np.zeros_like(self.biases[4][0])
         for i in range(self.vkinetic.Nvstars_pure):
-            # get the representative state(its index in purestates) and vector
+            # get the representative state(its index in complexStates) and vector
             v0 = self.vkinetic.vecvec[i][0]
-            st0 = self.vkinetic.starset.pureindexdict[self.vkinetic.vecpos[i][0]][
+            st0 = self.vkinetic.starset.complexIndexdict[self.vkinetic.vecpos[i][0]][
                 0]  # Index of the state in the flat list
             # Form the projection of the eta vectors on v0
             eta_proj_solute = np.dot(self.eta0total_solute, v0)
@@ -570,7 +571,7 @@ class dumbbellMediated(VacancyMediated):
         jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4 =\
         self.jnet_1, self.om1types, self.jnet2, self.symjumplist_omega3, self.symjumplist_omega4
 
-        Ncomp = len(self.vkinetic.starset.purestates)
+        Ncomp = len(self.vkinetic.starset.complexStates)
 
         D0expansion_aa = np.zeros((3, 3, len(self.jnet0)))
         D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
@@ -742,8 +743,8 @@ class dumbbellMediated(VacancyMediated):
                 continue
 
             # get the crystal stars of the representative jumps
-            crStar1 = self.vkinetic.starset.pureindexdict[st1][1]
-            crStar2 = self.vkinetic.starset.pureindexdict[st2][1]
+            crStar1 = self.vkinetic.starset.complexIndexdict[st1][1]
+            crStar2 = self.vkinetic.starset.complexIndexdict[st2][1]
 
             init2TS = np.exp(-bFT1[jt] + bFSdb[crStar1])
             fin2TS = np.exp(-bFT1[jt] + bFSdb[crStar2])
@@ -768,7 +769,7 @@ class dumbbellMediated(VacancyMediated):
             st2 = jlist[0].state2 - jlist[0].state2.R_s
 
             # get the crystal stars
-            crStar1 = self.vkinetic.starset.pureindexdict[st1][1]
+            crStar1 = self.vkinetic.starset.complexIndexdict[st1][1]
             crStar2 = self.vkinetic.starset.mixedindexdict[st2][1] - self.vkinetic.starset.mixedstartindex
 
             init2TS = np.exp(-bFT4[jt] + bFSdb[crStar1])  # complex (bFSdb) to transition state
@@ -924,10 +925,10 @@ class dumbbellMediated(VacancyMediated):
         # First, we have to generate the probability arrays and multiply them with the ratelists. This will
         # Give the probability-square-root multiplied rates in the uncorrelated terms.
 
-        probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state1][1]])
+        probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state1][1]])
                           for jlist in self.jnet_1])
 
-        probFSsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+        probFSsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
                           for jlist in self.jnet_1])
 
         probISsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1]]])
@@ -942,10 +943,10 @@ class dumbbellMediated(VacancyMediated):
 
         probISsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1-jlist[0].state1.R_s][1]])
                                    for jlist in self.symjumplist_omega3])
-        probFSsqrt_om3 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+        probFSsqrt_om3 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
                                    for jlist in self.symjumplist_omega3])
 
-        probISsqrt_om4 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.pureindexdict[jlist[0].state1 - jlist[0].state1.R_s][1]])
+        probISsqrt_om4 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state1 - jlist[0].state1.R_s][1]])
                                    for jlist in self.symjumplist_omega4])
         probFSsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2 - jlist[0].state2.R_s][1]])
                                    for jlist in self.symjumplist_omega4])
