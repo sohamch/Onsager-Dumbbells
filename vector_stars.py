@@ -217,9 +217,8 @@ class vectorStars(VectorStarSet):
                 except:
                     continue
                 # Bring the initial dumbbell to the origin unit cell
-                s = connector(s.state1 - s.state1.R, s.state2 - s.state1.R)
-                if not s in connectset:
-                    connectset.add(s)
+                s.shift()
+                connectset.add(s)
 
         # Now group the connections
         GFstarset_pure=[]
@@ -233,10 +232,12 @@ class vectorStars(VectorStarSet):
                 # Bring the dumbbell of the initial state to the origin
                 snew.shift()
 
-                if snew not in connectset:
-                    raise TypeError("connector list is not closed under symmetry operations for the complex starset.")
                 if snew in GFPureStarInd:
                     continue
+
+                if snew not in connectset:
+                    raise TypeError("connector list is not closed under symmetry operations for the complex starset.{}"
+                                    .format(snew))
 
                 dx = disp(self.starset.pdbcontainer, snew.state1, snew.state2)
                 ind1 = self.starset.pdbcontainer.db2ind(snew.state1)
@@ -330,8 +331,8 @@ class vectorStars(VectorStarSet):
         for jlist in self.starset.jnet2:
             for jmp in jlist:
 
-                ds = connector(jmp.state1.db, jmp.state2.db)
-                ds.shift()
+                ds = connector(jmp.state1.db - jmp.state1.db.R, jmp.state2.db - jmp.state1.db.R)
+                # ds.shift()
 
                 # Now get the vector stars for the states
                 si = jmp.state1 - jmp.state1.R_s
@@ -344,9 +345,9 @@ class vectorStars(VectorStarSet):
                     raise ArithmeticError(
                         "mixed GF starset not big enough to accomodate state pair {}".format((si, sj)))
 
-                for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0] - self.Nvstars_pure][tup[1]])
+                for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
                               for tup in viList]:
-                    for j, vj in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0] - self.Nvstars_pure][tup[1]])
+                    for j, vj in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
                                   for tup in viList]:
                         GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
 
@@ -355,7 +356,7 @@ class vectorStars(VectorStarSet):
             ds = connector(st.db, st.db)
             vList = self.stateToVecStar_mixed[st]
             k = GFMixedStarInd[ds]
-            for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0] - self.Nvstars_pure][tup[1]])
+            for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
                           for tup in vList]:
                 GFexpansion_mixed[i, i, k] += np.dot(vi, vj)
 
@@ -493,7 +494,7 @@ class vectorStars(VectorStarSet):
                         try:
                             dx = -disp4(self.starset.pdbcontainer, self.starset.mdbcontainer, j.state2, j.state1)
                         except IndexError:
-                            print(len(self.starset.pdbcontainer), len(self.starset.mdbcontainer))
+                            print(len(self.starset.pdbcontainer.iorlist), len(self.starset.mdbcontainer.iorlist))
                             print(len(j.state2.db.iorind), len(j.state1.db.iorind))
                             raise IndexError("list index out of range")
                         dx_solute = -self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
