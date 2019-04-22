@@ -56,8 +56,11 @@ class test_StarSet(unittest.TestCase):
                 self.assertTrue(stnew in crys_stars.stateset)
 
         # Check that the stars are properly generated
+        count_origin_states = 0
         for star in crys_stars.stars[:crys_stars.mixedstartindex]:
             repr = star[0]
+            if repr.is_zero(crys_stars.pdbcontainer):
+                count_origin_states += 1
             considered_already = set([])
             count = 0
             for gdumb in crys_stars.pdbcontainer.G:
@@ -67,6 +70,9 @@ class test_StarSet(unittest.TestCase):
                     count += 1
                     considered_already.add(stnew)
             self.assertEqual(count, len(star))
+
+        # Check that we have origin states
+        self.assertTrue(count_origin_states > 0)
 
     def test_indexing_stars(self):
         famp0 = [np.array([1., 0., 0.]) * 0.145]
@@ -229,6 +235,7 @@ class test_StarSet(unittest.TestCase):
                 for j3, j4 in zip(jl3, jl4):
                     self.assertEqual(j3.c1, -1)
                     self.assertEqual(j4.c2, -1)
+
             ##TEST omega3 and omega4
             # test that the tag lists have proper length
             self.assertEqual(len(omega4tag), len(omega4_network))
