@@ -449,8 +449,15 @@ class StarSet(object):
                                     if gval == g:
                                         gdumb_mixed = mgdumb
 
-                                state1new, flip1 = j.state1.gop(self.pdbcontainer, gdumb_pure)
+                                # Assert consistency
+                                if not (np.allclose(gdumb_pure.cartrot, gdumb_mixed.cartrot) and
+                                        np.allclose(gdumb_pure.cartrot, gdumb_mixed.cartrot) and
+                                        np.allclose(gdumb_pure.trans, gdumb_mixed.trans)):
+                                    raise TypeError("Inconsistent group operations")
+
+                                state1new, flip1 = j.state1.gop(self.pdbcontainer, gdumb_pure, complex=True)
                                 state2new = j.state2.gop(self.mdbcontainer, gdumb_mixed, complex=False)
+
                                 if not (np.allclose(state1new.R_s, state2new.R_s)):
                                     raise ValueError("Same group op but different resultant solute sites")
                                 state1new -= state1new.R_s
