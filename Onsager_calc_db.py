@@ -359,13 +359,13 @@ class dumbbellMediated(VacancyMediated):
 
         # get the biasBare and bias2 expansions First check if non-local biases should be zero anyway (as is the case
         # with highly symmetric lattice - in that case vecpos_bare should be zero)
+        self.biasBareExpansion = self.biases[-1]
         if len(self.vkinetic.vecpos_bare) == 0:
             self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), 3))
             self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), 3))
         # otherwise, we need to build the bare bias expansion
         else:
             # First we build up for just the bare starset
-            self.biasBareExpansion = self.biases[-1]
             self.NlsolventBias_bare = np.zeros((len(self.vkinetic.starset.bareStates), 3))
             bias0SolventTotNonLoc = np.dot(self.biasBareExpansion,
                                            np.array([rate0list[i][0] for i in range(len(self.jnet0))]))
