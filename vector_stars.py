@@ -445,11 +445,11 @@ class vectorStars(VectorStarSet):
                         # so to find the total bias along v_i, we sum over k.
             # Next, omega_4: complex -> mixed
             for k, jumplist in zip(itertools.count(), jumpnetwork_omega34):
-                for j in jumplist:
+                for j in jumplist[::2]:  # Start from the first element, skip every other
                     IS = j.state1
-                    if IS.is_zero(self.starset.mdbcontainer):
+                    if not j.state2.is_zero(self.starset.mdbcontainer):
                         # check if initial state is mixed dumbbell -> then skip - it's omega_3
-                        continue
+                        raise TypeError ("final state not origin in mixed dbcontainer for omega4")
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if purestar[0] == IS:
                         dx = disp4(self.starset.pdbcontainer, self.starset.mdbcontainer, j.state1, j.state2)
@@ -484,18 +484,17 @@ class vectorStars(VectorStarSet):
                         bias2expansion_solvent[i, k] += geom_bias_solvent
             # Next, omega_3: mixed -> complex
             for k, jumplist in zip(itertools.count(), jumpnetwork_omega34):
-                for j in jumplist:
-                    IS = j.state1
-                    if not IS.is_zero(self.starset.mdbcontainer):
+                for j in jumplist[1::2]:  # start from the second element, skip every other
+                    if not j.state1.is_zero(self.starset.mdbcontainer):
                         # check if initial state is not a mixed state -> skip if not mixed
-                        continue
+                        raise TypeError("initial state not origin in mdbcontainer")
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
-                    if mixedstar[0] == IS:
+                    if mixedstar[0] == j.state1:
                         try:
                             dx = -disp4(self.starset.pdbcontainer, self.starset.mdbcontainer, j.state2, j.state1)
                         except IndexError:
                             print(len(self.starset.pdbcontainer.iorlist), len(self.starset.mdbcontainer.iorlist))
-                            print(len(j.state2.db.iorind), len(j.state1.db.iorind))
+                            print(j.state2.db.iorind, j.state1.db.iorind)
                             raise IndexError("list index out of range")
                         dx_solute = -self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
                         dx_solvent = dx + self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
