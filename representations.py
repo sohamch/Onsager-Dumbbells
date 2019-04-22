@@ -102,7 +102,7 @@ class SdPair(namedtuple('SdPair', "i_s R_s db")):
         """
         To check if solute and dumbbell are at the same site
         """
-        return self.i_s == container.iorlist[self.db.iorind][0] and np.allclose(self.R_s, self.db.R)
+        return self.i_s == container.iorlist[self.db.iorind][0] and np.allclose(self.R_s, self.db.R, atol=1e-8)
 
     def addjump(self, j, mixed=False):
 
