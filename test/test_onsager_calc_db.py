@@ -170,8 +170,14 @@ class test_dumbbell_mediated(unittest.TestCase):
                     self.assertEqual(jmp.state1,self.onsagercalculator.vkinetic.starset.mixedstates[IS])
                     self.assertEqual(jmp.state2-jmp.state2.R_s,self.onsagercalculator.vkinetic.starset.mixedstates[FS],msg="\n{}\n{}".format(jmp.state2,self.onsagercalculator.vkinetic.starset.mixedstates[FS]))
                     if i==IS:
-                        dx_solute = dx + jmp.state2.db.o/2. - jmp.state1.db.o/2.
-                        dx_solvent = dx - jmp.state2.db.o/2. + jmp.state1.db.o/2.
+                        dx_solute =\
+                            dx +\
+                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state2.db.iorind][1]/2. -\
+                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state1.db.iorind][1]/2.
+                        dx_solvent = \
+                            dx -\
+                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state2.db.iorind][1]/2. +\
+                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state1.db.iorind][1]/2.
                         bias_true_solute += rate2list[jt][0]*dx_solute
                         bias_true_solvent += rate2list[jt][0]*dx_solvent
             # print("testing lines 202,203")
@@ -191,8 +197,14 @@ class test_dumbbell_mediated(unittest.TestCase):
             for jt,jindlist,jlist in zip(itertools.count(),self.onsagercalculator.jnet2_indexed,self.onsagercalculator.jnet2):
                 for ((IS,FS),dx),jmp in zip(jindlist,jlist):
                     if i==IS:
-                        dx_solute = dx + jmp.state2.db.o/2. - jmp.state1.db.o/2.
-                        dx_solvent = dx - jmp.state2.db.o/2. + jmp.state1.db.o/2.
+                        dx_solute =\
+                            dx +\
+                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state2.db.iorind][1]/2. -\
+                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state1.db.iorind][1]/2.
+                        dx_solvent =\
+                            dx -\
+                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state2.db.iorind][1]/2. +\
+                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state1.db.iorind][1]/2.
                         self.assertTrue(self.onsagercalculator.vkinetic.starset.mixedstates[IS]==jmp.state1)
                         self.assertTrue(self.onsagercalculator.vkinetic.starset.mixedstates[FS]==jmp.state2-jmp.state2.R_s)
                         bias_test_solute += rate2list[jt][0]*(self.onsagercalculator.eta02_solute[FS,:]-self.onsagercalculator.eta02_solute[IS,:])
