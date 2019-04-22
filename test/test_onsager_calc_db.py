@@ -17,7 +17,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         # famp0 = [o.copy()]
         # family = [famp0]
 
-        latt = np.array([[0., 0.1, 0.5], [0.3, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
+        latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
         self.DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
         # keep it simple with [1.,0.,0.] type orientations for now
         o = np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126
@@ -239,22 +239,22 @@ class test_dumbbell_mediated(unittest.TestCase):
         W3list = np.random.rand(len(self.onsagercalculator.symjumplist_omega3))
         W4list = np.random.rand(len(self.onsagercalculator.symjumplist_omega4))
 
-        # First, we verify that the non-local bias out of all the bare dumbbell states dissappear
-        bias0_solvent_nonloc = np.dot(self.onsagercalculator.biasBareExpansion,W0list)
-        # solute_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
-        solvent_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
-        for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
-            indlist = self.onsagercalculator.vkinetic.stateToVecStar_bare[self.onsagercalculator.vkinetic.starset.bareStates[i]]
-            # We have indlist as (IndOfStar, IndOfState)
-            solvent_bias_Nl[i,:] = sum([bias0_solvent_nonloc[tup[0]]*self.onsagercalculator.vkinetic.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
+        # First, we verify that the non-local bias out of all the bare dumbbell states disappear
+        if not len(self.onsagercalculator.vkinetic.vecpos_bare) == 0:
+            bias0_solvent_nonloc = np.dot(self.onsagercalculator.biasBareExpansion,W0list)
+            # solute_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
+            solvent_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
+            for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
+                indlist = self.onsagercalculator.vkinetic.stateToVecStar_bare[self.onsagercalculator.vkinetic.starset.bareStates[i]]
+                # We have indlist as (IndOfStar, IndOfState)
+                solvent_bias_Nl[i,:] = sum([bias0_solvent_nonloc[tup[0]]*self.onsagercalculator.vkinetic.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
+            #Next, update with eta vectors manually
+            for jt,jindlist in enumerate(self.onsagercalculator.jnet0_indexed):
+                for (i,j),dx in jindlist:
+                    solvent_bias_Nl[i,:] += rate0list[jt][0]*(self.onsagercalculator.eta00_solvent_bare[i] - self.onsagercalculator.eta00_solvent_bare[j])
 
-        #Next, update with eta vectors manually
-        for jt,jindlist in enumerate(self.onsagercalculator.jnet0_indexed):
-            for (i,j),dx in jindlist:
-                solvent_bias_Nl[i,:] += rate0list[jt][0]*(self.onsagercalculator.eta00_solvent_bare[i] - self.onsagercalculator.eta00_solvent_bare[j])
-
-        self.assertTrue(np.allclose(solvent_bias_Nl,np.zeros_like(solvent_bias_Nl)))
-        # self.assertTrue(np.allclose(solute_bias_Nl,np.zeros_like(solute_bias_Nl)))
+            self.assertTrue(np.allclose(solvent_bias_Nl,np.zeros_like(solvent_bias_Nl)))
+            # self.assertTrue(np.allclose(solute_bias_Nl,np.zeros_like(solute_bias_Nl)))
 
         #Now, do check eta vectors for omega1
         bias1solute,bias1solvent = self.biases[1]
