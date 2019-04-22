@@ -159,7 +159,7 @@ class SdPair(namedtuple('SdPair', "i_s R_s db")):
         if self.i_s != other.i_s or not np.allclose(self.R_s, other.R_s):
             raise ArithmeticError("can only connect states with same solute location.")
 
-        return connector(self.db, other.db)
+        return connector(self.db - self.db.R, other.db - self.db.R)
 
 
 # Jump obects are rather simple, contain just initial and final orientations
