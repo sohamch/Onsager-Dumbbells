@@ -482,6 +482,7 @@ class vectorStars(VectorStarSet):
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent) * len(mixedstar)
                         bias2expansion_solute[i, k] += geom_bias_solute
                         bias2expansion_solvent[i, k] += geom_bias_solvent
+
             # Next, omega_3: mixed -> complex
             for k, jumplist in zip(itertools.count(), jumpnetwork_omega34):
                 for j in jumplist[1::2]:  # start from the second element, skip every other
@@ -524,65 +525,66 @@ class vectorStars(VectorStarSet):
         rate1expansion = np.zeros((self.Nvstars_pure, self.Nvstars_pure, len(jumpnetwork_omega1)))
         rate0escape = np.zeros((self.Nvstars_pure, len(self.starset.jumpindices)))
         rate1escape = np.zeros((self.Nvstars_pure, len(jumpnetwork_omega1)))
+
         # First, we do the rate1 and rate0 expansions
         for k, jumplist, jt in zip(itertools.count(), jumpnetwork_omega1, jumptype):
             for jmp in jumplist:
-                for i in range(self.Nvstars_pure):  # The first inner sum
-                    for chi_i, vi in zip(self.vecpos[i], self.vecvec[i]):
-                        if chi_i == jmp.state1:  # This is the delta functions of chi_0
-                            rate0escape[i, jt] -= np.dot(vi, vi)
-                            rate1escape[i, k] -= np.dot(vi, vi)
-                            for j in range(self.Nvstars_pure):  # The second inner sum
-                                for chi_j, vj in zip(self.vecpos[j], self.vecvec[j]):
-                                    if chi_j == jmp.state2:  # this is the delta function of chi_1
-                                        rate1expansion[i, j, k] += np.dot(vi, vj)
-                                        rate0expansion[i, j, jt] += np.dot(vi, vj)
+                # Get the vector star indices for the initial and final states of the jumps
+                indlist1 = self.stateToVecStar_pure[jmp.state1]
+                indlist2 = self.stateToVecStar_pure[jmp.state2]
+                # indlists contain tuples of the form (IndOfVstar, IndInVstar)
+                for tup1 in indlist1:
+                    # print(tup1)
+                    rate0escape[tup1[0], jt] -= np.dot(self.vecvec[tup1[0]][tup1[1]], self.vecvec[tup1[0]][tup1[1]])
+                    rate1escape[tup1[0], k] -= np.dot(self.vecvec[tup1[0]][tup1[1]], self.vecvec[tup1[0]][tup1[1]])
+                    for tup2 in indlist2:
+                        rate0expansion[tup1[0], tup2[0], jt] += np.dot(self.vecvec[tup1[0]][tup1[1]],
+                                                                       self.vecvec[tup2[0]][tup2[1]])
 
-        # The initial states are complexes, the final states are mixed and there are as many symmetric jumps as in
-        # jumpnetwork_omega34
+                        rate1expansion[tup1[0], tup2[0], k] += np.dot(self.vecvec[tup1[0]][tup1[1]],
+                                                                      self.vecvec[tup2[0]][tup2[1]])
+
+        # Next, we expand the omega3 an omega4 rates
         rate4expansion = np.zeros((self.Nvstars_pure, self.Nvstars - self.Nvstars_pure, len(jumpnetwork_omega34)))
         rate3expansion = np.zeros((self.Nvstars - self.Nvstars_pure, self.Nvstars_pure, len(jumpnetwork_omega34)))
-        # The initial states are mixed, the final states are complex except origin states and there are as many
-        # symmetric jumps as in jumpnetwork_omega34
         rate3escape = np.zeros((self.Nvstars - self.Nvstars_pure, len(jumpnetwork_omega34)))
         rate4escape = np.zeros((self.Nvstars_pure, len(jumpnetwork_omega34)))
 
-        # We implement the matrix for omega4 and note that omega3 is the negative jump of omega4
-        # This is because the order of the sum over stars in the rate expansion does not matter (see Sept. 30 slides).
         for k, jumplist in zip(itertools.count(), jumpnetwork_omega34):
-            for jmp in jumplist:
-                if jmp.state1.is_zero(self.starset.mdbcontainer):  # the initial state must be a complex
-                    # the negative of this jump is an omega_3 jump anyway
-                    continue
-                for i in range(self.Nvstars_pure):  # iterate over complex states - the first inner sum
-                    for chi_i, vi in zip(self.vecpos[i], self.vecvec[i]):
-                        # Go through the initial pure states
-                        if chi_i == jmp.state1:
-                            rate4escape[i, k] -= np.dot(vi, vi)
-                            for j in range(self.Nvstars_pure,
-                                           self.Nvstars):  # iterate over mixed states - the second inner sum
-                                for chi_j, vj in zip(self.vecpos[j], self.vecvec[j]):
-                                    # Go through the final complex states
-                                    if chi_j == jmp.state2:
-                                        rate3escape[j - self.Nvstars_pure, k] -= np.dot(vj, vj)
-                                        rate4expansion[i, j - self.Nvstars_pure, k] += np.dot(vi, vj)
-                                        rate3expansion[j - self.Nvstars_pure, i, k] += np.dot(vj, vi)
-                                        # The jump type remains the same because they have the same transition state
+            for jmp in jumplist[::2]:  # iterate only through the omega4 jumps, the negatives are omega3
 
+                indlist1 = self.stateToVecStar_pure[jmp.state1]  # The initial state is a comples in omega4
+                indlist2 = self.stateToVecStar_mixed[jmp.state2]  # The final state is a mixed dumbbell in omega4
+
+                for tup1 in indlist1:
+                    rate4escape[tup1[0], k] -= np.dot(self.vecvec[tup1[0]][tup1[1]], self.vecvec[tup1[0]][tup1[1]])
+                    for tup2 in indlist2:
+                        rate3escape[tup2[0] - self.Nvstars_pure, k] -= np.dot(self.vecvec[tup2[0]][tup2[1]],
+                                                                           self.vecvec[tup2[0]][tup2[1]])
+
+                        rate4expansion[tup1[0], tup2[0] - self.Nvstars_pure, k] += np.dot(self.vecvec[tup1[0]][tup1[1]],
+                                                                                          self.vecvec[tup2[0]][tup2[1]])
+
+                        rate3expansion[tup2[0] - self.Nvstars_pure, tup1[0], k] += np.dot(self.vecvec[tup1[0]][tup1[1]],
+                                                                                          self.vecvec[tup2[0]][tup2[1]])
+
+        # Next, we expand omega2
         rate2expansion = np.zeros((self.Nvstars - self.Nvstars_pure, self.Nvstars - self.Nvstars_pure,
                                    len(self.starset.jnet2)))
         rate2escape = np.zeros((self.Nvstars - self.Nvstars_pure, len(self.starset.jnet2)))
+
         for k, jumplist in zip(itertools.count(), self.starset.jnet2):
             for jmp in jumplist:
-                for i in range(self.Nvstars_pure, self.Nvstars):
-                    for chi_i, vi in zip(self.vecpos[i], self.vecvec[i]):
-                        if chi_i == jmp.state1:
-                            rate2escape[i - self.Nvstars_pure, k] -= np.dot(vi, vi)
-                            for j in range(self.Nvstars_pure, self.Nvstars):
-                                for chi_j, vj in zip(self.vecpos[j], self.vecvec[j]):
-                                    if chi_j == jmp.state2 - jmp.state2.R_s:
-                                        rate2expansion[i - self.Nvstars_pure, j - self.Nvstars_pure, k] +=\
-                                            np.dot(vi, vj)
+
+                indlist1 = self.stateToVecStar_mixed[jmp.state1]
+                indlist2 = self.stateToVecStar_mixed[jmp.state2 - jmp.state2.R_s]
+
+                for tup1 in indlist1:
+                    rate2escape[tup1[0] - self.Nvstars_pure, k] -= np.dot(self.vecvec[tup1[0]][tup1[1]],
+                                                                          self.vecvec[tup1[0]][tup1[1]])
+                    for tup2 in indlist2:
+                        rate2expansion[tup1[0] - self.Nvstars_pure, tup2[0] - self.Nvstars_pure, k] +=\
+                            np.dot(self.vecvec[tup1[0]][tup1[1]], self.vecvec[tup2[0]][tup2[1]])
 
         return (zeroclean(rate0expansion), zeroclean(rate0escape)),\
                (zeroclean(rate1expansion), zeroclean(rate1escape)),\
