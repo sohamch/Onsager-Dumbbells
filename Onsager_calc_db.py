@@ -893,7 +893,7 @@ class dumbbellMediated(VacancyMediated):
         omegas = ((omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape))
 
         # Any better way to do this?
-        GF_total, del_om = self.makeGF(bFdb0, bFdb2, bFT0, bFT2, omegas)
+        GF_total, GF20, del_om = self.makeGF(bFdb0, bFdb2, bFT0, bFT2, omegas)
 
         # Once the GF is built, make the correlated part of the transport coefficient
         # First we make the projection of the bias vector
