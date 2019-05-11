@@ -251,16 +251,11 @@ class vectorStars(VectorStarSet):
         GFstarset_mixed = []
         GFMixedStarInd = {}
         connectset_mixed = set([])
-        for jlist in self.starset.jnet2:
-            for jmp in jlist:
-                db1 = jmp.state1.db
-                db2 = jmp.state2.db
-                s = connector(db1 - db1.R, db2 - db1.R)
+        # For the mixed dumbbells, we need only the states in the initial unit cell.
+        for state1 in self.starset.mixedstates:
+            for state2 in self.starset.mixedstates:
+                s = connector(state1.db, state2.db)
                 connectset_mixed.add(s)
-        # Now add in the diagonal elements.
-        for state in self.starset.mixedstates:
-            s = connector(state.db, state.db)
-            connectset_mixed.add(s)
 
         # Now, group them symmetrically
         for s in connectset_mixed:
@@ -328,37 +323,35 @@ class vectorStars(VectorStarSet):
         # In this case too, we need to build up from the jump network, and include the origin states later on.
 
         # First, we build up the terms from the jump network
-        for jlist in self.starset.jnet2:
-            for jmp in jlist:
+        for i in range(self.Nvstars_pure, self.Nvstars):
+            for si, vi in zip(self.vecpos[i], self.vecvec[i]):
+                for j in range(self.Nvstars_pure, self.Nvstars):
+                    for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
 
-                ds = connector(jmp.state1.db - jmp.state1.db.R, jmp.state2.db - jmp.state1.db.R)
-                # ds.shift()
+                        ds = connector(si.db, sj.db)
+                        ds.shift()  # No need but still.
+                        # Now get the vector stars for the states
+                        viList = self.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
+                        vjList = self.stateToVecStar_mixed[sj]  # (IndOfStar, IndOfState) format
+                        k = GFMixedStarInd[ds]
+                        if k is None:
+                            raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}"
+                                                  .format((si, sj)))
 
-                # Now get the vector stars for the states
-                si = jmp.state1 - jmp.state1.R_s
-                sj = jmp.state2 - jmp.state2.R_s
+                        for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
+                                      for tup in viList]:
+                            for j, vj in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
+                                          for tup in vjList]:
+                                GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
 
-                viList = self.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
-                vjList = self.stateToVecStar_mixed[sj]  # (IndOfStar, IndOfState) format
-                k = GFMixedStarInd[ds]
-                if k is None:
-                    raise ArithmeticError(
-                        "mixed GF starset not big enough to accomodate state pair {}".format((si, sj)))
-
-                for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
-                              for tup in viList]:
-                    for j, vj in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
-                                  for tup in viList]:
-                        GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
-
-        # Now, add in the diagonals
-        for st in self.starset.mixedstates:
-            ds = connector(st.db, st.db)
-            vList = self.stateToVecStar_mixed[st]
-            k = GFMixedStarInd[ds]
-            for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
-                          for tup in vList]:
-                GFexpansion_mixed[i, i, k] += np.dot(vi, vj)
+        # # Now, add in the diagonals
+        # for st in self.starset.mixedstates:
+        #     ds = connector(st.db, st.db)
+        #     vList = self.stateToVecStar_mixed[st]
+        #     k = GFMixedStarInd[ds]
+        #     for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
+        #                   for tup in vList]:
+        #         GFexpansion_mixed[i, i, k] += np.dot(vi, vj)
 
         # symmetrize
         for i in range(Nvstars_pure):
