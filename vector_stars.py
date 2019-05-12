@@ -344,15 +344,6 @@ class vectorStars(VectorStarSet):
                                           for tup in vjList]:
                                 GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
 
-        # # Now, add in the diagonals
-        # for st in self.starset.mixedstates:
-        #     ds = connector(st.db, st.db)
-        #     vList = self.stateToVecStar_mixed[st]
-        #     k = GFMixedStarInd[ds]
-        #     for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
-        #                   for tup in vList]:
-        #         GFexpansion_mixed[i, i, k] += np.dot(vi, vj)
-
         # symmetrize
         for i in range(Nvstars_pure):
             for j in range(0, i):
