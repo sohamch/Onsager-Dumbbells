@@ -118,14 +118,10 @@ class SdPair(namedtuple('SdPair', "i_s R_s db")):
             return self.__class__(self.i_s, self.R_s, db2)
 
         if mixed:
-            if not self.is_zero(container):
-                raise TypeError("Was indicated that the solute-dumbbell pair {} is a mixed dumbbell.".format(self))
             if not self.db.iorind == j.state1.db.iorind:
                 raise ArithmeticError("Incompatible starting dumbbell configurations")
-            # see if solute atom must move
-            db2 = dumbbell(j.state2.iorind, self.db.R + j.state2.db.R - j.state1.db.R)
-            soluteshift = j.state2.R_s - j.state1.R_s
-            return SdPair(j.state2.i_s, soluteshift + self.R_s, db2)
+            db2 = dumbbell(j.state2.db.iorind, self.db.R + j.state2.db.R - j.state1.db.R)
+            return SdPair(j.state2.i_s, db2.R, db2)
 
     def __add__(self, other):
 
