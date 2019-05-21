@@ -569,7 +569,8 @@ class dumbbellMediated(VacancyMediated):
         eta0_solute, eta0_solvent = self.eta0total_solute, self.eta0total_solvent
 
         jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4 =\
-        self.jnet_1, self.om1types, self.jnet2, self.symjumplist_omega3, self.symjumplist_omega4
+        self.jnet1_indexed, self.om1types, self.jnet2_indexed, self.symjumplist_omega3_indexed,\
+        self.symjumplist_omega4_indexed
 
         Ncomp = len(self.vkinetic.starset.complexStates)
 
@@ -593,14 +594,15 @@ class dumbbellMediated(VacancyMediated):
         D4expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega4)))
         D4expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega4)))
 
-        # Need versions for solute and solvent
+        # Need versions for solute and solvent - solute dusplacements are zero anyway
         for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork_omega1):
             d0 = np.sum(
                 0.5 * np.outer(dx + eta0_solvent[i] - eta0_solvent[j], dx + eta0_solvent[i] - eta0_solvent[j]) for
                 (i, j), dx in jumplist)
-            D0expansion_solvent[:, :, jt] += d0
-            D1expansion_solvent[:, :, k] += d0
+            D0expansion_bb[:, :, jt] += d0
+            D1expansion_bb[:, :, k] += d0
             # For solutes, don't need to do anything for omega1 and omega0 - solute does not move anyway
+            # and their non-local eta corrections are also zero.
 
         for jt, jumplist in enumerate(jumpnetwork_omega2):
             # Build the expansions directly
