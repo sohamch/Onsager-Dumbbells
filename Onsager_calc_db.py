@@ -334,7 +334,7 @@ class dumbbellMediated(VacancyMediated):
 
         # Generate the GF expansions
         (self.GFstarset_pure, self.GFPureStarInd, self.GFexpansion_pure), \
-        (self.GFstarset_mixed, self.GFMixedStarInd, self.GFexpansion_mixed) \
+        (self.GFstarset_mixed, self.GFMixedStarInd, self.GFstarset_mixed_snewlist, self.GFexpansion_mixed) \
             = self.vkinetic.GFexpansion()
 
         # Generate the bias expansions
