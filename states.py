@@ -201,7 +201,7 @@ class dbStates(object):
         """
         crys, chem, iorlist = self.crys, self.chem, self.iorlist
 
-        def getjumps(j, jumpset):
+        def getjumps(j, jumpset, dx):
             "Does the symmetric list construction for an input jump and an existing jumpset"
 
             # If the jump has not already been considered, check if it leads to collisions.
@@ -227,14 +227,27 @@ class dbStates(object):
                 if not np.allclose(db1newneg.R, np.zeros(3), atol=1e-8):
                     raise RuntimeError("Intial state not at origin")
 
-                if not jnew in jumpset:
-                    # add both the jump and it's negative
-                    jlist.append(jnew)
-                    jlist.append(jnewneg)
-                    jindlist.append(((jnew.state1.iorind, jnew.state2.iorind), dx))
-                    jindlist.append(((jnewneg.state1.iorind, jnewneg.state2.iorind), -dx))
-                    jumpset.add(jnew)
-                    jumpset.add(jnewneg)
+                if np.allclose(dx, np.zeros(3)):
+                    # First, make the equivalent rotation jump
+                    jnew_equiv = jump(db1new, db2new, -jnew.c1, -jnew.c2)
+                    # Check if the rotation jump has also been taken into account.
+                    if not jnew in jumpset and not jnew_equiv in jumpset:
+                        jlist.append(jnew)
+                        jlist.append(jnewneg)
+                        jindlist.append(((jnew.state1.iorind, jnew.state2.iorind), dx))
+                        jindlist.append(((jnewneg.state1.iorind, jnewneg.state2.iorind), -dx))
+                        jumpset.add(jnew)
+                        jumpset.add(jnewneg)
+                else:
+                    if not jnew in jumpset:
+                        # add both the jump and it's negative
+                        jlist.append(jnew)
+                        jlist.append(jnewneg)
+                        jindlist.append(((jnew.state1.iorind, jnew.state2.iorind), dx))
+                        jindlist.append(((jnewneg.state1.iorind, jnewneg.state2.iorind), -dx))
+                        jumpset.add(jnew)
+                        jumpset.add(jnewneg)
+
             return jlist, jindlist
 
         nmax = [int(np.round(np.sqrt(cutoff ** 2 / crys.metric[i, i]))) + 1 for i in range(3)]
@@ -262,12 +275,14 @@ class dbStates(object):
                         # are not considered.
                         if np.allclose(np.dot(dx, dx), np.zeros(3), atol=crys.threshold):
                             j = jump(db1, db2, c1, 1)
-                            if j in jumpset:  # no point doing anything else if the jump has already been considered
+                            j_equiv = jump(db1, db2, -c1, -1)
+                            # Also check if the equivalent rotation has been considered.
+                            if j in jumpset or j_equiv in jumpset:
                                 continue
                             if collision_self(self, None, j, solv_solv_cut, solv_solv_cut) or\
                                     collision_others(self, None, j, closestdistance):
                                 continue
-                            jlist, jindlist = getjumps(j, jumpset)
+                            jlist, jindlist = getjumps(j, jumpset, dx)
                             jumplist.append(jlist)
                             jumpindices.append(jindlist)
                             continue
@@ -278,7 +293,7 @@ class dbStates(object):
                             if collision_self(self, None, j, solv_solv_cut, solv_solv_cut) or\
                                     collision_others(self, None, j, closestdistance):
                                 continue
-                            jlist, jindlist = getjumps(j, jumpset)
+                            jlist, jindlist = getjumps(j, jumpset, dx)
                             jumplist.append(jlist)
                             jumpindices.append(jindlist)
         return jumplist, jumpindices
