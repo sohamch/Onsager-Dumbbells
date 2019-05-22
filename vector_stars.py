@@ -230,8 +230,7 @@ class vectorStars(VectorStarSet):
             for gdumb in self.starset.pdbcontainer.G:
                 snew = s.gop(self.starset.pdbcontainer, gdumb, pure=True)
                 # Bring the dumbbell of the initial state to the origin
-                snew.shift()
-
+                # snew = snew.shift() No need for shifting. Automatically done in gop function.
                 if snew in GFPureStarInd:
                     continue
 
@@ -249,6 +248,7 @@ class vectorStars(VectorStarSet):
             GFstarset_pure.append(connectlist)
 
         GFstarset_mixed = []
+        GFstarset_mixed_snewlist = []
         GFMixedStarInd = {}
         connectset_mixed = set([])
         # For the mixed dumbbells, we need only the states in the initial unit cell.
@@ -262,13 +262,17 @@ class vectorStars(VectorStarSet):
             if s in GFMixedStarInd:
                 continue
             connectlist =[]
+            slist = []
             for gdumb in self.starset.mdbcontainer.G:
                 
                 snew = s.gop(self.starset.mdbcontainer, gdumb, pure=False)
-                snew.shift()
-
+                # snew = connector(snew.state1 - snew.state1.R, snew.state2 - snew.state2.R)
+                # snew = snew.shift()
                 if snew not in connectset_mixed:
-                    raise ValueError("the connector list for mixed dumbbells is not closed under symmetry")
+                    # In this case, if a group operation takes a connection's end point outside the origin unit cell,
+                    # we can ignore it, since the problem dictates that both initial and final states in a connection
+                    # lie inside the origin unit cell.
+                    continue
                 if snew in GFMixedStarInd:
                     continue
 
@@ -278,17 +282,18 @@ class vectorStars(VectorStarSet):
                 ind2 = self.starset.mdbcontainer.db2ind(snew.state2)
                 tup = ((ind1, ind2), dx.copy())
                 connectlist.append(tup)
+                slist.append(snew)
                 GFMixedStarInd[snew] = len(GFstarset_mixed)
             GFstarset_mixed.append(connectlist)
+            GFstarset_mixed_snewlist.append(slist)
 
-
-        return GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd
+        return GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd, GFstarset_mixed_snewlist
 
     def GFexpansion(self):
         """
         carries out the expansion of the Green's function in the basis of the vector stars.
         """
-        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.genGFstarset()
+        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd, GFstarset_mixed_snewlist = self.genGFstarset()
 
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
@@ -354,7 +359,7 @@ class vectorStars(VectorStarSet):
                 GFexpansion_mixed[i, j, :] = GFexpansion_mixed[j, i, :]
 
         return (GFstarset_pure, GFPureStarInd, zeroclean(GFexpansion_pure)), (
-            GFstarset_mixed, GFMixedStarInd, zeroclean(GFexpansion_mixed))
+            GFstarset_mixed, GFMixedStarInd, GFstarset_mixed_snewlist, zeroclean(GFexpansion_mixed))
 
     # See group meeting update slides of sept 10th to see how this works.
     def biasexpansion(self, jumpnetwork_omega1, jumpnetwork_omega2, jumptype, jumpnetwork_omega34):
