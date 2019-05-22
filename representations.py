@@ -1,6 +1,4 @@
 import numpy as np
-import numpy.linalg as la
-import onsager.crystal as crystal
 from collections import namedtuple
 
 
@@ -222,6 +220,7 @@ class jump(namedtuple('jump', 'state1 state2 c1 c2')):
             strrep += "Jumping from c = {} to c= {}\n".format(self.c1, self.c2)
 
         return strrep
+
 
 class connector(namedtuple('connector', 'state1 state2')):
     """
