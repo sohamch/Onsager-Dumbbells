@@ -216,8 +216,6 @@ class vectorStars(VectorStarSet):
                     s = st1 ^ st2
                 except:
                     continue
-                # Bring the initial dumbbell to the origin unit cell
-                s.shift()
                 connectset.add(s)
 
         # Now group the connections
@@ -310,11 +308,11 @@ class vectorStars(VectorStarSet):
                         except:
                             continue
                         # Bring the initial dumbbell back to the origin
-                        R_ref = ds.state1.R.copy()
-                        ds = connector(ds.state1 - R_ref, ds.state2 - R_ref)
-                        dx = disp(self.starset.pdbcontainer, ds.state1, ds.state2)
+                        # R_ref = ds.state1.R.copy()
+                        # ds = connector(ds.state1 - R_ref, ds.state2 - R_ref)
+                        # dx = disp(self.starset.pdbcontainer, ds.state1, ds.state2)
                         ind1 = self.starset.pdbcontainer.db2ind(ds.state1)
-                        ind2 = self.starset.pdbcontainer.db2ind(ds.state2 - ds.state2.R)
+                        ind2 = self.starset.pdbcontainer.db2ind(ds.state2)
                         if ind1 == None or ind2 == None:
                             raise KeyError("enpoint subtraction within starset not found in iorlist")
                         # k = getstar(((ind1,ind2),dx),GFstarset_pure)
