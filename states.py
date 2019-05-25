@@ -16,12 +16,9 @@ def disp(dbcontainer, obj1, obj2):
 
     if isinstance(obj1, dumbbell):
         (i1, i2) = (dbcontainer.iorlist[obj1.iorind][0], dbcontainer.iorlist[obj2.iorind][0])
-    else:
-        (i1, i2) = (dbcontainer.iorlist[obj1.db.iorind][0], dbcontainer.iorlist[obj2.db.iorind][0])
-
-    if isinstance(obj1, dumbbell):
         (R1, R2) = (obj1.R, obj2.R)
     else:
+        (i1, i2) = (dbcontainer.iorlist[obj1.db.iorind][0], dbcontainer.iorlist[obj2.db.iorind][0])
         (R1, R2) = (obj1.db.R, obj2.db.R)
 
     return crys.unit2cart(R2, crys.basis[chem][i2]) - crys.unit2cart(R1, crys.basis[chem][i1])
