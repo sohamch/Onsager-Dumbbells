@@ -339,11 +339,14 @@ class StarSet(object):
                             # The solute must be at the origin unit cell - shift it
                             state1new, flip1 = jpair.state1.gop(self.pdbcontainer, gdumb)
                             state2new, flip2 = jpair.state2.gop(self.pdbcontainer, gdumb)
+                            if not (state1new.i_s == state2new.i_s and np.allclose(state1new.R_s, state2new.R_s)):
+                                raise ValueError("Same gop takes solute to different locations")
                             state1new -= state1new.R_s
                             state2new -= state2new.R_s
                             if (not state1new in self.stateset) or (not state2new in self.stateset):
                                 raise ValueError("symmetrically obtained complex state not found in stateset(?)")
                             jnew = jump(state1new, state2new, jpair.c1 * flip1, jpair.c2 * flip2)
+
                             if not jnew in jumpset:
                                 # if not (np.allclose(jnew.state1.R_s, 0., atol=self.crys.threshold) and np.allclose(
                                 #         jnew.state2.R_s, 0., atol=self.crys.threshold)):
@@ -358,15 +361,22 @@ class StarSet(object):
                                 jumpset.add(-jnew)
 
                         # remove redundant rotations, if present
-                        if (np.allclose(disp(self.pdbcontainer, newlist[0].state1, newlist[0].state2), np.zeros(3),
-                                       atol=self.pdbcontainer.crys.threshold) and
-                                newlist[0].state1.i_s == newlist[0].state2.i_s):
-                            newnewlist = set([])
-                            for j in newlist:
-                                j_equiv = jump(j.state1, j.state2, -1 * j.c1, -1 * j.c2)
-                                if not j_equiv in newnewlist:
-                                    newnewlist.add(j)
-                            newlist = list(newnewlist)
+                        if np.allclose(disp(self.pdbcontainer, newlist[0].state1, newlist[0].state2), np.zeros(3),
+                                       atol=self.pdbcontainer.crys.threshold)\
+                                and newlist[0].state1.i_s == newlist[0].state2.i_s:
+                            newnewlist = []
+                            for jind in range(len(newlist)-1, -1, -1):
+                                # start from the last, so we don't skip elements while removing.
+                                j = newlist[jind]
+                                j_equiv = jump(j.state1, j.state2, -j.c1, -j.c2)
+                                if j_equiv in jumpset:
+                                    newlist.remove(j)
+                                    # keep the equivalent, discard the original.
+                                    jumpset.remove(j)
+                                    # Also discard the original from the jumpset, or the equivalent will be
+                                    # removed later.
+                        if len(newlist) == 0:
+                            continue
                         for jmp in newlist:
                             if not (jmp.state1 in self.stateset):
                                 raise ValueError("state not found in stateset?\n{}".format(jmp.state1))
@@ -382,6 +392,7 @@ class StarSet(object):
                         # initdict contains all the initial states as keys, and the values as the lists final states
                         # from the initial states for the given jump type.
                         jumptype.append(jt)
+
         jtags = []
         for initdict in initstates:
             arrdict = {}
