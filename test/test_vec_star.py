@@ -676,10 +676,10 @@ class test_vecstars(unittest.TestCase):
                                                                                             GFstarset_pure[listind]))
 
         # Now, we do the same tests for the mixed GF starset
-        for jlist in self.vec_stars.starset.jnet2:
-            for jmp in jlist:
-                s = connector(jmp.state1.db, jmp.state2.db)
-                s.shift()
+        for state1 in self.vec_stars.starset.mixedstates:
+            for state2 in self.vec_stars.starset.mixedstates:
+                s = connector(state1.db, state2.db)
+
                 ind1 = self.vec_stars.starset.mdbcontainer.db2ind(s.state1)
                 ind2 = self.vec_stars.starset.mdbcontainer.db2ind(s.state2)
                 dx = disp(self.vec_stars.starset.mdbcontainer, s.state1, s.state2)
@@ -693,19 +693,26 @@ class test_vecstars(unittest.TestCase):
                             listind = starind
 
                 self.assertTrue(listind is not None)
-                self.assertEqual(listind, GFMixedStarInd[s])
-                self.assertEqual(count, 1)
+                self.assertEqual(listind, GFMixedStarInd[s]) # check that the dict is correctly made
+                self.assertEqual(count, 1) # See that the connection has been considered only once
 
-                # Now check the symmetries
+                # Now check the symmetries - this also kind of verifies that the gop function for connector objects
+                # works fine.
                 snewlist = []
                 for gdumb in self.vec_stars.starset.mdbcontainer.G:
+                    # If both the initial and final states do not lie in the origin unit cell, we must ignore the
+                    # transition
+                    snew = s.gop(self.vec_stars.starset.mdbcontainer, gdumb, pure=False)
+                    if not np.allclose(snew.state2.R, np.zeros(3)):
+                        # because of the shift operation, the R of state 1 will be at zero.
+                        # So, this also checks, we are ignoring connections not within the 0th unit cell
+                        continue
                     ind1new = gdumb.indexmap[0][ind1]
                     ind2new = gdumb.indexmap[0][ind2]
                     dxnew = self.vec_stars.starset.crys.g_direc(self.vec_stars.starset.mdbcontainer.G_crys[gdumb], dx)
                     if not any(t[0][0] == ind1new and t[0][1] == ind2new and np.allclose(t[1], dxnew, atol=1e-8)
                                for t in snewlist):
                         snewlist.append(((ind1new, ind2new), dxnew))
-
                 self.assertEqual(len(snewlist), len(GFstarset_mixed[listind]))
                 count = 0
                 for s1 in snewlist:
@@ -713,7 +720,7 @@ class test_vecstars(unittest.TestCase):
                         if s1[0][0] == s2[0][0] and s1[0][1] == s2[0][1] and np.allclose(s1[1], s2[1], atol=1e-8):
                             count += 1
 
-                self.assertEqual(count, len(GFstarset_mixed[listind]))
+                self.assertEqual(count, len(GFstarset_mixed[listind])) # check bijection
 
     def test_GF_expansions(self):
         """
@@ -760,69 +767,20 @@ class test_vecstars(unittest.TestCase):
                             raise ArithmeticError(
                                 "complex GF starset not big enough to accomodate state pair {}".format(tup))
                         GFexpansion_pure[i, j, k] += np.dot(vi, vj)
-        # symmetrize
-        for i in range(Nvstars_pure):
-            for j in range(0, i):
-                GFexpansion_pure[i, j, :] = GFexpansion_pure[j, i, :]
+        # # symmetrize
+        # for i in range(Nvstars_pure):
+        #     for j in range(0, i):
+        #         GFexpansion_pure[i, j, :] = GFexpansion_pure[j, i, :]
+        #
+        # self.assertTrue(np.allclose(zeroclean(GFexpansion_pure), GFexpansion_pure_calc[2]))
+        #
+        # # Next, we do the test for the mixed GF expansion, building only the origin states
+        # for i in range(Nvstars_mixed):
+        #     for si,vi in zip(self.vec_stars.vecpos[i + Nvstars_pure], self.vec_stars.vecvec[i + Nvstars_pure]):
+        #         for j in range(Nvstars_mixed):
+        #             for sj,vj in zip(self.vec_stars.vecpos[j + Nvstars_pure], self.vec_stars.vecvec[j + Nvstars_pure]):
+        #                 # F
 
-        self.assertTrue(np.allclose(zeroclean(GFexpansion_pure), GFexpansion_pure_calc[2]))
-
-        for jlist in self.vec_stars.starset.jnet2:
-            for jmp in jlist:
-
-                ds = connector(jmp.state1.db, jmp.state2.db)
-                ds.shift()
-
-                ind1, ind2 = self.vec_stars.starset.mdbcontainer.db2ind(ds.state1), \
-                             self.vec_stars.starset.mdbcontainer.db2ind(ds.state2)
-                dx = disp(self.vec_stars.starset.mdbcontainer, ds.state1, ds.state2)
-
-                si = jmp.state1 - jmp.state1.R_s
-                sj = jmp.state2 - jmp.state2.R_s
-
-                # Now get the vector stars for the states
-                viList = self.vec_stars.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
-                vjList = self.vec_stars.stateToVecStar_mixed[sj]  # (IndOfStar, IndOfState) format
-                k = getstar(((ind1, ind2), dx), GFstarset_mixed)
-                k1 = GFMixedStarInd[ds]
-                self.assertEqual(k, k1, msg="\n{}\n{}\n{}\n{}".format(k, ((ind1, ind2), dx), k1, ds))
-
-                for tup in viList:
-                    self.assertTrue(self.vec_stars.vecpos[tup[0]][tup[1]] == si)
-                for tup in vjList:
-                    self.assertTrue(self.vec_stars.vecpos[tup[0]][tup[1]] == sj)
-
-                # print(viList)
-                # print(vjList)
-                # print(self.vec_stars.Nvstars_pure)
-                # print(self.vec_stars.Nvstars)
-
-                for i, vi in [(tup[0] - self.vec_stars.Nvstars_pure,
-                               self.vec_stars.vecvec[tup[0]][tup[1]]) for tup in viList]:
-                    for j, vj in [(tup[0] - self.vec_stars.Nvstars_pure,
-                                   self.vec_stars.vecvec[tup[0]][tup[1]]) for tup in viList]:
-                        GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
-
-        for st in self.vec_stars.starset.mixedstates:
-            ds = connector(st.db, st.db)
-            k = GFMixedStarInd[ds]
-
-            ind1 = self.vec_stars.starset.mdbcontainer.db2ind(ds.state1)
-            dx = np.zeros(3)  # No displacement for the diagonals
-            k1 = getstar(((ind1, ind1), dx), GFstarset_mixed)
-
-            self.assertEqual(k, k1)
-
-            vList = self.vec_stars.stateToVecStar_mixed[st]
-            for i, vi in [(tup[0] - self.vec_stars.Nvstars_pure,
-                           self.vec_stars.vecvec[tup[0]][tup[1]]) for tup in vList]:
-                GFexpansion_mixed[i, i, k] += np.dot(vi, vj)
-
-        for i in range(Nvstars_mixed):
-            for j in range(0, i):
-                GFexpansion_mixed[i, j, :] = GFexpansion_mixed[j, i, :]
-
-        self.assertTrue(np.allclose(zeroclean(GFexpansion_mixed), GFexpansion_mixed_calc[2]))
 
     def test_order(self):
         "test that we have the origin spectator states at the begining"
@@ -839,7 +797,7 @@ class test_vecstars(unittest.TestCase):
                         msg="\n{}\n{}".format(dx_list, sorted(dx_list)))
 
 
-class test_Si(unittest.TestCase):
+class test_Si(test_vecstars):
 
     def setUp(self):
         latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
@@ -881,138 +839,138 @@ class test_Si(unittest.TestCase):
         self.rateExps = self.vec_stars.rateexpansion(self.jnet_1, self.jtype, self.symjumplist_omega43_all)
         print("Instantiated")
 
-    def test_bare_bias_expansion(self):
-        if len(self.vec_stars.vecpos_bare) > 0:
-            for i in range(len(self.vec_stars.vecpos_bare)):
-                starind = i
-                st = self.vec_stars.vecpos_bare[starind][0]
-                n = np.random.randint(1, len(self.vec_stars.vecpos_bare[starind]))
-                st2 = self.vec_stars.vecpos_bare[starind][n]
-                bias_st = np.zeros(3)
-                bias_st2 = np.zeros(3)
-                count = 0
-                for jt, jumplist in enumerate(self.vec_stars.starset.jnet0):
-                    for j in jumplist:
-                        if st == j.state1:
-                            count += 1
-                            dx = disp(self.pdbcontainer_si, j.state1, j.state2)
-                            bias_st += dx * self.W0list[jt]
-                        if st2 == j.state1:
-                            dx = disp(self.pdbcontainer_si, j.state1, j.state2)
-                            bias_st2 += dx * self.W0list[jt]
-
-                biasBareExp = self.biases[-1]
-                self.assertTrue(count >= 1)
-                tot_bias_bare = np.dot(biasBareExp, self.W0list)
-                indlist = self.vec_stars.stateToVecStar_bare[st]
-                # for ind, starlist in enumerate(self.vec_stars.vecpos_bare):
-                #     if starlist[0] == st:
-                #         indlist.append(ind)
-                bias_bare_cartesian = sum(
-                    [tot_bias_bare[tup[0]] * self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
-                self.assertTrue(np.allclose(bias_bare_cartesian, bias_st), msg="\n{}\n{}\n{}\n{}".
-                                format(bias_bare_cartesian, bias_st,
-                                       [self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist],
-                                       self.vec_stars.starset.pdbcontainer.iorlist[st.iorind]))
-
-                indlist = self.vec_stars.stateToVecStar_bare[st2]
-                bias_bare_cartesian2 = sum(
-                    [tot_bias_bare[tup[0]] * self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
-                self.assertTrue(np.allclose(bias_bare_cartesian2, bias_st2))
-
-        else:  # we have to check that the non-local bias vectors coming out are zero
-            # print("checking zero non-local")
-            for star in self.vec_stars.starset.barePeriodicStars:
-                for st in star:
-                    bias_st = np.zeros(3)
-                    count = 0
-                    for jt, jumplist in enumerate(self.vec_stars.starset.jnet0):
-                        for j in jumplist:
-                            if st == j.state1:
-                                count += 1
-                                dx = disp(self.pdbcontainer_si, j.state1, j.state2)
-                                bias_st += dx * self.W0list[jt]
-                                # print(bias_st)
-                    self.assertTrue(np.allclose(bias_st, np.zeros(3)))
-                    self.assertTrue(count >= 1)
-
-    def test_rateExps(self):
-        """
-        Here, we will create the rate expansions in the more expensive way and check if the results hold for the
-        approach used in the module
-        """
-        # First, we do it for omega1 and omega0
-        rate0expansion = np.zeros((self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars_pure,
-                                   len(self.vec_stars.starset.jnet0)))
-        rate1expansion = np.zeros((self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars_pure, len(self.jnet_1)))
-        rate0escape = np.zeros((self.vec_stars.Nvstars_pure, len(self.vec_stars.starset.jnet0)))
-        rate1escape = np.zeros((self.vec_stars.Nvstars_pure, len(self.jnet_1)))
-        # First, we do the rate1 and rate0 expansions
-        for k, jumplist, jt in zip(itertools.count(), self.jnet_1, self.jtype):
-            for jmp in jumplist:
-                for i in range(self.vec_stars.Nvstars_pure):  # The first inner sum
-                    for chi_i, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
-                        if chi_i == jmp.state1:  # This is the delta functions of chi_0
-                            rate0escape[i, jt] -= np.dot(vi, vi)
-                            rate1escape[i, k] -= np.dot(vi, vi)
-                            for j in range(self.vec_stars.Nvstars_pure):  # The second inner sum
-                                for chi_j, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
-                                    if chi_j == jmp.state2:  # this is the delta function of chi_1
-                                        rate1expansion[i, j, k] += np.dot(vi, vj)
-                                        rate0expansion[i, j, jt] += np.dot(vi, vj)
-
-        self.assertTrue(np.allclose(rate0expansion, self.rateExps[0][0]))
-        self.assertTrue(np.allclose(rate0escape, self.rateExps[0][1]))
-        self.assertTrue(np.allclose(rate1expansion, self.rateExps[1][0]))
-        self.assertTrue(np.allclose(rate1escape, self.rateExps[1][1]))
-
-        # Next, we do it for omega2
-        Nvstars_mixed = self.vec_stars.Nvstars - self.vec_stars.Nvstars_pure
-        rate2expansion = np.zeros((Nvstars_mixed, Nvstars_mixed, len(self.vec_stars.starset.jnet2)))
-        rate2escape = np.zeros((Nvstars_mixed, len(self.vec_stars.starset.jnet2)))
-        # First, we do the rate1 and rate0 expansions
-        for k, jumplist in enumerate(self.vec_stars.starset.jnet2):
-            for jmp in jumplist:
-                for i in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):  # The first inner sum
-                    for chi_i, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
-                        if chi_i == jmp.state1:  # This is the delta functions of chi_0
-                            rate2escape[i - self.vec_stars.Nvstars_pure, k] -= np.dot(vi, vi)
-                            for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):  # The second inner sum
-                                for chi_j, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
-                                    if chi_j == jmp.state2 - jmp.state2.R_s:  # this is the delta function of chi_1
-                                        rate2expansion[i - self.vec_stars.Nvstars_pure, j - self.vec_stars.Nvstars_pure,
-                                                       k] += np.dot(vi, vj)
-
-        self.assertTrue(np.allclose(rate2expansion, self.rateExps[2][0]))
-        self.assertTrue(np.allclose(rate2escape, self.rateExps[2][1]))
-
-        # Next, we do it for omega3 and omega4
-        rate4expansion = np.zeros((self.vec_stars.Nvstars_pure, Nvstars_mixed, len(self.symjumplist_omega43_all)))
-        rate3expansion = np.zeros((Nvstars_mixed, self.vec_stars.Nvstars_pure, len(self.symjumplist_omega43_all)))
-        # The initial states are mixed, the final states are complex except origin states and there are as many
-        # symmetric jumps as in jumpnetwork_omega34
-        rate3escape = np.zeros((Nvstars_mixed, len(self.symjumplist_omega43_all)))
-        rate4escape = np.zeros((self.vec_stars.Nvstars_pure, len(self.symjumplist_omega43_all)))
-        for k, jumplist in enumerate(self.symjumplist_omega43_all):
-            for jmp in jumplist[::2]:
-                for i in range(self.vec_stars.Nvstars_pure):  # iterate over complex states - the first inner sum
-                    for chi_i, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
-                        # Go through the initial pure states
-                        if chi_i == jmp.state1:
-                            rate4escape[i, k] -= np.dot(vi, vi)
-                            for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
-                                # iterate over mixed states - the second inner sum
-                                for chi_j, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
-                                    # Go through the final complex states - they must be at the origin unit cell.
-                                    self.assertTrue(np.allclose(jmp.state2.R_s, np.zeros(3, dtype=int)))
-                                    if chi_j == jmp.state2:
-                                        rate3escape[j - self.vec_stars.Nvstars_pure, k] -= np.dot(vj, vj)
-                                        rate4expansion[i, j - self.vec_stars.Nvstars_pure, k] += np.dot(vi, vj)
-                                        rate3expansion[j - self.vec_stars.Nvstars_pure, i, k] += np.dot(vj, vi)
-
-        self.assertFalse(np.allclose(rate3expansion, np.zeros_like(rate3expansion)))
-
-        self.assertTrue(np.allclose(rate3expansion, self.rateExps[3][0]))
-        self.assertTrue(np.allclose(rate3escape, self.rateExps[3][1]))
-        self.assertTrue(np.allclose(rate4escape, self.rateExps[4][1]))
-        self.assertTrue(np.allclose(rate4expansion, self.rateExps[4][0]))
+    # def test_bare_bias_expansion(self):
+    #     if len(self.vec_stars.vecpos_bare) > 0:
+    #         for i in range(len(self.vec_stars.vecpos_bare)):
+    #             starind = i
+    #             st = self.vec_stars.vecpos_bare[starind][0]
+    #             n = np.random.randint(1, len(self.vec_stars.vecpos_bare[starind]))
+    #             st2 = self.vec_stars.vecpos_bare[starind][n]
+    #             bias_st = np.zeros(3)
+    #             bias_st2 = np.zeros(3)
+    #             count = 0
+    #             for jt, jumplist in enumerate(self.vec_stars.starset.jnet0):
+    #                 for j in jumplist:
+    #                     if st == j.state1:
+    #                         count += 1
+    #                         dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+    #                         bias_st += dx * self.W0list[jt]
+    #                     if st2 == j.state1:
+    #                         dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+    #                         bias_st2 += dx * self.W0list[jt]
+    #
+    #             biasBareExp = self.biases[-1]
+    #             self.assertTrue(count >= 1)
+    #             tot_bias_bare = np.dot(biasBareExp, self.W0list)
+    #             indlist = self.vec_stars.stateToVecStar_bare[st]
+    #             # for ind, starlist in enumerate(self.vec_stars.vecpos_bare):
+    #             #     if starlist[0] == st:
+    #             #         indlist.append(ind)
+    #             bias_bare_cartesian = sum(
+    #                 [tot_bias_bare[tup[0]] * self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
+    #             self.assertTrue(np.allclose(bias_bare_cartesian, bias_st), msg="\n{}\n{}\n{}\n{}".
+    #                             format(bias_bare_cartesian, bias_st,
+    #                                    [self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist],
+    #                                    self.vec_stars.starset.pdbcontainer.iorlist[st.iorind]))
+    #
+    #             indlist = self.vec_stars.stateToVecStar_bare[st2]
+    #             bias_bare_cartesian2 = sum(
+    #                 [tot_bias_bare[tup[0]] * self.vec_stars.vecvec_bare[tup[0]][tup[1]] for tup in indlist])
+    #             self.assertTrue(np.allclose(bias_bare_cartesian2, bias_st2))
+    #
+    #     else:  # we have to check that the non-local bias vectors coming out are zero
+    #         # print("checking zero non-local")
+    #         for star in self.vec_stars.starset.barePeriodicStars:
+    #             for st in star:
+    #                 bias_st = np.zeros(3)
+    #                 count = 0
+    #                 for jt, jumplist in enumerate(self.vec_stars.starset.jnet0):
+    #                     for j in jumplist:
+    #                         if st == j.state1:
+    #                             count += 1
+    #                             dx = disp(self.pdbcontainer_si, j.state1, j.state2)
+    #                             bias_st += dx * self.W0list[jt]
+    #                             # print(bias_st)
+    #                 self.assertTrue(np.allclose(bias_st, np.zeros(3)))
+    #                 self.assertTrue(count >= 1)
+    #
+    # def test_rateExps(self):
+    #     """
+    #     Here, we will create the rate expansions in the more expensive way and check if the results hold for the
+    #     approach used in the module
+    #     """
+    #     # First, we do it for omega1 and omega0
+    #     rate0expansion = np.zeros((self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars_pure,
+    #                                len(self.vec_stars.starset.jnet0)))
+    #     rate1expansion = np.zeros((self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars_pure, len(self.jnet_1)))
+    #     rate0escape = np.zeros((self.vec_stars.Nvstars_pure, len(self.vec_stars.starset.jnet0)))
+    #     rate1escape = np.zeros((self.vec_stars.Nvstars_pure, len(self.jnet_1)))
+    #     # First, we do the rate1 and rate0 expansions
+    #     for k, jumplist, jt in zip(itertools.count(), self.jnet_1, self.jtype):
+    #         for jmp in jumplist:
+    #             for i in range(self.vec_stars.Nvstars_pure):  # The first inner sum
+    #                 for chi_i, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
+    #                     if chi_i == jmp.state1:  # This is the delta functions of chi_0
+    #                         rate0escape[i, jt] -= np.dot(vi, vi)
+    #                         rate1escape[i, k] -= np.dot(vi, vi)
+    #                         for j in range(self.vec_stars.Nvstars_pure):  # The second inner sum
+    #                             for chi_j, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
+    #                                 if chi_j == jmp.state2:  # this is the delta function of chi_1
+    #                                     rate1expansion[i, j, k] += np.dot(vi, vj)
+    #                                     rate0expansion[i, j, jt] += np.dot(vi, vj)
+    #
+    #     self.assertTrue(np.allclose(rate0expansion, self.rateExps[0][0]))
+    #     self.assertTrue(np.allclose(rate0escape, self.rateExps[0][1]))
+    #     self.assertTrue(np.allclose(rate1expansion, self.rateExps[1][0]))
+    #     self.assertTrue(np.allclose(rate1escape, self.rateExps[1][1]))
+    #
+    #     # Next, we do it for omega2
+    #     Nvstars_mixed = self.vec_stars.Nvstars - self.vec_stars.Nvstars_pure
+    #     rate2expansion = np.zeros((Nvstars_mixed, Nvstars_mixed, len(self.vec_stars.starset.jnet2)))
+    #     rate2escape = np.zeros((Nvstars_mixed, len(self.vec_stars.starset.jnet2)))
+    #     # First, we do the rate1 and rate0 expansions
+    #     for k, jumplist in enumerate(self.vec_stars.starset.jnet2):
+    #         for jmp in jumplist:
+    #             for i in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):  # The first inner sum
+    #                 for chi_i, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
+    #                     if chi_i == jmp.state1:  # This is the delta functions of chi_0
+    #                         rate2escape[i - self.vec_stars.Nvstars_pure, k] -= np.dot(vi, vi)
+    #                         for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):  # The second inner sum
+    #                             for chi_j, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
+    #                                 if chi_j == jmp.state2 - jmp.state2.R_s:  # this is the delta function of chi_1
+    #                                     rate2expansion[i - self.vec_stars.Nvstars_pure, j - self.vec_stars.Nvstars_pure,
+    #                                                    k] += np.dot(vi, vj)
+    #
+    #     self.assertTrue(np.allclose(rate2expansion, self.rateExps[2][0]))
+    #     self.assertTrue(np.allclose(rate2escape, self.rateExps[2][1]))
+    #
+    #     # Next, we do it for omega3 and omega4
+    #     rate4expansion = np.zeros((self.vec_stars.Nvstars_pure, Nvstars_mixed, len(self.symjumplist_omega43_all)))
+    #     rate3expansion = np.zeros((Nvstars_mixed, self.vec_stars.Nvstars_pure, len(self.symjumplist_omega43_all)))
+    #     # The initial states are mixed, the final states are complex except origin states and there are as many
+    #     # symmetric jumps as in jumpnetwork_omega34
+    #     rate3escape = np.zeros((Nvstars_mixed, len(self.symjumplist_omega43_all)))
+    #     rate4escape = np.zeros((self.vec_stars.Nvstars_pure, len(self.symjumplist_omega43_all)))
+    #     for k, jumplist in enumerate(self.symjumplist_omega43_all):
+    #         for jmp in jumplist[::2]:
+    #             for i in range(self.vec_stars.Nvstars_pure):  # iterate over complex states - the first inner sum
+    #                 for chi_i, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
+    #                     # Go through the initial pure states
+    #                     if chi_i == jmp.state1:
+    #                         rate4escape[i, k] -= np.dot(vi, vi)
+    #                         for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
+    #                             # iterate over mixed states - the second inner sum
+    #                             for chi_j, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
+    #                                 # Go through the final complex states - they must be at the origin unit cell.
+    #                                 self.assertTrue(np.allclose(jmp.state2.R_s, np.zeros(3, dtype=int)))
+    #                                 if chi_j == jmp.state2:
+    #                                     rate3escape[j - self.vec_stars.Nvstars_pure, k] -= np.dot(vj, vj)
+    #                                     rate4expansion[i, j - self.vec_stars.Nvstars_pure, k] += np.dot(vi, vj)
+    #                                     rate3expansion[j - self.vec_stars.Nvstars_pure, i, k] += np.dot(vj, vi)
+    #
+    #     self.assertFalse(np.allclose(rate3expansion, np.zeros_like(rate3expansion)))
+    #
+    #     self.assertTrue(np.allclose(rate3expansion, self.rateExps[3][0]))
+    #     self.assertTrue(np.allclose(rate3escape, self.rateExps[3][1]))
+    #     self.assertTrue(np.allclose(rate4escape, self.rateExps[4][1]))
+    #     self.assertTrue(np.allclose(rate4expansion, self.rateExps[4][0]))
