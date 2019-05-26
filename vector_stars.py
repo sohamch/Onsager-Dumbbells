@@ -246,7 +246,7 @@ class vectorStars(VectorStarSet):
             GFstarset_pure.append(connectlist)
 
         GFstarset_mixed = []
-        GFstarset_mixed_snewlist = []
+        # GFstarset_mixed_snewlist = []
         GFMixedStarInd = {}
         connectset_mixed = set([])
         # For the mixed dumbbells, we need only the states in the initial unit cell.
@@ -267,31 +267,35 @@ class vectorStars(VectorStarSet):
                 # snew = connector(snew.state1 - snew.state1.R, snew.state2 - snew.state2.R)
                 # snew = snew.shift()
                 if snew not in connectset_mixed:
-                    # In this case, if a group operation takes a connection's end point outside the origin unit cell,
+
+                    if np.allclose(snew.state1.R, np.zeros(3)) and np.allclose(snew.state2.R, np.zeros(3)):
+                        raise ValueError("origin cell connection not in mixed connectset")
+
+                    # If a group operation takes a connection's end point outside the origin unit cell,
                     # we can ignore it, since the problem dictates that both initial and final states in a connection
                     # lie inside the origin unit cell.
+                    # See the notebook on g2 testing - the GF relations still hold.
                     continue
                 if snew in GFMixedStarInd:
                     continue
-
                 dx = disp(self.starset.mdbcontainer, snew.state1, snew.state2)
                 ind1 = self.starset.mdbcontainer.db2ind(snew.state1)
                 # db2ind does not care about which unit cell the dumbbell is at
                 ind2 = self.starset.mdbcontainer.db2ind(snew.state2)
                 tup = ((ind1, ind2), dx.copy())
                 connectlist.append(tup)
-                slist.append(snew)
+                # slist.append(snew)
                 GFMixedStarInd[snew] = len(GFstarset_mixed)
             GFstarset_mixed.append(connectlist)
-            GFstarset_mixed_snewlist.append(slist)
+            # GFstarset_mixed_snewlist.append(slist)
 
-        return GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd, GFstarset_mixed_snewlist
+        return GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd
 
     def GFexpansion(self):
         """
         carries out the expansion of the Green's function in the basis of the vector stars.
         """
-        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd, GFstarset_mixed_snewlist = self.genGFstarset()
+        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.genGFstarset()
 
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
@@ -323,16 +327,11 @@ class vectorStars(VectorStarSet):
                         GFexpansion_pure[i, j, k] += np.dot(vi, vj)
 
         # Build up the mixed GF expansion
-        # In this case too, we need to build up from the jump network, and include the origin states later on.
-
-        # First, we build up the terms from the jump network
         for i in range(self.Nvstars_pure, self.Nvstars):
             for si, vi in zip(self.vecpos[i], self.vecvec[i]):
                 for j in range(self.Nvstars_pure, self.Nvstars):
                     for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
-
                         ds = connector(si.db, sj.db)
-                        ds.shift()  # No need but still.
                         # Now get the vector stars for the states
                         viList = self.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
                         vjList = self.stateToVecStar_mixed[sj]  # (IndOfStar, IndOfState) format
@@ -357,7 +356,7 @@ class vectorStars(VectorStarSet):
                 GFexpansion_mixed[i, j, :] = GFexpansion_mixed[j, i, :]
 
         return (GFstarset_pure, GFPureStarInd, zeroclean(GFexpansion_pure)), (
-            GFstarset_mixed, GFMixedStarInd, GFstarset_mixed_snewlist, zeroclean(GFexpansion_mixed))
+            GFstarset_mixed, GFMixedStarInd, zeroclean(GFexpansion_mixed))
 
     # See group meeting update slides of sept 10th to see how this works.
     def biasexpansion(self, jumpnetwork_omega1, jumpnetwork_omega2, jumptype, jumpnetwork_omega34):
