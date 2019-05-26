@@ -170,8 +170,8 @@ class test_StarSet(unittest.TestCase):
         for struct, crys in enumerate(crys_list):
             pdbcontainer = dbStates(crys, 0, family)
             mdbcontainer = mStates(crys, 0, family)
-            jset0 = pdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
-            jset2 = mdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
+            jset0 = pdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
+            jset2 = mdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
             # 4.5 angst should cover atleast the nn distance in all the crystals
             # create starset
             crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, Nshells=1)
@@ -190,10 +190,26 @@ class test_StarSet(unittest.TestCase):
                                 self.assertTrue(any(i == IS and j == column for (i, j), dx in jlist))
                                 # If any is true, then that means only one is true, since a jump b/w two states is
                                 # present only once.
+
+            rotset = set([]) # Here we will store the rotational jumps in the network
             for x in range(len(omega1_network)):
                 # select any jump from this list at random. Idea is that we must get back the same jump list.
                 y = np.random.randint(0, len(omega1_network[x]))
                 jmp = omega1_network[x][y]
+                # First, check that the solute does not move and is at the origin
+                self.assertTrue(jmp.state1.i_s == jmp.state2.i_s)
+                self.assertTrue(np.allclose(jmp.state1.R_s, np.zeros(3)))
+                self.assertTrue(np.allclose(jmp.state2.R_s, np.zeros(3)))
+
+                # Next, collect rotational jumps for checking later
+                if np.allclose(disp(crys_stars.pdbcontainer, jmp.state1, jmp.state2), np.zeros(3),
+                                atol=crys_stars.pdbcontainer.crys.threshold):
+                    for rotjmp in omega1_network[x]:
+                        rotset.add(rotjmp)
+                    continue
+                # we'll test the redundance of rotation jumps separately.
+                # Note - here we are making an assumption that if group ops acting on non-rotation jumps are correct,
+                # they will be correct for rotation jumps as well.
                 jlist = []
                 # reconstruct the list using the selected jump, without using has tables (sets)
                 for gdumb in crys_stars.pdbcontainer.G:
@@ -204,15 +220,21 @@ class test_StarSet(unittest.TestCase):
                     if not any(jnew == j for j in jlist):
                         jlist.append(jnew)
                         jlist.append(-jnew)
-                if (np.allclose(disp(crys_stars.pdbcontainer, jmp.state1, jmp.state2), np.zeros(3),
-                               atol=crys_stars.pdbcontainer.crys.threshold) and
-                        jmp.state1.i_s == jmp.state2.i_s):
-                    j_equiv = jump(jmp.state1, jmp.state2, -1 * jmp.c1, -1 * jmp.c2)
-                    if j_equiv in jlist:
-                        self.assertEqual(len(jlist) / 2, len(omega1_network[x]), msg="{}".format(struct))
-                    # Because here we haven't eliminated redundant rotations, we'll get twice the number of jumps.
-                else:
-                    self.assertEqual(len(jlist), len(omega1_network[x]))
+                # # Check for absence of redundant rotations.
+                # if (np.allclose(disp(crys_stars.pdbcontainer, jmp.state1, jmp.state2), np.zeros(3),
+                #                atol=crys_stars.pdbcontainer.crys.threshold) and
+                #         jmp.state1.i_s == jmp.state2.i_s):
+                #     j_equiv = jump(jmp.state1, jmp.state2, -jmp.c1, -jmp.c2)
+                #     if j_equiv in jlist:
+                #         self.assertEqual(len(jlist) / 2, len(omega1_network[x]), msg="{}".format(struct))
+                #     # Because here we haven't eliminated redundant rotations, we'll get twice the number of jumps.
+                # else:
+                self.assertEqual(len(jlist), len(omega1_network[x]))
+
+            # Now check the rotations
+            for rotjmp in rotset:
+                j_equiv = jump(rotjmp.state1, rotjmp.state2, -rotjmp.c1, -rotjmp.c2)
+                self.assertFalse(j_equiv in rotset)
 
             # See that irrespective of solute location, if the jumps of the dumbbells are the same, then the jump type
             # is also the same
@@ -225,7 +247,7 @@ class test_StarSet(unittest.TestCase):
                                     self.assertTrue(om1types[i] == om1types[j],
                                                     msg="{},{}\n{}\n{}".format(i, j, j1, j2))
 
-            omega43, omega4, omega3 = crys_stars.jumpnetwork_omega34(0.45, 0.01, 0.01, 0.01)
+            omega43, omega4, omega3 = crys_stars.jumpnetwork_omega34(0.34, 0.01, 0.01, 0.01)
             omega43_all, omega4_network, omega3_network = omega43[0], omega4[0], omega3[0]
             omega43_all_indexed, omega4_network_indexed, omega3_network_indexed = omega43[1], omega4[1], omega3[1]
             omega4tag, omega3tag = omega4[2], omega3[2]
