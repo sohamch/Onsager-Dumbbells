@@ -161,7 +161,7 @@ class test_StarSet(unittest.TestCase):
             return any(j == jmp for j in jlist)
 
         hcp_Mg = crystal.Crystal.HCP(0.3294, chemistry=["Mg"])
-        fcc_Ni = crystal.Crystal.FCC(0.352, chemistry=["Ni"])
+        fcc_Ni = crystal.Crystal.FCC(0.38, chemistry=["Ni"])
         latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
         DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
         crys_list = [DC_Si, hcp_Mg, fcc_Ni]
@@ -170,8 +170,8 @@ class test_StarSet(unittest.TestCase):
         for struct, crys in enumerate(crys_list):
             pdbcontainer = dbStates(crys, 0, family)
             mdbcontainer = mStates(crys, 0, family)
-            jset0 = pdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
-            jset2 = mdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
+            jset0 = pdbcontainer.jumpnetwork(0.35, 0.01, 0.01)
+            jset2 = mdbcontainer.jumpnetwork(0.35, 0.01, 0.01)
             # 4.5 angst should cover atleast the nn distance in all the crystals
             # create starset
             crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, Nshells=1)
@@ -247,7 +247,7 @@ class test_StarSet(unittest.TestCase):
                                     self.assertTrue(om1types[i] == om1types[j],
                                                     msg="{},{}\n{}\n{}".format(i, j, j1, j2))
 
-            omega43, omega4, omega3 = crys_stars.jumpnetwork_omega34(0.34, 0.01, 0.01, 0.01)
+            omega43, omega4, omega3 = crys_stars.jumpnetwork_omega34(0.35, 0.01, 0.01, 0.01)
             omega43_all, omega4_network, omega3_network = omega43[0], omega4[0], omega3[0]
             omega43_all_indexed, omega4_network_indexed, omega3_network_indexed = omega43[1], omega4[1], omega3[1]
             omega4tag, omega3tag = omega4[2], omega3[2]
@@ -255,8 +255,17 @@ class test_StarSet(unittest.TestCase):
             for jl4, jl3 in zip(omega4_network, omega3_network):
                 self.assertEqual(len(jl3), len(jl4))
                 for j3, j4 in zip(jl3, jl4):
+                    self.assertEqual(j3, -j4)
                     self.assertEqual(j3.c1, -1)
                     self.assertEqual(j4.c2, -1)
+
+            for jlist_all, j4list in zip(omega43_all, omega4_network):
+                for jmp1, jmp2 in zip(jlist_all[::2], j4list):
+                    self.assertEqual(jmp1, jmp2)
+
+            for jlist_all, j4list in zip(omega43_all, omega3_network):
+                for jmp1, jmp2 in zip(jlist_all[1::2], j4list):
+                    self.assertEqual(jmp1, jmp2)
 
             ##TEST omega3 and omega4
             # test that the tag lists have proper length
