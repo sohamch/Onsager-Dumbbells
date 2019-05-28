@@ -576,17 +576,18 @@ class dumbbellMediated(VacancyMediated):
         """
         # a = solute, b = solvent
         eta0_solute, eta0_solvent = self.eta0total_solute, self.eta0total_solvent
-
+        # Stores biases out of complex states, followed by mixed dumbbell states.
         jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4 =\
-        self.jnet1_indexed, self.om1types, self.jnet2_indexed, self.symjumplist_omega3_indexed,\
-        self.symjumplist_omega4_indexed
+            self.jnet1_indexed, self.om1types, self.jnet2_indexed, self.symjumplist_omega3_indexed,\
+            self.symjumplist_omega4_indexed
 
         Ncomp = len(self.vkinetic.starset.complexStates)
 
-        D0expansion_aa = np.zeros((3, 3, len(self.jnet0)))
-        D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
-        D0expansion_ab = np.zeros((3, 3, len(self.jnet0)))
+        # D0expansion_aa = np.zeros((3, 3, len(self.jnet0)))
+        # D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
+        # D0expansion_ab = np.zeros((3, 3, len(self.jnet0)))
 
+        # Since omega1 contains the total rate and not just the change, we don't need a separate D0 expansion.
         D1expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega1)))
         D1expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega1)))
         D1expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega1)))
@@ -608,14 +609,15 @@ class dumbbellMediated(VacancyMediated):
             d0 = np.sum(
                 0.5 * np.outer(dx + eta0_solvent[i] - eta0_solvent[j], dx + eta0_solvent[i] - eta0_solvent[j]) for
                 (i, j), dx in jumplist)
-            D0expansion_bb[:, :, jt] += d0
+            # D0expansion_bb[:, :, jt] += d0
             D1expansion_bb[:, :, k] += d0
             # For solutes, don't need to do anything for omega1 and omega0 - solute does not move anyway
-            # and their non-local eta corrections are also zero.
+            # and therefore, their non-local eta corrections are also zero.
 
         for jt, jumplist in enumerate(jumpnetwork_omega2):
             # Build the expansions directly
-            for (IS, FS), dx in jumplist:
+            for jnum, ((IS, FS), dx) in enumerate(jumplist):
+                j = self.jnet2[jt][jnum]
                 dx_solute = dx + j.state2.db.o / 2. - j.state1.db.o / 2. + eta0_solute[Ncomp + IS] - eta0_solute[
                     Ncomp + FS]
                 dx_solvent = dx - j.state2.db.o / 2. + j.state1.db.o / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[
@@ -625,7 +627,8 @@ class dumbbellMediated(VacancyMediated):
                 D2expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
 
         for jt, jumplist in enumerate(jumpnetwork_omega3):
-            for (IS, FS), dx in jumplist:
+            for jnum, ((IS, FS), dx) in enumerate(jumplist):
+                j = self.symjumplist_omega3[jt][jnum]
                 dx_solute = -j.state1.db.o / 2. + eta0_solute[Ncomp + IS] - eta0_solute[FS]
                 dx_solvent = dx + j.state1.db.o / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[FS]
                 D3expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
@@ -633,22 +636,23 @@ class dumbbellMediated(VacancyMediated):
                 D3expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
 
         for jt, jumplist in enumerate(jumpnetwork_omega4):
-            for (IS, FS), dx in jumplist:
+            for jnum, ((IS, FS), dx) in enumerate(jumplist):
+                j = self.symjumplist_omega4[jt][jnum]
                 dx_solute = j.state2.db.o / 2. + eta0_solute[IS] - eta0_solute[Ncomp + FS]
                 dx_solvent = dx - j.state2.db.o / 2. + eta0_solvent[IS] - eta0_solvent[Ncomp + FS]
                 D4expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D4expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D4expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
 
-        return (zeroclean(D0expansion_aa), zeroclean(D0expansion_bb), zeroclean(D0expansion_ab)),\
-               (zeroclean(D1expansion_aa), zeroclean(D1expansion_bb), zeroclean(D1expansion_ab)),\
+        return (zeroclean(D1expansion_aa), zeroclean(D1expansion_bb), zeroclean(D1expansion_ab)),\
                (zeroclean(D2expansion_aa), zeroclean(D2expansion_bb), zeroclean(D2expansion_ab)),\
                (zeroclean(D3expansion_aa), zeroclean(D3expansion_bb), zeroclean(D3expansion_ab)),\
                (zeroclean(D4expansion_aa), zeroclean(D4expansion_bb), zeroclean(D4expansion_ab))
 
     # noinspection SpellCheckingInspection
     @staticmethod
-    def preene2betafree(kT, predb0, enedb0, preS, eneS, preSdb, eneSdb, predb2, enedb2, preT0, eneT0, preT2, eneT2, preT1, eneT1, preT43, eneT43):
+    def preene2betafree(kT, predb0, enedb0, preS, eneS, preSdb, eneSdb, predb2, enedb2, preT0, eneT0, preT2, eneT2,
+                        preT1, eneT1, preT43, eneT43):
         """
         Similar to the function for vacancy mediated OnsagerCalc. Takes in the energies and entropic pre-factors for
         the states and transition states and returns the corresponding free energies. The difference from the vacancy case
@@ -999,6 +1003,10 @@ class dumbbellMediated(VacancyMediated):
             starind = self.vkinetic.starset.mixedindexdict[state][1] - self.vkinetic.starset.mixedstartindex
             mixed_en[stateind] = bFdb2[starind]
 
+        # Now, normalize
+        complex_en /= (np.sum(complex_en)+np.sum(mixed_en))
+        mixed_en /= (np.sum(complex_en) + np.sum(mixed_en))
+        # This ensure that summing over all complex + mixed states gives probability of 1.
 
         # Generate the bare expansions
         (D0expansion_aa, D0expansion_bb, D0expansion_ab),\
