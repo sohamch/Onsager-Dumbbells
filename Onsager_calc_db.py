@@ -746,8 +746,8 @@ class dumbbellMediated(VacancyMediated):
         # build the omega1 lists
         for jt, jlist in enumerate(self.jnet_1):
 
-            st1 = jlist[0].state1 - jlist[0].state1.R_s
-            st2 = jlist[0].state2 - jlist[0].state2.R_s
+            st1 = jlist[0].state1  # - jlist[0].state1.R_s
+            st2 = jlist[0].state2  # - jlist[0].state2.R_s
 
             if st1.is_zero(self.vkinetic.starset.pdbcontainer) or st2.is_zero(self.vkinetic.starset.pdbcontainer):
                 # We want transition rates in and out of origin states to be to be zero
@@ -778,8 +778,10 @@ class dumbbellMediated(VacancyMediated):
 
             # The first state is a complex state, the second state is a mixed state.
             # This has been checked in test_crystal stars - look it up
-            st1 = jlist[0].state1 - jlist[0].state1.R_s
-            st2 = jlist[0].state2 - jlist[0].state2.R_s
+            st1 = jlist[0].state1
+            st2 = jlist[0].state2
+            # If the solutes are not already at the origin, there is some error and it will show up
+            # while getting the crystal stars.
 
             # get the crystal stars
             crStar1 = self.vkinetic.starset.complexIndexdict[st1][1]
@@ -893,18 +895,26 @@ class dumbbellMediated(VacancyMediated):
         # Make the symmetrized rates for calculating GF, bias and gamma.
         # First, make bFSdb_total from individual solute and pure dumbbell free energies and the binding free energy,
         # i.e, bFdb0, bFS, bFSdb (binding), respectively.
-        # For origin states, this should be in such a way so that omega_1 - omega0 = 0 - this is taken care of in the
+        # For origin states, this should be in such a way so that omega_0 + del_omega = 0 -> this is taken care of in
         # getsymmrates function.
 
-        # N_comp_stars = self.vkinetic.starset.mixedstartindex
-        bFSdb_total = np.zeros(N_comp_stars)
+        bFSdb_total = np.zeros(self.vkinetic.starset.mixedstartindex)
+        # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
+        # late.
+        for starind, star in self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]:
+            if star[0].is_zero(self.vkinetic.starset.pdbcontainer):
+                continue
+            symindex = self.vkinetic.starset.star2symlist[starind]
+            bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]]
+
+        # Now add in the changes for the complexes inside the thermodynamic shell.
         for starind, star in enumerate(self.thermo.stars[:self.thermo.mixedstartindex]):
             # Get the symorlist index for the representative state of the star
+            if star[0].is_zero(self.thermo.pdbcontainer):
+                continue
+            # keep the total energies zero for origin states.
             kinStarind = self.thermo2kin[starind]
-            symindex = self.thermo.star2symlist[starind]
-            bFSdb_total[kinStarind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]] + bFSdb[starind]
-
-        # Now, we have non-zero interactions for the thermodynamics shell and zero interactions for kinetic shells.
+            bFSdb_total[kinStarind] += bFSdb[starind]
 
         (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = \
             self.getsymmrates(bFdb0, bFdb2, bFSdb_total, bFT0, bFT1, bFT3, bFT4)
