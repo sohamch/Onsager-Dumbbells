@@ -690,9 +690,11 @@ class dumbbellMediated(VacancyMediated):
         bFdb2_min = np.min(bFdb2)
         bFS_min = np.min(bFS)
 
-        bFdb0 -= bFdb0_min
-        bFdb2 -= bFdb2_min
-        bFS -= bFS_min
+        # bFdb0 -= bFdb0_min
+        # bFdb2 -= bFdb2_min
+        # bFS -= bFS_min
+        # The unshifted values are required to be able to normalize the state probabilities.
+        # See the L_ij function for details
         bFT0 -= bFdb0_min
         bFT2 -= bFdb2_min
         bFT3 -= bFdb2_min
@@ -867,7 +869,9 @@ class dumbbellMediated(VacancyMediated):
         bFdb0[i] = beta*ene_pdb[i] - ln(pre_pdb[i]), i=1,2...,N_pdbcontainer.symorlist - pure dumbbell free energy
         bFdb2[i] = beta*ene_mdb[i] - ln(pre_mdb[i]), i=1,2...,N_mdbcontainer.symorlist - mixed dumbbell free energy
         bFS[i] = beta*ene_S[i] - _ln(pre_S[i]), i=1,2,..N_Wyckoff - site free energy for solute.
-        The above three values are relative to their respective minimum values.
+        The above three values are NOT relative to their respective minimum values.
+        We need them to be unshifted to be able to normalize the state probabilities.
+        Wherever shifting is required, we'll do it there.
         bFSdb - beta*ene_Sdb[i] - ln(pre_Sdb[i]) excess (binding) i=1,2...,mixedstartindex. free energy between a solute and a
         bare dumbbell in it's vicinity.
         This must be non-zero only for states within the thermodynamic shell. Should the size be restricted to such?
@@ -882,6 +886,9 @@ class dumbbellMediated(VacancyMediated):
         Return:
             L_aa, L_bb, L_ab - needs to be multiplied by c_db/KT
         """
+        bFdb0_min = np.min(bFdb0)
+        bFdb2_min = np.min(bFdb2)
+        bFS_min = np.min(bFS)
         if not len(bFSdb) == self.thermo.mixedstartindex:
             raise TypeError("Interaction energies must be present for all and only all thermodynamic shell states.")
 
@@ -889,8 +896,10 @@ class dumbbellMediated(VacancyMediated):
         pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
 
         # Make the unsymmetrized rates for calculating eta0
-        rate0list = ratelist(self.jnet0_indexed, pre0, bFdb0, pre0T, bFT0, self.vkinetic.starset.pdbcontainer.invmap)
-        rate2list = ratelist(self.jnet2_indexed, pre2, bFdb2, pre2T, bFT2, self.vkinetic.starset.mdbcontainer.invmap)
+        rate0list = ratelist(self.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
+                             self.vkinetic.starset.pdbcontainer.invmap)
+        rate2list = ratelist(self.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
+                             self.vkinetic.starset.mdbcontainer.invmap)
 
         # Make the symmetrized rates for calculating GF, bias and gamma.
         # First, make bFSdb_total from individual solute and pure dumbbell free energies and the binding free energy,
@@ -899,6 +908,7 @@ class dumbbellMediated(VacancyMediated):
         # getsymmrates function.
 
         bFSdb_total = np.zeros(self.vkinetic.starset.mixedstartindex)
+        bFSdb_total_shift = np.zeros(self.vkinetic.starset.mixedstartindex)
         # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
         # late.
         for starind, star in self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]:
@@ -906,6 +916,7 @@ class dumbbellMediated(VacancyMediated):
                 continue
             symindex = self.vkinetic.starset.star2symlist[starind]
             bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]]
+            bFSdb_total_shift[starind] = bFSdb_total[starind] - (bFdb0_min + bFS_min)
 
         # Now add in the changes for the complexes inside the thermodynamic shell.
         for starind, star in enumerate(self.thermo.stars[:self.thermo.mixedstartindex]):
@@ -915,9 +926,13 @@ class dumbbellMediated(VacancyMediated):
             # keep the total energies zero for origin states.
             kinStarind = self.thermo2kin[starind]
             bFSdb_total[kinStarind] += bFSdb[starind]
+            bFSdb_total_shift[kinStarind] += bFSdb[starind]
+        # We incorporate a separate "shift" array so that even after shifting, the origin state energies remain
+        # zero.
 
         (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = \
-            self.getsymmrates(bFdb0, bFdb2, bFSdb_total, bFT0, bFT1, bFT3, bFT4)
+            self.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFSdb_total_shift, bFT0, bFT1,
+                              bFT3, bFT4)
 
         # Update the bias expansions
         self.update_bias_expansions(rate0list, rate2list)
@@ -926,7 +941,7 @@ class dumbbellMediated(VacancyMediated):
         omegas = ((omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape))
 
         # Any better way to do this?
-        GF_total, GF20, del_om = self.makeGF(bFdb0, bFdb2, bFT0, bFT2, omegas)
+        GF_total, GF20, del_om = self.makeGF(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFT0, bFT2, omegas)
 
         # Once the GF is built, make the correlated part of the transport coefficient
         # First we make the projection of the bias vector
@@ -959,37 +974,55 @@ class dumbbellMediated(VacancyMediated):
         # Give the probability-square-root multiplied rates in the uncorrelated terms.
         # Work out the normalization of the probabilities
 
-        probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state1][1]])
-                          for jlist in self.jnet_1])
+        # probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state1][1]])
+        #                   for jlist in self.jnet_1])
+        #
+        # probFSsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+        #                   for jlist in self.jnet_1])
+        #
+        # probISsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1]]])
+        #                   for jlist in self.jnet0])
+        # probFSsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1 - jlist[0].state1.R]]])
+        #                   for jlist in self.jnet0])
+        #
+        # probISsqrt_om2 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1][1]])
+        #                            for jlist in self.jnet2])
+        # probFSsqrt_om2 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+        #                            for jlist in self.jnet2])
+        #
+        # probISsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1-jlist[0].state1.R_s][1]])
+        #                            for jlist in self.symjumplist_omega3])
+        # probFSsqrt_om3 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
+        #                            for jlist in self.symjumplist_omega3])
+        #
+        # probISsqrt_om4 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state1 - jlist[0].state1.R_s][1]])
+        #                            for jlist in self.symjumplist_omega4])
+        # probFSsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2 - jlist[0].state2.R_s][1]])
+        #                            for jlist in self.symjumplist_omega4])
 
-        probFSsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
-                          for jlist in self.jnet_1])
 
-        probISsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1]]])
-                          for jlist in self.jnet0])
-        probFSsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1 - jlist[0].state1.R]]])
-                          for jlist in self.jnet0])
+        # prob_om1 = probISsqrt_om1 * omega1 * probFSsqrt_om1
+        # prob_om0 = probISsqrt_om0 * omega0 * probFSsqrt_om0
+        # prob_om2 = probISsqrt_om2 * omega2 * probFSsqrt_om2
+        # prob_om3 = probISsqrt_om3 * omega3 * probFSsqrt_om3
+        # prob_om4 = probISsqrt_om4 * omega4 * probFSsqrt_om4
 
-        probISsqrt_om2 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1][1]])
-                                   for jlist in self.jnet2])
-        probFSsqrt_om2 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
-                                   for jlist in self.jnet2])
+        # The above method makes everything hard to normalize
+        complex_en = np.zeros(len(self.vkinetic.starset.complexStates))
+        mixed_en = np.zeros(len(self.vkinetic.starset.mixedstates))
 
-        probISsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1-jlist[0].state1.R_s][1]])
-                                   for jlist in self.symjumplist_omega3])
-        probFSsqrt_om3 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
-                                   for jlist in self.symjumplist_omega3])
+        # First, let's build the complex part
+        for stateind, state in enumerate(self.vkinetic.starset.complexStates):
+            # get the star to which the state belongs.
+            starind = self.vkinetic.starset.complexIndexdict[state][1]
+            complex_en[stateind] = bFSdb_total[starind]
 
-        probISsqrt_om4 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state1 - jlist[0].state1.R_s][1]])
-                                   for jlist in self.symjumplist_omega4])
-        probFSsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2 - jlist[0].state2.R_s][1]])
-                                   for jlist in self.symjumplist_omega4])
+        # Noe we build the energies for the mixed part
+        for stateind, state in enumerate(self.vkinetic.starset.mixedstates):
+            # get the mixed star - be sure to subtract mixedstartindex
+            starind = self.vkinetic.starset.mixedindexdict[state][1] - self.vkinetic.starset.mixedstartindex
+            mixed_en[stateind] = bFdb2[starind]
 
-        prob_om1 = probISsqrt_om1 * omega1 * probFSsqrt_om1
-        prob_om0 = probISsqrt_om0 * omega0 * probFSsqrt_om0
-        prob_om2 = probISsqrt_om2 * omega2 * probFSsqrt_om2
-        prob_om3 = probISsqrt_om3 * omega3 * probFSsqrt_om3
-        prob_om4 = probISsqrt_om4 * omega4 * probFSsqrt_om4
 
         # Generate the bare expansions
         (D0expansion_aa, D0expansion_bb, D0expansion_ab),\
