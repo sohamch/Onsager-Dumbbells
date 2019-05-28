@@ -1,8 +1,7 @@
 import numpy as np
 from numpy.core.multiarray import ndarray
-
-from states import *
 import onsager.crystal as crystal
+from onsager.crystalStars import zeroclean
 from representations import *
 from GFcalc_dumbbells import GF_dumbbells
 import stars
@@ -334,7 +333,7 @@ class dumbbellMediated(VacancyMediated):
 
         # Generate the GF expansions
         (self.GFstarset_pure, self.GFPureStarInd, self.GFexpansion_pure), \
-        (self.GFstarset_mixed, self.GFMixedStarInd, self.GFstarset_mixed_snewlist, self.GFexpansion_mixed) \
+        (self.GFstarset_mixed, self.GFMixedStarInd, self.GFexpansion_mixed) \
             = self.vkinetic.GFexpansion()
 
         # Generate the bias expansions
@@ -648,12 +647,12 @@ class dumbbellMediated(VacancyMediated):
         Parameters:
             pre* - entropic pre-factors
             ene* - state/transition state energies.
-        The pre-factors for pure dumbbells are matched to the symmorlist. For mixed dumbbells the mixedstarset and symmorlist
-        are equivalent and the pre-factors are energies are matched to these.
+        The pre-factors for pure dumbbells are matched to the symmorlist. For mixed dumbbells the mixedstarset and
+        symmorlist are equivalent and the pre-factors are energies are matched to these.
         For solute-dumbbell complexes, the pre-factors and the energies are matched to the star set.
 
-        Note - for the solute-dumbbell configurations, eneSdb and preSdb are the binding (excess) energies and pre-factors
-        respectively. We need to evaluate the total configuration energy separately. See lines 1450-1465 in OnsagerCalc.py.
+        Note - for the solute-dumbbell complexes, eneSdb and preSdb are the binding (excess) energies and pre
+        factors respectively. We need to evaluate the total configuration energy separately.
 
         For all the transitions, the pre-factors and energies for transition states are matched to symmetry-unique jump types.
 
@@ -692,14 +691,13 @@ class dumbbellMediated(VacancyMediated):
 
         return bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4
 
-    def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4):
+    def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT3, bFT4):
         """
         :param bFdb0: beta * ene_db0 - ln(pre_db0) - relative to bFdb0min
         :param bFdb2: beta * ene_db2 - ln(pre_db2) - relative to bFdb2min
         :param bFSdb: beta * ene_Sdb - ln(pre_Sdb) - Total (not excess) - Relative to bFdb0min + bFSmin
         :param bFT0: beta * ene_T0 - ln(pre_T0) - relative to bFdb0min
         :param bFT1: beta * ene_T1 - ln(pre_T1) - relative to bFdb0min + bFSmin
-        :param bFT2: beta * ene_T2 - ln(pre_T2) - relative to bFdb2min
         :param bFT3: beta * ene_T3 - ln(pre_T3) - relative to bFdb2min
         :param bFT4: beta * ene_T4 - ln(pre_T4) - relative to bFdb0min + bFSmin
         :return:
@@ -726,8 +724,8 @@ class dumbbellMediated(VacancyMediated):
             st2 = jlist[0].state2 - jlist[0].state2.R
 
             # get the symorindex of the states - these serve analogous to Wyckoff sets
-            w1 = self.pdbcontainer.invmap[self.pdbcontainer.iorindex[st1]]
-            w2 = self.pdbcontainer.invmap[self.pdbcontainer.iorindex[st2]]
+            w1 = self.vkinetic.starset.pdbcontainer.invmap[self.vkinetic.starset.pdbcontainer.db2ind(st1)]
+            w2 = self.vkinetic.starset.pdbcontainer.invmap[self.vkinetic.starset.pdbcontainer.db2ind(st2)]
 
             omega0escape[w1, jt] = np.exp(-bFT0[jt] + bFdb0[w1])
             omega0escape[w2, jt] = np.exp(-bFT0[jt] + bFdb0[w2])
@@ -741,7 +739,9 @@ class dumbbellMediated(VacancyMediated):
             st1 = jlist[0].state1 - jlist[0].state1.R_s
             st2 = jlist[0].state2 - jlist[0].state2.R_s
 
-            if st1.is_zero() or st2.is_zero():
+            if st1.is_zero(self.vkinetic.starset.pdbcontainer) or st2.is_zero(self.vkinetic.starset.pdbcontainer):
+                # We want transition rates in and out of origin states to be to be zero
+                # So, since omega1 contains the total transition rate, we keep them to be zero.
                 continue
 
             # get the crystal stars of the representative jumps
@@ -767,19 +767,21 @@ class dumbbellMediated(VacancyMediated):
         for jt, jlist in enumerate(self.symjumplist_omega43_all):
 
             # The first state is a complex state, the second state is a mixed state.
+            # This has been checked in test_crystal stars - look it up
             st1 = jlist[0].state1 - jlist[0].state1.R_s
             st2 = jlist[0].state2 - jlist[0].state2.R_s
 
             # get the crystal stars
             crStar1 = self.vkinetic.starset.complexIndexdict[st1][1]
             crStar2 = self.vkinetic.starset.mixedindexdict[st2][1] - self.vkinetic.starset.mixedstartindex
+            # crStar2 is the same as the "Wyckoff" index for the mixed dumbbell state.
 
             init2TS = np.exp(-bFT4[jt] + bFSdb[crStar1])  # complex (bFSdb) to transition state
             fin2TS = np.exp(-bFT3[jt] + bFdb2[crStar2])  # mixed (bFdb2) to transition state.
 
             # symmetrized rates for omega3 and omega4 are equal
             omega4[jt] = np.sqrt(init2TS * fin2TS)
-            omega3[jt] = omega4[jt] # symmetry condition
+            omega3[jt] = omega4[jt]  # symmetry condition : = np.sqrt(fin2ts * init2Ts)
 
             # get the vector stars
             v1list = self.vkinetic.stateToVecStar_pure[st1]
@@ -856,6 +858,7 @@ class dumbbellMediated(VacancyMediated):
         The above three values are relative to their respective minimum values.
         bFSdb - beta*ene_Sdb[i] - ln(pre_Sdb[i]) excess (binding) i=1,2...,mixedstartindex. free energy between a solute and a
         bare dumbbell in it's vicinity.
+        This must be non-zero only for states within the thermodynamic shell. Should the size be restricted to such?
 
         Jump barrier free energies (See preene2betaene for details):
         bFT0[i] = beta*ene_TS[i] - ln(pre_TS[i]), i=1,2,...,N_omega0
@@ -867,6 +870,9 @@ class dumbbellMediated(VacancyMediated):
         Return:
             L_aa, L_bb, L_ab - needs to be multiplied by c_db/KT
         """
+        if not len(bFSdb) == self.thermo.mixedstartindex:
+            raise TypeError("Interaction energies must be present for all and only all thermodynamic shell states.")
+
         pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
         pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
 
@@ -886,7 +892,7 @@ class dumbbellMediated(VacancyMediated):
             bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]] + bFSdb[starind]
 
         (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = \
-            self.getsymmrates(bFdb0, bFdb2, bFSdb_total, bFT0, bFT1, bFT2, bFT3, bFT4)
+            self.getsymmrates(bFdb0, bFdb2, bFSdb_total, bFT0, bFT1, bFT3, bFT4)
 
         # Update the bias expansions
         self.update_bias_expansions(rate0list, rate2list)
@@ -926,6 +932,7 @@ class dumbbellMediated(VacancyMediated):
         # Next, we get to the bare or uncorrelated terms
         # First, we have to generate the probability arrays and multiply them with the ratelists. This will
         # Give the probability-square-root multiplied rates in the uncorrelated terms.
+        # Work out the normalization of the probabilities
 
         probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state1][1]])
                           for jlist in self.jnet_1])
@@ -966,8 +973,8 @@ class dumbbellMediated(VacancyMediated):
         (D3expansion_aa, D3expansion_bb, D3expansion_ab),\
         (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.bareExpansion()
 
-        L_uc_aa = np.dot(D1expansion_aa,prob_om1) + np.dot(D2expansion_aa, prob_om2) +\
-                  np.dot(D3expansion_aa,prob_om3) + np.dot(D4expansion_aa,prob_om4)
+        L_uc_aa = np.dot(D1expansion_aa, prob_om1) + np.dot(D2expansion_aa, prob_om2) +\
+                  np.dot(D3expansion_aa, prob_om3) + np.dot(D4expansion_aa, prob_om4)
 
         L_uc_bb = np.dot(D1expansion_bb, prob_om1) + np.dot(D2expansion_bb, prob_om2) + \
                   np.dot(D3expansion_bb, prob_om3) + np.dot(D4expansion_bb, prob_om4)
