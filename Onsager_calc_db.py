@@ -324,11 +324,21 @@ class dumbbellMediated(VacancyMediated):
         # self.NcomplexStates = len(self.kinetic.complexStates)
         self.vkinetic.generate(self.kinetic)  # we generate the vector star out of the kinetic shell
         # Now generate the pure and mixed dumbbell Green functions expnsions - internalized within vkinetic.
-        # (self.GFexpansion_pure,self.GFstarset_pure,self.GFPureStarInd), (self.GFexpansion_mixed,self.GFstarset_mixed,self.GFMixedStarInd)\
-        # = self.vkinetic.GFexpansion()
 
-        # See how the thermo2kin and all of that works later as and when needed
-        # Generate the jumpnetworks
+        # Generate and indexing that takes from a star in the thermodynamic shell
+        # to the corresponding star in the kinetic shell.
+        self.thermo2kin = np.zeros(self.thermo.mixedstartindex, dtype=int)
+        for th_ind, thstar in enumerate(self.thermo.stars[:self.thermo.mixedstartindex]):
+            count = 0
+            for k_ind, kstar in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
+                # check if the representative state of the thermo star is present in the kin star.
+                if thstar[0] in set(kstar):
+                    count += 1
+                    self.thermo2kin[th_ind] = k_ind
+            if count != 1:
+                raise TypeError("thermodynamic and kinetic shells not consistent.")
+
+
         self.generate_jnets(cutoff, solt_solv_cut, solv_solv_cut, closestdistance)
 
         # Generate the GF expansions
@@ -880,16 +890,21 @@ class dumbbellMediated(VacancyMediated):
         rate0list = ratelist(self.jnet0_indexed, pre0, bFdb0, pre0T, bFT0, self.vkinetic.starset.pdbcontainer.invmap)
         rate2list = ratelist(self.jnet2_indexed, pre2, bFdb2, pre2T, bFT2, self.vkinetic.starset.mdbcontainer.invmap)
 
-        # Make the symmetried rates for calculating GF, bias and gamma.
+        # Make the symmetrized rates for calculating GF, bias and gamma.
         # First, make bFSdb_total from individual solute and pure dumbbell free energies and the binding free energy,
         # i.e, bFdb0, bFS, bFSdb (binding), respectively.
-        # For origin states, this should be in such a way so that omega_1 - omega0 = 0
-        N_comp_stars = self.vkinetic.starset.mixedstartindex
+        # For origin states, this should be in such a way so that omega_1 - omega0 = 0 - this is taken care of in the
+        # getsymmrates function.
+
+        # N_comp_stars = self.vkinetic.starset.mixedstartindex
         bFSdb_total = np.zeros(N_comp_stars)
-        for starind,star in enumerate(self.vkinetic.starset.stars[:N_comp_stars]):
+        for starind, star in enumerate(self.thermo.stars[:self.thermo.mixedstartindex]):
             # Get the symorlist index for the representative state of the star
-            symindex = self.vkinetic.starset.star2symlist[starind]
-            bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]] + bFSdb[starind]
+            kinStarind = self.thermo2kin[starind]
+            symindex = self.thermo.star2symlist[starind]
+            bFSdb_total[kinStarind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]] + bFSdb[starind]
+
+        # Now, we have non-zero interactions for the thermodynamics shell and zero interactions for kinetic shells.
 
         (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = \
             self.getsymmrates(bFdb0, bFdb2, bFSdb_total, bFT0, bFT1, bFT3, bFT4)
