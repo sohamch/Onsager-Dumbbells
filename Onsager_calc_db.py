@@ -869,28 +869,33 @@ class dumbbellMediated(VacancyMediated):
         bFdb0[i] = beta*ene_pdb[i] - ln(pre_pdb[i]), i=1,2...,N_pdbcontainer.symorlist - pure dumbbell free energy
         bFdb2[i] = beta*ene_mdb[i] - ln(pre_mdb[i]), i=1,2...,N_mdbcontainer.symorlist - mixed dumbbell free energy
         bFS[i] = beta*ene_S[i] - _ln(pre_S[i]), i=1,2,..N_Wyckoff - site free energy for solute.
-        The above three values are NOT relative to their respective minimum values.
-        We need them to be unshifted to be able to normalize the state probabilities.
+        THE ABOVE THREE VALUES ARE NOT SHIFTED RELATIVE TO THEIR RESPECTIVE MINIMUM VALUES.
+        We need them to be unshifted to be able to normalize the state probabilities, which requires complex and
+        mixed dumbbell energies to be with respect to the same reference. Shifting with their respective minimum values
+        disturbs this.
         Wherever shifting is required, we'll do it there.
-        bFSdb - beta*ene_Sdb[i] - ln(pre_Sdb[i]) excess (binding) i=1,2...,mixedstartindex. free energy between a solute and a
-        bare dumbbell in it's vicinity.
-        This must be non-zero only for states within the thermodynamic shell. Should the size be restricted to such?
+
+        bFSdb - beta*ene_Sdb[i] - ln(pre_Sdb[i]) [i=1,2...,mixedstartindex](binding)] excess free energy of interaction
+        between a solute and a pure dumbbell in it's vicinity. This must be non-zero only for states within the
+        thermodynamic shell. So the size is restricted to the number of thermodynamic crystal stars.
 
         Jump barrier free energies (See preene2betaene for details):
-        bFT0[i] = beta*ene_TS[i] - ln(pre_TS[i]), i=1,2,...,N_omega0
-        bFT2[i] = beta*ene_TS[i] - ln(pre_TS[i]), i=1,2,...,N_omega2
-        bFT1[i] = beta*eneT1[i] - len(preT1[i]) -> i = 1,2..,N_omega1
-        bFT3[i] = beta*eneT3[i] - len(preT3[i]) -> i = 1,2..,N_omega3
-        bFT4[i] = beta*eneT4[i] - len(preT4[i]) -> i = 1,2..,N_omega4
-
+        bFT0[i] = beta*ene_TS[i] - ln(pre_TS[i]), i=1,2,...,N_omega0 - Shifted
+        bFT2[i] = beta*ene_TS[i] - ln(pre_TS[i]), i=1,2,...,N_omega2 - Shited
+        bFT1[i] = beta*eneT1[i] - len(preT1[i]) -> i = 1,2..,N_omega1 - Shifted
+        bFT3[i] = beta*eneT3[i] - len(preT3[i]) -> i = 1,2..,N_omega3 - Shifted
+        bFT4[i] = beta*eneT4[i] - len(preT4[i]) -> i = 1,2..,N_omega4 - Shifted
+        # See the preene2betaene function to see what the shifts are.
         Return:
             L_aa, L_bb, L_ab - needs to be multiplied by c_db/KT
         """
+        if not len(bFSdb) == self.thermo.mixedstartindex:
+            raise TypeError("Interaction energies must be present for all and only all thermodynamic shell states.")
+
+        # Get the minimum free energies of solutes, pure dumbbells and mixed dumbbells
         bFdb0_min = np.min(bFdb0)
         bFdb2_min = np.min(bFdb2)
         bFS_min = np.min(bFS)
-        if not len(bFSdb) == self.thermo.mixedstartindex:
-            raise TypeError("Interaction energies must be present for all and only all thermodynamic shell states.")
 
         pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
         pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
@@ -915,6 +920,7 @@ class dumbbellMediated(VacancyMediated):
             if star[0].is_zero(self.vkinetic.starset.pdbcontainer):
                 continue
             symindex = self.vkinetic.starset.star2symlist[starind]
+            # First, get the unshifted value
             bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]]
             bFSdb_total_shift[starind] = bFSdb_total[starind] - (bFdb0_min + bFS_min)
 
@@ -929,7 +935,6 @@ class dumbbellMediated(VacancyMediated):
             bFSdb_total_shift[kinStarind] += bFSdb[starind]
         # We incorporate a separate "shift" array so that even after shifting, the origin state energies remain
         # zero.
-
         (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = \
             self.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFSdb_total_shift, bFT0, bFT1,
                               bFT3, bFT4)
@@ -953,61 +958,32 @@ class dumbbellMediated(VacancyMediated):
         # The values for the mixed dumbbells are stored first, and then the complexes
         # Among the complexes, the values for the origin states are stored first, then the other ones.
         biases_solute_vs[Nvstars_mixed:] = np.dot(self.bias4_solute_new, omega4)
+        # For the solutes in complex configurations, the only bias comes due to displacements during association.
         biases_solute_vs[:Nvstars_mixed] = np.dot(self.bias3_solute_new, omega3)
+        # remember that the omega2 bias is the non-local bias, and so has been subtracted out.
 
-        biases_solvent_vs[Nvstars_mixed:] = np.dot(self.bias1_solvent_new, omega1) + np.dot(self.bias4_solvent_new,
-                                                                                            omega4)
+        # omega1 has total rates. So, to get the non-local change in the rates, we must subtract out the corresponding
+        # non-local rates.
+        omega1_change = omega1 - np.array([omega0[jt] for jt in self.om1types])
+        biases_solvent_vs[Nvstars_mixed:] = np.dot(self.bias1_solvent_new, omega1_change) +\
+                                            np.dot(self.bias4_solvent_new, omega4)
+
         biases_solvent_vs[:Nvstars_mixed] = np.dot(self.bias3_solvent_new, omega3)
 
         # Next, we create the gamma vector, projected onto the vector stars
-        gamma_solute_vs = np.dot(GF_total, bias_solute_vs)
-        gamma_solvent_vs = np.dot(GF_total, bias_solvent_vs)
+        gamma_solute_vs = np.dot(GF_total, biases_solute_vs)
+        gamma_solvent_vs = np.dot(GF_total, biases_solvent_vs)
 
         # Next we produce the outer product in the basis of the vector star vector state functions
         # a=solute, b=solvent
-        L_c_aa = np.dot(np.dot(self.kinouter, gamma_solute_vs), bias_solute_vs)
-        L_c_bb = np.dot(np.dot(self.kinouter, gamma_solvent_vs), bias_solvent_vs)
-        L_c_ab = np.dot(np.dot(self.kinouter, gamma_solvent_vs), bias_solute_vs)
+        L_c_aa = np.dot(np.dot(self.kinouter, gamma_solute_vs), biases_solute_vs)
+        L_c_bb = np.dot(np.dot(self.kinouter, gamma_solvent_vs), biases_solvent_vs)
+        L_c_ab = np.dot(np.dot(self.kinouter, gamma_solvent_vs), biases_solute_vs)
 
         # Next, we get to the bare or uncorrelated terms
         # First, we have to generate the probability arrays and multiply them with the ratelists. This will
         # Give the probability-square-root multiplied rates in the uncorrelated terms.
-        # Work out the normalization of the probabilities
-
-        # probISsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state1][1]])
-        #                   for jlist in self.jnet_1])
-        #
-        # probFSsqrt_om1 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
-        #                   for jlist in self.jnet_1])
-        #
-        # probISsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1]]])
-        #                   for jlist in self.jnet0])
-        # probFSsqrt_om0 = np.array([np.exp(-0.5 * bFdb0[self.pdbcontainer.invmap[self.pdbcontainer.iorindex[jlist[0].state1 - jlist[0].state1.R]]])
-        #                   for jlist in self.jnet0])
-        #
-        # probISsqrt_om2 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1][1]])
-        #                            for jlist in self.jnet2])
-        # probFSsqrt_om2 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
-        #                            for jlist in self.jnet2])
-        #
-        # probISsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state1-jlist[0].state1.R_s][1]])
-        #                            for jlist in self.symjumplist_omega3])
-        # probFSsqrt_om3 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state2-jlist[0].state2.R_s][1]])
-        #                            for jlist in self.symjumplist_omega3])
-        #
-        # probISsqrt_om4 = np.array([np.exp(-0.5 * bFSdb_total[self.vkinetic.starset.complexIndexdict[jlist[0].state1 - jlist[0].state1.R_s][1]])
-        #                            for jlist in self.symjumplist_omega4])
-        # probFSsqrt_om3 = np.array([np.exp(-0.5 * bFdb2[self.vkinetic.starset.mixedindexdict[jlist[0].state2 - jlist[0].state2.R_s][1]])
-        #                            for jlist in self.symjumplist_omega4])
-
-
-        # prob_om1 = probISsqrt_om1 * omega1 * probFSsqrt_om1
-        # prob_om0 = probISsqrt_om0 * omega0 * probFSsqrt_om0
-        # prob_om2 = probISsqrt_om2 * omega2 * probFSsqrt_om2
-        # prob_om3 = probISsqrt_om3 * omega3 * probFSsqrt_om3
-        # prob_om4 = probISsqrt_om4 * omega4 * probFSsqrt_om4
-
-        # The above method makes everything hard to normalize
+        # First, we work out the probabilities and their normalization.
         complex_en = np.zeros(len(self.vkinetic.starset.complexStates))
         mixed_en = np.zeros(len(self.vkinetic.starset.mixedstates))
 
