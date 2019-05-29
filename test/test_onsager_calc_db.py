@@ -1,4 +1,5 @@
 from onsager.crystal import Crystal
+from onsager.crystalStars import zeroclean
 from Onsager_calc_db import *
 from test_structs import *
 from representations import *
@@ -417,7 +418,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         self.assertTrue(np.allclose(solute_bias_4,solute_bias_4_new))
         self.assertTrue(np.allclose(solvent_bias_4,solvent_bias_4_new))
 
-    def test_uncorrelated(self):
+    def test_uncorrelated_del_om(self):
         """
         Test the uncorrelated contribution to diffusivity part by part.
         Also in the process check the omega rate list creation and everything.
@@ -606,19 +607,26 @@ class test_dumbbell_mediated(unittest.TestCase):
         L_uc_om3_test_ab = np.zeros((3, 3))
         for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3_indexed):
             # The initial state is a  mixed dumbbell and the final is a pure dumbbell
+            sm_aa = np.zeros((3, 3))
+            sm_bb = np.zeros((3, 3))
+            sm_ab = np.zeros((3, 3))
             for (IS, FS), dx in jlist:
                 o1 = self.onsagercalculator.mdbcontainer.iorlist[
                     self.onsagercalculator.vkinetic.starset.mixedstates[IS].db.iorind][1]
                 o2 = self.onsagercalculator.pdbcontainer.iorlist[
                     self.onsagercalculator.vkinetic.starset.complexStates[IS].db.iorind][1]
 
-                dx_solute = -o1/2. + eta0total_solute[IS + Ncomp] - eta0total_solvent[FS]
+                dx_solute = -o1/2. + eta0total_solute[IS + Ncomp] - eta0total_solute[FS]
                 dx_solvent = o1/2. + dx + eta0total_solvent[IS + Ncomp] - eta0total_solvent[FS]
-                L_uc_om3_test_aa += np.outer(dx_solute, dx_solute) * prob_om3[jt] * 0.5
-                L_uc_om3_test_bb += np.outer(dx_solvent, dx_solvent) * prob_om3[jt] * 0.5
-                L_uc_om3_test_ab += np.outer(dx_solute, dx_solvent) * prob_om3[jt] * 0.5
+                sm_aa += zeroclean(np.outer(dx_solute, dx_solute)) * 0.5
+                sm_bb += zeroclean(np.outer(dx_solvent, dx_solvent)) * 0.5
+                sm_ab += zeroclean(np.outer(dx_solute, dx_solvent)) * 0.5
+                L_uc_om3_test_aa += zeroclean(np.outer(dx_solute, dx_solute)) * prob_om3[jt] * 0.5
+                L_uc_om3_test_bb += zeroclean(np.outer(dx_solvent, dx_solvent)) * prob_om3[jt] * 0.5
+                L_uc_om3_test_ab += zeroclean(np.outer(dx_solute, dx_solvent)) * prob_om3[jt] * 0.5
+            self.assertTrue(np.allclose(D3expansion_aa[:, :, jt], sm_aa), msg="{}".format(jt))
 
-        self.assertTrue(np.allclose(L_uc_om3_test_aa, L_uc_om3_aa))
+        self.assertTrue(np.allclose(L_uc_om3_test_aa, L_uc_om3_aa), msg="\n {} \n {}".format(L_uc_om3_test_aa, L_uc_om3_aa))
         self.assertTrue(np.allclose(L_uc_om3_test_bb, L_uc_om3_bb))
         self.assertTrue(np.allclose(L_uc_om3_test_ab, L_uc_om3_ab))
 
@@ -646,3 +654,41 @@ class test_dumbbell_mediated(unittest.TestCase):
         self.assertTrue(np.allclose(L_uc_om4_test_aa, L_uc_om4_aa))
         self.assertTrue(np.allclose(L_uc_om4_test_bb, L_uc_om4_bb))
         self.assertTrue(np.allclose(L_uc_om4_test_ab, L_uc_om4_ab))
+
+class test_distorted(test_dumbbell_mediated):
+    def setUp(self):
+        # We test a new weird lattice because it is more interesting
+        # latt = np.array([[0., 0.1, 0.5], [0.3, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
+        # self.DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
+        # # keep it simple with [1.,0.,0.] type orientations for now
+        # o = np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126
+        # famp0 = [o.copy()]
+        # family = [famp0]
+
+        latt = np.array([[0., 0.1, 0.5], [0.3, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
+        self.DC_Si = Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
+        # keep it simple with [1.,0.,0.] type orientations for now
+        o = np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126
+        famp0 = [o.copy()]
+        family = [famp0]
+
+        self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
+        self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
+
+        self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
+        self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
+        self.jset0, self.jset2 = \
+            self.pdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01), self.mdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01)
+
+        self.onsagercalculator = dumbbellMediated(self.pdbcontainer_si, self.mdbcontainer_si, self.jset0, self.jset2,
+                                                  0.3, 0.01, 0.01, 0.01, NGFmax=4, Nthermo=1)
+        # generate all the bias expansions - will separate out later
+        self.biases = \
+            self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1, self.onsagercalculator.jnet2,
+                                                          self.onsagercalculator.om1types,
+                                                          self.onsagercalculator.symjumplist_omega43_all)
+
+        self.W1list = np.random.rand(len(self.onsagercalculator.jnet_1))
+        self.W2list = np.random.rand(len(self.onsagercalculator.jnet0))
+        self.W3list = np.random.rand(len(self.onsagercalculator.symjumplist_omega3))
+        self.W4list = np.random.rand(len(self.onsagercalculator.symjumplist_omega4))
