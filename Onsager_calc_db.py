@@ -9,6 +9,8 @@ import vector_stars
 from functools import reduce
 from scipy.linalg import pinv2
 from onsager.OnsagerCalc import Interstitial, VacancyMediated
+import itertools
+
 
 
 # Making stateprob, ratelist and symmratelist universal functions so that I can also use them later on in the case of
@@ -446,24 +448,11 @@ class dumbbellMediated(VacancyMediated):
         self.eta02_solvent = np.tensordot(g2, self.NlsolventBias2, axes=(1, 0))
         self.eta02_solute = np.tensordot(g2, self.NlsoluteBias2, axes=(1, 0))
 
-        # self.gen_new_jnets()
-        # Need to bypass having to generate new jumpnetworks all over again
-
-    def bias_changes(self):
-        """
-        Function that allows us to construct new bias and bare expansions based on the eta vectors already calculated.
-
-        We don't want to repeat the construction of the jumpnetwork based on the recalculated displacements after
-        subtraction of the eta vectors (as in the variational principle).
-
-        The steps are illustrated in the GM slides of Feb 25, 2019 - will include in the detailed documentation later on
-        """
         # So what do we have up until now?
         # We have constructed the Nstates x 3 eta0 vectors for pure and mixed states separately
         # But the jtags assume all the eta vectors are in the same list.
-        # So, we need to first concatenate the mixed eta vectors into the pure eta vectors.
+        # So, we need to concatenate the mixed eta vectors into the pure eta vectors.
 
-        # noinspection PyAttributeOutsideInit
         self.eta0total_solute = np.zeros(
             (len(self.vkinetic.starset.complexStates) + len(self.vkinetic.starset.mixedstates), 3))
         # noinspection PyAttributeOutsideInit
@@ -476,9 +465,17 @@ class dumbbellMediated(VacancyMediated):
         self.eta0total_solvent[:len(self.vkinetic.starset.complexStates), :] = self.eta00_solvent.copy()
         self.eta0total_solvent[len(self.vkinetic.starset.complexStates):, :] = self.eta02_solvent.copy()
 
+    def bias_changes(self):
+        """
+        Function that allows us to construct new bias and bare expansions based on the eta vectors already calculated.
+
+        We don't want to repeat the construction of the jumpnetwork based on the recalculated displacements after
+        subtraction of the eta vectors (as in the variational principle).
+
+        The steps are illustrated in the GM slides of Feb 25, 2019 - will include in the detailed documentation later on
+        """
         # create updated bias expansions
-        # to get warmed up, let's do it for bias1expansion
-        # Step 2 - construct the projection of eta vectors
+        # Construct the projection of eta vectors
         self.delbias1expansion_solute = np.zeros_like(self.biases[1][0])
         self.delbias1expansion_solvent = np.zeros_like(self.biases[1][0])
 
@@ -562,7 +559,7 @@ class dumbbellMediated(VacancyMediated):
         self.bias2_solute_new = self.biases[2][0] + self.delbias2expansion_solute
         self.bias2_solvent_new = self.biases[2][1] + self.delbias2expansion_solvent
 
-    def bareExpansion(self):
+    def bareExpansion(self, eta0_solute, eta0_solvent):
         """
         Returns the contributions to the terms of the uncorrelated diffusivity term,
         grouped separately for each type of jump. Intended to be called after displacements have been applied to the displacements.
@@ -575,7 +572,7 @@ class dumbbellMediated(VacancyMediated):
         The mixed dumbbell space is completely non-local.
         """
         # a = solute, b = solvent
-        eta0_solute, eta0_solvent = self.eta0total_solute, self.eta0total_solvent
+        # eta0_solute, eta0_solvent = self.eta0total_solute, self.eta0total_solvent
         # Stores biases out of complex states, followed by mixed dumbbell states.
         jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4 =\
             self.jnet1_indexed, self.om1types, self.jnet2_indexed, self.symjumplist_omega3_indexed,\
@@ -604,6 +601,8 @@ class dumbbellMediated(VacancyMediated):
         D4expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega4)))
         D4expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega4)))
 
+        # iorlist_pure = self.pdbcontainer.iorlist
+        iorlist_mixed = self.mdbcontainer.iorlist
         # Need versions for solute and solvent - solute dusplacements are zero anyway
         for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork_omega1):
             d0 = np.sum(
@@ -618,10 +617,12 @@ class dumbbellMediated(VacancyMediated):
             # Build the expansions directly
             for jnum, ((IS, FS), dx) in enumerate(jumplist):
                 j = self.jnet2[jt][jnum]
-                dx_solute = dx + j.state2.db.o / 2. - j.state1.db.o / 2. + eta0_solute[Ncomp + IS] - eta0_solute[
-                    Ncomp + FS]
-                dx_solvent = dx - j.state2.db.o / 2. + j.state1.db.o / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[
-                    Ncomp + FS]
+
+                dx_solute = dx + iorlist_mixed[j.state2.db.iorind][1] / 2. - iorlist_mixed[j.state1.db.iorind][1] / 2. \
+                            + eta0_solute[Ncomp + IS] - eta0_solute[Ncomp + FS]
+
+                dx_solvent = dx - iorlist_mixed[j.state2.db.iorind][1] / 2. + iorlist_mixed[j.state1.db.iorind][1] / 2.\
+                             + eta0_solvent[Ncomp + IS] - eta0_solvent[Ncomp + FS]
                 D2expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D2expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D2expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
@@ -629,8 +630,10 @@ class dumbbellMediated(VacancyMediated):
         for jt, jumplist in enumerate(jumpnetwork_omega3):
             for jnum, ((IS, FS), dx) in enumerate(jumplist):
                 j = self.symjumplist_omega3[jt][jnum]
-                dx_solute = -j.state1.db.o / 2. + eta0_solute[Ncomp + IS] - eta0_solute[FS]
-                dx_solvent = dx + j.state1.db.o / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[FS]
+                dx_solute = -iorlist_mixed[j.state1.db.iorind][1] / 2. +\
+                            eta0_solute[Ncomp + IS] - eta0_solute[FS]
+                dx_solvent = dx + iorlist_mixed[j.state1.db.iorind][1] / 2. +\
+                             eta0_solvent[Ncomp + IS] - eta0_solvent[FS]
                 D3expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D3expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D3expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
@@ -638,8 +641,10 @@ class dumbbellMediated(VacancyMediated):
         for jt, jumplist in enumerate(jumpnetwork_omega4):
             for jnum, ((IS, FS), dx) in enumerate(jumplist):
                 j = self.symjumplist_omega4[jt][jnum]
-                dx_solute = j.state2.db.o / 2. + eta0_solute[IS] - eta0_solute[Ncomp + FS]
-                dx_solvent = dx - j.state2.db.o / 2. + eta0_solvent[IS] - eta0_solvent[Ncomp + FS]
+                dx_solute = iorlist_mixed[j.state2.db.iorind][1] / 2. +\
+                            eta0_solute[IS] - eta0_solute[Ncomp + FS]
+                dx_solvent = dx - iorlist_mixed[j.state2.db.iorind][1] / 2. + \
+                             eta0_solvent[IS] - eta0_solvent[Ncomp + FS]
                 D4expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D4expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D4expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
@@ -707,13 +712,14 @@ class dumbbellMediated(VacancyMediated):
 
         return bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4
 
-    def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT3, bFT4):
+    def getsymmrates(self, bFdb0, bFdb2, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4):
         """
         :param bFdb0: beta * ene_db0 - ln(pre_db0) - relative to bFdb0min
         :param bFdb2: beta * ene_db2 - ln(pre_db2) - relative to bFdb2min
         :param bFSdb: beta * ene_Sdb - ln(pre_Sdb) - Total (not excess) - Relative to bFdb0min + bFSmin
         :param bFT0: beta * ene_T0 - ln(pre_T0) - relative to bFdb0min
         :param bFT1: beta * ene_T1 - ln(pre_T1) - relative to bFdb0min + bFSmin
+        :param bFT2: beta * ene_T2 - ln(pre_T2) - relative to bFdb2min
         :param bFT3: beta * ene_T3 - ln(pre_T3) - relative to bFdb2min
         :param bFT4: beta * ene_T4 - ln(pre_T4) - relative to bFdb0min + bFSmin
         :return:
@@ -722,6 +728,9 @@ class dumbbellMediated(VacancyMediated):
 
         omega0 = np.zeros(len(self.jnet0))
         omega0escape = np.zeros((len(self.pdbcontainer.symorlist), len(self.jnet0)))
+
+        omega2 = np.zeros(len(self.jnet2))
+        omega2escape = np.zeros((len(self.mdbcontainer.symorlist), len(self.jnet2)))
 
         omega1 = np.zeros(len(self.jnet_1))
         omega1escape = np.zeros((self.vkinetic.Nvstars_pure, len(self.jnet_1)))
@@ -747,7 +756,17 @@ class dumbbellMediated(VacancyMediated):
             omega0escape[w2, jt] = np.exp(-bFT0[jt] + bFdb0[w2])
             omega0[jt] = np.sqrt(omega0escape[w1, jt] * omega0escape[w2, jt])
 
-        # we don't need the omega2 lists - omega2 is already in the non-local part
+        # we need omega2 only for the uncorrelated contributions.
+        for jt, jlist in enumerate(self.jnet2):
+            st1 = jlist[0].state1.db
+            st2 = jlist[0].state2.db
+
+            w1 = self.vkinetic.starset.mdbcontainer.invmap[self.vkinetic.starset.mdbcontainer.db2ind(st1)]
+            w2 = self.vkinetic.starset.mdbcontainer.invmap[self.vkinetic.starset.mdbcontainer.db2ind(st2)]
+
+            omega2escape[w1, jt] = np.exp(-bFT2[jt] + bFdb2[w1])
+            omega2escape[w2, jt] = np.exp(-bFT2[jt] + bFdb2[w2])
+            omega2[jt] = np.sqrt(omega2escape[w1, jt] * omega2escape[w2, jt])
 
         # build the omega1 lists
         for jt, jlist in enumerate(self.jnet_1):
@@ -811,7 +830,8 @@ class dumbbellMediated(VacancyMediated):
             for (v2, in_v1) in v2list:
                 omega3escape[v2 - self.vkinetic.Nvstars_pure, jt] = fin2TS
 
-        return (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape)
+        return (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
+               (omega4, omega4escape)
 
     def makeGF(self, bFdb0, bFdb2, bFT0, bFT2, omegas):
         """
@@ -822,7 +842,8 @@ class dumbbellMediated(VacancyMediated):
         (rate0expansion, rate0escape), (rate1expansion, rate1escape), (rate3expansion, rate3escape), \
         (rate4expansion, rate4escape) = self.rateExps
 
-        (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = omegas
+        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
+        (omega4, omega4escape) = omegas
 
         GF20 = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
         # left-upper part of GF20 = Nvstars_mixed x Nvstars_mixed g2 matrix
@@ -920,7 +941,7 @@ class dumbbellMediated(VacancyMediated):
         bFSdb_total_shift = np.zeros(self.vkinetic.starset.mixedstartindex)
         # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
         # late.
-        for starind, star in self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]:
+        for starind, star in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
             if star[0].is_zero(self.vkinetic.starset.pdbcontainer):
                 continue
             symindex = self.vkinetic.starset.star2symlist[starind]
@@ -939,17 +960,17 @@ class dumbbellMediated(VacancyMediated):
             bFSdb_total_shift[kinStarind] += bFSdb[starind]
         # We incorporate a separate "shift" array so that even after shifting, the origin state energies remain
         # zero.
-        (omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape) = \
-            self.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFSdb_total_shift, bFT0, bFT1,
-                              bFT3, bFT4)
+        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
+        (omega4, omega4escape) = self.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFSdb_total_shift, bFT0, bFT1,
+                                                   bFT2, bFT3, bFT4)
 
         # Update the bias expansions
         self.update_bias_expansions(rate0list, rate2list)
 
         # Make the Greens function
-        omegas = ((omega0, omega0escape), (omega1, omega1escape), (omega3, omega3escape), (omega4, omega4escape))
+        omegas = ((omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),
+                  (omega4, omega4escape))
 
-        # Any better way to do this?
         GF_total, GF20, del_om = self.makeGF(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFT0, bFT2, omegas)
 
         # Once the GF is built, make the correlated part of the transport coefficient
@@ -1008,12 +1029,31 @@ class dumbbellMediated(VacancyMediated):
         mixed_en /= (np.sum(complex_en) + np.sum(mixed_en))
         # This ensure that summing over all complex + mixed states gives probability of 1.
 
+        # First, make the square root prob * rate lists to multiply with the rates
+
+        # First, omega1
+        prob_om1 = np.zeros(len(self.jnet_1))
+        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet1_indexed]):
+            prob_om1[jt] = np.sqrt(complex_en[IS]*complex_en[FS])*omega1[jt]
+
+        prob_om2 = np.zeros(len(self.jnet2))
+        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet2_indexed]):
+            prob_om2[jt] = np.sqrt(mixed_en[IS]*mixed_en[FS])*omega2[jt]
+
+        prob_om4 = np.zeros(len(self.symjumplist_omega4))
+        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.symjumplist_omega4_indexed]):
+            prob_om4[jt] = np.sqrt(complex_en[IS]*mixed_en[FS])*omega4[jt]
+
+        prob_om3 = np.zeros(len(self.symjumplist_omega3))
+        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.symjumplist_omega3_indexed]):
+            prob_om3[jt] = np.sqrt(mixed_en[IS]*complex_en[FS])*omega3[jt]
+
         # Generate the bare expansions
-        (D0expansion_aa, D0expansion_bb, D0expansion_ab),\
         (D1expansion_aa, D1expansion_bb, D1expansion_ab),\
         (D2expansion_aa, D2expansion_bb, D2expansion_ab),\
         (D3expansion_aa, D3expansion_bb, D3expansion_ab),\
-        (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.bareExpansion()
+        (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.bareExpansion(self.eta0total_solute,
+                                                                              self.eta0total_solvent)
 
         L_uc_aa = np.dot(D1expansion_aa, prob_om1) + np.dot(D2expansion_aa, prob_om2) +\
                   np.dot(D3expansion_aa, prob_om3) + np.dot(D4expansion_aa, prob_om4)
