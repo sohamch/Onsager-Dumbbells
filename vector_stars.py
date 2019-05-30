@@ -536,17 +536,17 @@ class vectorStars(VectorStarSet):
         rate3escape = np.zeros((self.Nvstars - self.Nvstars_pure, len(jumpnetwork_omega34)))
         rate4escape = np.zeros((self.Nvstars_pure, len(jumpnetwork_omega34)))
 
-        for k, jumplist in zip(itertools.count(), jumpnetwork_omega34):
+        for k, jumplist in enumerate(jumpnetwork_omega34):
             for jmp in jumplist[::2]:  # iterate only through the omega4 jumps, the negatives are omega3
 
-                indlist1 = self.stateToVecStar_pure[jmp.state1]  # The initial state is a comples in omega4
+                indlist1 = self.stateToVecStar_pure[jmp.state1]  # The initial state is a complex in omega4
                 indlist2 = self.stateToVecStar_mixed[jmp.state2]  # The final state is a mixed dumbbell in omega4
 
                 for tup1 in indlist1:
                     rate4escape[tup1[0], k] -= np.dot(self.vecvec[tup1[0]][tup1[1]], self.vecvec[tup1[0]][tup1[1]])
                     for tup2 in indlist2:
                         rate3escape[tup2[0] - self.Nvstars_pure, k] -= np.dot(self.vecvec[tup2[0]][tup2[1]],
-                                                                           self.vecvec[tup2[0]][tup2[1]])
+                                                                              self.vecvec[tup2[0]][tup2[1]])
 
                         rate4expansion[tup1[0], tup2[0] - self.Nvstars_pure, k] += np.dot(self.vecvec[tup1[0]][tup1[1]],
                                                                                           self.vecvec[tup2[0]][tup2[1]])

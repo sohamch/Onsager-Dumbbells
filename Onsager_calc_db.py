@@ -582,7 +582,7 @@ class dumbbellMediated(VacancyMediated):
 
         # D0expansion_aa = np.zeros((3, 3, len(self.jnet0)))
         # D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
-        # D0expansion_ab = np.zeros((3, 3, len(self.jnet0)))
+        # D0expansion_ab = np.zeros((3, 3, len(sel
 
         # Since omega1 contains the total rate and not just the change, we don't need a separate D0 expansion.
         D1expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega1)))
@@ -629,9 +629,9 @@ class dumbbellMediated(VacancyMediated):
                 o1 = iorlist_mixed[self.vkinetic.starset.mixedstates[IS].db.iorind][1]
                 dx_solute = -o1/2. + eta0_solute[Ncomp + IS] - eta0_solute[FS]
                 dx_solvent = dx + o1/ 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[FS]
-                D3expansion_aa[:, :, jt] += 0.5 * zeroclean(np.outer(dx_solute, dx_solute))
-                D3expansion_bb[:, :, jt] += 0.5 * zeroclean(np.outer(dx_solvent, dx_solvent))
-                D3expansion_ab[:, :, jt] += 0.5 * zeroclean(np.outer(dx_solute, dx_solvent))
+                D3expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
+                D3expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
+                D3expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
 
         for jt, jumplist in enumerate(jumpnetwork_omega4):
             for (IS, FS), dx in jumplist:
@@ -835,6 +835,7 @@ class dumbbellMediated(VacancyMediated):
         (rate0expansion, rate0escape), (rate1expansion, rate1escape), (rate3expansion, rate3escape), \
         (rate4expansion, rate4escape) = self.rateExps
 
+        # omega2 and omega2escape will not be needed here, but we still need them to calculate the uncorrelated part.
         (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
         (omega4, omega4escape) = omegas
 
@@ -866,6 +867,7 @@ class dumbbellMediated(VacancyMediated):
         delta_om[Nvstars_mixed:, :Nvstars_mixed] = np.dot(rate4expansion, omega4)
 
         # escapes
+        # omega1 and omega4 terms
         for i, starind in enumerate(self.vkinetic.vstar2star[:self.vkinetic.Nvstars_pure]):
             #######
             symindex = self.vkinetic.starset.star2symlist[starind]
@@ -874,6 +876,7 @@ class dumbbellMediated(VacancyMediated):
                 np.dot(rate0escape[i, :], omega0escape[symindex, :])+\
                 np.dot(rate4escape[i, :], omega4escape[i, :])
 
+        # omega3 terms
         for i in range(Nvstars_mixed):
             delta_om[i, i] += np.dot(rate3escape[i, :], omega3escape[i, :])
 
