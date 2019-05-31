@@ -547,17 +547,17 @@ class dumbbellMediated(VacancyMediated):
     def update_bias_expansions(self, rate0list, rate2list):
         self.calc_eta(rate0list, rate2list)
         self.bias_changes()
-        self.bias1_solute_new = self.biases[1][0] + self.delbias1expansion_solute
-        self.bias1_solvent_new = self.biases[1][1] + self.delbias1expansion_solvent
+        self.bias1_solute_new = zeroclean(self.biases[1][0] + self.delbias1expansion_solute)
+        self.bias1_solvent_new = zeroclean(self.biases[1][1] + self.delbias1expansion_solvent)
 
-        self.bias3_solute_new = self.biases[3][0] + self.delbias3expansion_solute
-        self.bias3_solvent_new = self.biases[3][1] + self.delbias3expansion_solvent
+        self.bias3_solute_new = zeroclean(self.biases[3][0] + self.delbias3expansion_solute)
+        self.bias3_solvent_new = zeroclean(self.biases[3][1] + self.delbias3expansion_solvent)
 
-        self.bias4_solute_new = self.biases[4][0] + self.delbias4expansion_solute
-        self.bias4_solvent_new = self.biases[4][1] + self.delbias4expansion_solvent
+        self.bias4_solute_new = zeroclean(self.biases[4][0] + self.delbias4expansion_solute)
+        self.bias4_solvent_new = zeroclean(self.biases[4][1] + self.delbias4expansion_solvent)
 
-        self.bias2_solute_new = self.biases[2][0] + self.delbias2expansion_solute
-        self.bias2_solvent_new = self.biases[2][1] + self.delbias2expansion_solvent
+        self.bias2_solute_new = zeroclean(self.biases[2][0] + self.delbias2expansion_solute)
+        self.bias2_solvent_new = zeroclean(self.biases[2][1] + self.delbias2expansion_solvent)
 
     def bareExpansion(self, eta0_solute, eta0_solvent):
         """
@@ -832,8 +832,8 @@ class dumbbellMediated(VacancyMediated):
         """
         Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure  # type: int
 
-        (rate0expansion, rate0escape), (rate1expansion, rate1escape), (rate3expansion, rate3escape), \
-        (rate4expansion, rate4escape) = self.rateExps
+        (rate0expansion, rate0escape), (rate1expansion, rate1escape), (rate2expansion, rate2escape), \
+        (rate3expansion, rate3escape), (rate4expansion, rate4escape) = self.rateExps
 
         # omega2 and omega2escape will not be needed here, but we still need them to calculate the uncorrelated part.
         (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
@@ -853,7 +853,7 @@ class dumbbellMediated(VacancyMediated):
                         [star[0] for star in self.GFstarset_pure]])
 
         GF2 = np.array([self.GFcalc_mixed(tup[0][0], tup[0][1], tup[1]) for tup in
-                        [star[0] for star in self.GFstarset_mixed]])  # type: ndarray
+                        [star[0] for star in self.GFstarset_mixed]])
 
         GF20[:Nvstars_mixed, :Nvstars_mixed] = np.dot(self.GFexpansion_mixed, GF2)
         GF20[Nvstars_mixed:, Nvstars_mixed:] = np.dot(self.GFexpansion_pure, GF0)
@@ -938,6 +938,7 @@ class dumbbellMediated(VacancyMediated):
         # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
         # late.
         for starind, star in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
+            # For origin complex states, do nothing - leave them as zero.
             if star[0].is_zero(self.vkinetic.starset.pdbcontainer):
                 continue
             symindex = self.vkinetic.starset.star2symlist[starind]
@@ -974,26 +975,33 @@ class dumbbellMediated(VacancyMediated):
         biases_solute_vs = np.zeros(self.vkinetic.Nvstars)
         biases_solvent_vs = np.zeros(self.vkinetic.Nvstars)
 
-        # bias_..._new = the bias vector produced after updating with eta0 vectors (see below)
         Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure
         # The values for the mixed dumbbells are stored first, and then the complexes
         # Among the complexes, the values for the origin states are stored first, then the other ones.
+
+        # bias_..._new = the bias vector produced after updating with eta0 vectors.
         biases_solute_vs[Nvstars_mixed:] = np.dot(self.bias4_solute_new, omega4)
-        # For the solutes in complex configurations, the only bias comes due to displacements during association.
+        # For the solutes in complex configurations, the only local bias comes due to displacements during association.
+        # complex-complex jumps leave the solute unchanged and hence do not contribute to solute bias.
+
         biases_solute_vs[:Nvstars_mixed] = np.dot(self.bias3_solute_new, omega3)
         # remember that the omega2 bias is the non-local bias, and so has been subtracted out.
+        # See line 350 in the test module to check that bias2_solute_new is all zeros.
 
         # omega1 has total rates. So, to get the non-local change in the rates, we must subtract out the corresponding
         # non-local rates.
         omega1_change = omega1 - np.array([omega0[jt] for jt in self.om1types])
+        # This gives us only the change in the rates within the kinetic shell due to solute interactions.
         biases_solvent_vs[Nvstars_mixed:] = np.dot(self.bias1_solvent_new, omega1_change) +\
                                             np.dot(self.bias4_solvent_new, omega4)
+        # For solvents out of complex states, both omega1 and omega4 jumps contribute to the local bias.
 
         biases_solvent_vs[:Nvstars_mixed] = np.dot(self.bias3_solvent_new, omega3)
+        # For solutes in the mixed states, the local bias comes due only to the omega3(dissociation) jumps.
 
         # Next, we create the gamma vector, projected onto the vector stars
-        gamma_solute_vs = np.dot(GF_total, biases_solute_vs)
-        gamma_solvent_vs = np.dot(GF_total, biases_solvent_vs)
+        gamma_solute_vs = zeroclean(np.dot(GF_total, biases_solute_vs))
+        gamma_solvent_vs = zeroclean(np.dot(GF_total, biases_solvent_vs))
 
         # Next we produce the outer product in the basis of the vector star vector state functions
         # a=solute, b=solvent
@@ -1021,13 +1029,18 @@ class dumbbellMediated(VacancyMediated):
             mixed_en[stateind] = bFdb2[starind]
 
         # Now, normalize
-        complex_en /= (np.sum(complex_en)+np.sum(mixed_en))
-        mixed_en /= (np.sum(complex_en) + np.sum(mixed_en))
-        # This ensure that summing over all complex + mixed states gives probability of 1.
+        part_func = (np.sum(complex_en)+np.sum(mixed_en))
+        complex_en /= part_func
+        mixed_en /= part_func
+
+        # This ensure that summing over all complex + mixed states gives a probability of 1.
+        # Note that this is why the bFdb0, bFS and bFdb2 values have to be entered unshifted.
+        # The complex and mixed dumbbell energies need to be with respect to the same reference.
 
         # First, make the square root prob * rate lists to multiply with the rates
 
         # First, omega1
+        # Is there a way to combine all of the next four loops?
         prob_om1 = np.zeros(len(self.jnet_1))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet1_indexed]):
             prob_om1[jt] = np.sqrt(complex_en[IS]*complex_en[FS])*omega1[jt]
@@ -1060,4 +1073,4 @@ class dumbbellMediated(VacancyMediated):
         L_uc_ab = np.dot(D1expansion_ab, prob_om1) + np.dot(D2expansion_ab, prob_om2) + \
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
-        return (L_uc_aa+L_c_aa), (L_uc_bb+L_c_bb), (L_uc_ab+L_c_ab)
+        return (L_uc_aa,L_c_aa), (L_uc_bb,L_c_bb), (L_uc_ab,L_c_ab)
