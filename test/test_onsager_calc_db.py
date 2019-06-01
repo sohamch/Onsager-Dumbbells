@@ -394,9 +394,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         for i in range(len(self.onsagercalculator.vkinetic.starset.complexStates)):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[self.onsagercalculator.vkinetic.starset.complexStates[i]]
             #We have indlist as (IndOfStar, IndOfState)
-            for tup in indlist:
-                solute_bias_4[i,:] = sum([bias4_solute_total[tup[0]]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
-                solvent_bias_4[i,:] = sum([bias4_solvent_total[tup[0]]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+            solute_bias_4[i,:] = sum([bias4_solute_total[tup[0]]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+            solvent_bias_4[i,:] = sum([bias4_solvent_total[tup[0]]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
         #Next, manually update with the eta0 vectors
         for i in range(len(self.onsagercalculator.vkinetic.starset.complexStates)):
             for jt,jlist in enumerate(self.onsagercalculator.symjumplist_omega4_indexed):
