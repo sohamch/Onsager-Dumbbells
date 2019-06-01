@@ -429,6 +429,7 @@ class vectorStars(VectorStarSet):
                         bias0expansion[i, jt] += geom_bias_solvent  # These are the contributions of the omega_0 jumps
                         # to the bias vector along v_i, for bare dumbbells
                         # so to find the total bias along v_i, we sum over k.
+
             # Next, omega_4: complex -> mixed
             for k, jumplist in zip(itertools.count(), jumpnetwork_omega34):
                 for j in jumplist[::2]:  # Start from the first element, skip every other
