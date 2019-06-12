@@ -260,7 +260,6 @@ class vectorStars(VectorStarSet):
             if s in GFMixedStarInd:
                 continue
             connectlist =[]
-            slist = []
             for gdumb in self.starset.mdbcontainer.G:
                 
                 snew = s.gop(self.starset.mdbcontainer, gdumb, pure=False)
@@ -286,6 +285,7 @@ class vectorStars(VectorStarSet):
                 connectlist.append(tup)
                 # slist.append(snew)
                 GFMixedStarInd[snew] = len(GFstarset_mixed)
+
             GFstarset_mixed.append(connectlist)
             # GFstarset_mixed_snewlist.append(slist)
 
@@ -311,10 +311,6 @@ class vectorStars(VectorStarSet):
                             ds = si ^ sj
                         except:
                             continue
-                        # Bring the initial dumbbell back to the origin
-                        # R_ref = ds.state1.R.copy()
-                        # ds = connector(ds.state1 - R_ref, ds.state2 - R_ref)
-                        # dx = disp(self.starset.pdbcontainer, ds.state1, ds.state2)
                         ind1 = self.starset.pdbcontainer.db2ind(ds.state1)
                         ind2 = self.starset.pdbcontainer.db2ind(ds.state2)
                         if ind1 == None or ind2 == None:
@@ -332,19 +328,11 @@ class vectorStars(VectorStarSet):
                 for j in range(self.Nvstars_pure, self.Nvstars):
                     for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
                         ds = connector(si.db, sj.db)
-                        # Now get the vector stars for the states
-                        viList = self.stateToVecStar_mixed[si]  # (IndOfStar, IndOfState) format
-                        vjList = self.stateToVecStar_mixed[sj]  # (IndOfStar, IndOfState) format
                         k = GFMixedStarInd[ds]
                         if k is None:
                             raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}"
                                                   .format((si, sj)))
-
-                        for i, vi in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
-                                      for tup in viList]:
-                            for j, vj in [(tup[0] - self.Nvstars_pure, self.vecvec[tup[0]][tup[1]])
-                                          for tup in vjList]:
-                                GFexpansion_mixed[i, j, k] += np.dot(vi, vj)
+                        GFexpansion_mixed[i-self.Nvstars_pure, j-self.Nvstars_pure, k] += np.dot(vi, vj)
 
         # symmetrize
         for i in range(Nvstars_pure):
@@ -586,5 +574,5 @@ class vectorStars(VectorStarSet):
                 for st_i, v_i in zip(self.vecpos[i], self.vecvec[i]):
                     for st_j, v_j in zip(self.vecpos[j], self.vecvec[j]):
                         if st_i == st_j:
-                            outerprods[:, :, i, j] = np.outer(v_i, v_j)
+                            outerprods[:, :, i, j] += np.outer(v_i, v_j)
         return zeroclean(outerprods)
