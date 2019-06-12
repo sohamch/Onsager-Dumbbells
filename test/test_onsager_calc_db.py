@@ -344,11 +344,11 @@ class test_dumbbell_mediated(unittest.TestCase):
             solute_bias_2_new[i,:] = sum([bias2_solute_new_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
             solvent_bias_2_new[i,:] = sum([bias2_solvent_new_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
-        self.assertTrue(np.allclose(solute_bias_2,solute_bias_2_new))
-        self.assertTrue(np.allclose(solvent_bias_2,solvent_bias_2_new))
-        #The following tests must hold - the non-local biases in omega2_space must become zero after eta updates
-        self.assertTrue(np.allclose(solute_bias_2_new,np.zeros_like(solute_bias_2)),msg="\n{}\n".format(solute_bias_2))
-        self.assertTrue(np.allclose(solvent_bias_2_new,np.zeros_like(solvent_bias_2)))
+        self.assertTrue(np.allclose(solute_bias_2, solute_bias_2_new))
+        self.assertTrue(np.allclose(solvent_bias_2, solvent_bias_2_new))
+        # The following tests must hold - the non-local biases in omega2_space must become zero after eta updates
+        self.assertTrue(np.allclose(solute_bias_2_new, np.zeros_like(solute_bias_2)),msg="\n{}\n".format(solute_bias_2))
+        self.assertTrue(np.allclose(solvent_bias_2_new, np.zeros_like(solvent_bias_2)))
 
         #Now, do it for omega3
         bias3solute,bias3solvent = self.biases[3]
@@ -360,9 +360,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[self.onsagercalculator.vkinetic.starset.mixedstates[i]]
             #We have indlist as (IndOfStar, IndOfState)
-            for tup in indlist:
-                solute_bias_3[i,:] = sum([bias3_solute_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
-                solvent_bias_3[i,:] = sum([bias3_solvent_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+            solute_bias_3[i,:] = sum([bias3_solute_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+            solvent_bias_3[i,:] = sum([bias3_solvent_total[tup[0]-self.onsagercalculator.vkinetic.Nvstars_pure]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
         #Next, manually update with the eta0 vectors
         for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
             for jt,jlist in enumerate(self.onsagercalculator.symjumplist_omega3_indexed):
@@ -636,6 +635,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         L_uc_om4_test_aa = np.zeros((3, 3))
         L_uc_om4_test_bb = np.zeros((3, 3))
         L_uc_om4_test_ab = np.zeros((3, 3))
+
         for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4_indexed):
             # The initial state is a  pure dumbbell and the final is a mixed dumbbell
             for (IS, FS), dx in jlist:
