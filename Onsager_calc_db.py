@@ -951,8 +951,10 @@ class dumbbellMediated(VacancyMediated):
 
         bFSdb_total = np.zeros(self.vkinetic.starset.mixedstartindex)
         bFSdb_total_shift = np.zeros(self.vkinetic.starset.mixedstartindex)
+
         # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
-        # late.
+        # later.
+        # Also, we need to keep an unshifted version to be able to normalize probabilities
         for starind, star in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
             # For origin complex states, do nothing - leave them as zero.
             if star[0].is_zero(self.vkinetic.starset.pdbcontainer):
@@ -1028,26 +1030,39 @@ class dumbbellMediated(VacancyMediated):
         # Next, we get to the bare or uncorrelated terms
         # First, we have to generate the probability arrays and multiply them with the ratelists. This will
         # Give the probability-square-root multiplied rates in the uncorrelated terms.
+
         # First, we work out the probabilities and their normalization.
-        complex_en = np.zeros(len(self.vkinetic.starset.complexStates))
-        mixed_en = np.zeros(len(self.vkinetic.starset.mixedstates))
+        mixed_prob = np.zeros(len(self.vkinetic.starset.mixedstates))
+        complex_prob = np.zeros(len(self.vkinetic.starset.complexStates))
 
-        # First, let's build the complex part
-        for stateind, state in enumerate(self.vkinetic.starset.complexStates):
-            # get the star to which the state belongs.
-            starind = self.vkinetic.starset.complexIndexdict[state][1]
-            complex_en[stateind] = bFSdb_total[starind]
+        # get the complex boltzmann factors - unshifted
+        # TODO Should we at least shift with respect to the minimum of the two (complex, mixed)
+        # Otherwise, how do we think of preventing overflow?
+        for starind, star in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
+            for state in star:
+                complex_prob[self.vkinetic.starset.complexIndexdict[state][0]] = np.exp(-bFSdb_total[starind])
 
-        # Noe we build the energies for the mixed part
-        for stateind, state in enumerate(self.vkinetic.starset.mixedstates):
-            # get the mixed star - be sure to subtract mixedstartindex
-            starind = self.vkinetic.starset.mixedindexdict[state][1] - self.vkinetic.starset.mixedstartindex
-            mixed_en[stateind] = bFdb2[starind]
+        # Form the mixed dumbbell boltzmann factors and the partition function
+        part_func = 0.
+        # First add in the mixed dumbbell contributions
+        for siteind, wyckind in enumerate(self.vkinetic.starset.mdbcontainer.invmap):
+            # don't need the site index but the wyckoff index corresponding to the site index.
+            part_func += np.exp(-bFdb2[wyckind])
+            mixed_prob[siteind] = np.exp(-bFdb2[wyckind])
 
-        # Now, normalize
-        part_func = (np.sum(complex_en)+np.sum(mixed_en))
-        complex_en /= part_func
-        mixed_en /= part_func
+        # Now add in the non-interactive complex contribution
+        for dbsiteind, dbwyckind in self.vkinetic.starset.pdbcontainer.invmap:
+            for solsiteind, solwyckind in self.invmap_solute:
+                part_func += np.exp(-(bFdb0[dbwyckind] + bFS[solwyckind]))
+
+
+        complex_prob *= 1./part_func
+        mixed_prob *= 1./part_func
+
+        # For the complex states, weed out the origin state probabilities
+        for stateind, prob in enumerate(complex_prob):
+            if self.vkinetic.starset.complexStates[stateind].is_zero(self.vkinetic.starset.pdbcontainer):
+                complex_prob[stateind] = 0.
 
         # This ensure that summing over all complex + mixed states gives a probability of 1.
         # Note that this is why the bFdb0, bFS and bFdb2 values have to be entered unshifted.
