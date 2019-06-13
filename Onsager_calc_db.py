@@ -471,10 +471,10 @@ class dumbbellMediated(VacancyMediated):
             (len(self.vkinetic.starset.complexStates) + len(self.vkinetic.starset.mixedstates), 3))
 
         self.eta0total_solute[:len(self.vkinetic.starset.complexStates), :] = self.eta00_solute.copy()
-        self.eta0total_solute[len(self.vkinetic.starset.complexStates):, :] = self.eta02_solute.copy()
+        # self.eta0total_solute[len(self.vkinetic.starset.complexStates):, :] = self.eta02_solute.copy()
 
         self.eta0total_solvent[:len(self.vkinetic.starset.complexStates), :] = self.eta00_solvent.copy()
-        self.eta0total_solvent[len(self.vkinetic.starset.complexStates):, :] = self.eta02_solvent.copy()
+        # self.eta0total_solvent[len(self.vkinetic.starset.complexStates):, :] = self.eta02_solvent.copy()
 
     def bias_changes(self):
         """
@@ -629,8 +629,8 @@ class dumbbellMediated(VacancyMediated):
             for (IS, FS), dx in jumplist:
                 o1 = iorlist_mixed[self.vkinetic.starset.mixedstates[IS].db.iorind][1]
                 o2 = iorlist_mixed[self.vkinetic.starset.mixedstates[FS].db.iorind][1]
-                dx_solute = dx + o2/2. - o1/2. + eta0_solute[Ncomp + IS] - eta0_solute[Ncomp + FS]
-                dx_solvent = dx - o2/2. + o1/2. + eta0_solvent[Ncomp + IS] - eta0_solvent[Ncomp + FS]
+                dx_solute = dx + o2/2. - o1/2. # + eta0_solute[Ncomp + IS] - eta0_solute[Ncomp + FS]
+                dx_solvent = dx - o2/2. + o1/2. # + eta0_solvent[Ncomp + IS] - eta0_solvent[Ncomp + FS]
                 D2expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D2expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D2expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
@@ -1002,7 +1002,7 @@ class dumbbellMediated(VacancyMediated):
         # For the solutes in complex configurations, the only local bias comes due to displacements during association.
         # complex-complex jumps leave the solute unchanged and hence do not contribute to solute bias.
 
-        self.biases_solute_vs[:Nvstars_mixed] = np.dot(self.bias3_solute_new, omega3)
+        self.biases_solute_vs[:Nvstars_mixed] = np.dot(self.bias3_solute_new, omega3) + np.dot(self.bias2_solute_new, omega2)
         # remember that the omega2 bias is the non-local bias, and so has been subtracted out.
         # See line 350 in the test module to check that bias2_solute_new is all zeros.
 
