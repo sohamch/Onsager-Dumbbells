@@ -343,8 +343,8 @@ class vectorStars(VectorStarSet):
             for j in range(0, i):
                 GFexpansion_mixed[i, j, :] = GFexpansion_mixed[j, i, :]
 
-        return (GFstarset_pure, GFPureStarInd, zeroclean(GFexpansion_pure)), (
-            GFstarset_mixed, GFMixedStarInd, zeroclean(GFexpansion_mixed))
+        return (GFstarset_pure, GFPureStarInd, zeroclean(GFexpansion_pure)),\
+               (GFstarset_mixed, GFMixedStarInd, zeroclean(GFexpansion_mixed))
 
     # See group meeting update slides of sept 10th to see how this works.
     def biasexpansion(self, jumpnetwork_omega1, jumpnetwork_omega2, jumptype, jumpnetwork_omega34):

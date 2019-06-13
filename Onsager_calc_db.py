@@ -1051,13 +1051,15 @@ class dumbbellMediated(VacancyMediated):
             mixed_prob[siteind] = np.exp(-bFdb2[wyckind])
 
         # Now add in the non-interactive complex contribution
-        for dbsiteind, dbwyckind in self.vkinetic.starset.pdbcontainer.invmap:
-            for solsiteind, solwyckind in self.invmap_solute:
+        for dbsiteind, dbwyckind in enumerate(self.vkinetic.starset.pdbcontainer.invmap):
+            for solsiteind, solwyckind in enumerate(self.invmap_solute):
                 part_func += np.exp(-(bFdb0[dbwyckind] + bFS[solwyckind]))
 
 
         complex_prob *= 1./part_func
         mixed_prob *= 1./part_func
+
+        stateprobs = (complex_prob, mixed_prob)
 
         # For the complex states, weed out the origin state probabilities
         for stateind, prob in enumerate(complex_prob):
@@ -1074,20 +1076,21 @@ class dumbbellMediated(VacancyMediated):
         # Is there a way to combine all of the next four loops?
         prob_om1 = np.zeros(len(self.jnet_1))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet1_indexed]):
-            prob_om1[jt] = np.sqrt(complex_en[IS]*complex_en[FS])*omega1[jt]
+            prob_om1[jt] = np.sqrt(complex_prob[IS]*complex_prob[FS])*omega1[jt]
 
         prob_om2 = np.zeros(len(self.jnet2))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet2_indexed]):
-            prob_om2[jt] = np.sqrt(mixed_en[IS]*mixed_en[FS])*omega2[jt]
+            prob_om2[jt] = np.sqrt(mixed_prob[IS]*mixed_prob[FS])*omega2[jt]
 
         prob_om4 = np.zeros(len(self.symjumplist_omega4))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.symjumplist_omega4_indexed]):
-            prob_om4[jt] = np.sqrt(complex_en[IS]*mixed_en[FS])*omega4[jt]
+            prob_om4[jt] = np.sqrt(complex_prob[IS]*mixed_prob[FS])*omega4[jt]
 
         prob_om3 = np.zeros(len(self.symjumplist_omega3))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.symjumplist_omega3_indexed]):
-            prob_om3[jt] = np.sqrt(mixed_en[IS]*complex_en[FS])*omega3[jt]
+            prob_om3[jt] = np.sqrt(mixed_prob[IS]*complex_prob[FS])*omega3[jt]
 
+        probs = (prob_om1, prob_om2, prob_om4, prob_om3)
         start = time.time()
         # Generate the bare expansions
         (D1expansion_aa, D1expansion_bb, D1expansion_ab),\
@@ -1106,4 +1109,4 @@ class dumbbellMediated(VacancyMediated):
         L_uc_ab = np.dot(D1expansion_ab, prob_om1) + np.dot(D2expansion_ab, prob_om2) + \
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
-        return (L_uc_aa,L_c_aa), (L_uc_bb,L_c_bb), (L_uc_ab,L_c_ab), GF_total, GF20, del_om
+        return (L_uc_aa,L_c_aa), (L_uc_bb,L_c_bb), (L_uc_ab,L_c_ab), GF_total, GF20, del_om, part_func, probs, omegas, stateprobs
