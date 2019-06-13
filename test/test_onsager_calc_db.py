@@ -455,58 +455,12 @@ class test_dumbbell_mediated(unittest.TestCase):
         bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4 =\
             self.onsagercalculator.preene2betafree(kT, predb0, enedb0, preS, eneS, preSdb, eneSdb, predb2, enedb2,
                                                    preT0, eneT0, preT2, eneT2, preT1, eneT1, preT43, eneT43)
-        # Note that bFdb0, bFdb2 and bFS are not shifted wrt the minimum.
-        bFdb0_min = np.min(bFdb0)
-        bFdb2_min = np.min(bFdb2)
-        bFS_min = np.min(bFS)
 
-        pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
-        pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
+        (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF20, del_om, part_func, probs, omegas,\
+        stateprobs = self.onsagercalculator.L_ij(bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4)
 
-        # Make the unsymmetrized rates for calculating eta0
-        rate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
-                             self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
-        rate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
-                             self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
-
-        # Produce the eta vectors
-        self.onsagercalculator.calc_eta(rate0list, rate2list)
-        # Make the total list
-        eta0total_solute = self.onsagercalculator.eta0total_solute
-        eta0total_solvent = self.onsagercalculator.eta0total_solvent
-
-        self.assertTrue(len(eta0total_solvent), len(self.onsagercalculator.vkinetic.starset.complexStates) +
-                        len(self.onsagercalculator.vkinetic.starset.mixedstates))
-        self.assertTrue(len(eta0total_solute), len(self.onsagercalculator.vkinetic.starset.complexStates) +
-                        len(self.onsagercalculator.vkinetic.starset.mixedstates))
-        # Get the total solute-dumbbell interaction energies.
-        bFSdb_total = np.zeros(self.onsagercalculator.vkinetic.starset.mixedstartindex)
-        bFSdb_total_shift = np.zeros(self.onsagercalculator.vkinetic.starset.mixedstartindex)
-        # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
-        # late.
-        for starind, star in \
-                enumerate(self.onsagercalculator.vkinetic.starset.stars[:self.onsagercalculator.vkinetic.starset.mixedstartindex]):
-            if star[0].is_zero(self.onsagercalculator.vkinetic.starset.pdbcontainer):
-                continue
-            symindex = self.onsagercalculator.vkinetic.starset.star2symlist[starind]
-            # First, get the unshifted value
-            bFSdb_total[starind] = bFdb0[symindex] + bFS[self.onsagercalculator.invmap_solute[star[0].i_s]]
-            bFSdb_total_shift[starind] = bFSdb_total[starind] - (bFdb0_min + bFS_min)
-
-        # Now add in the changes for the complexes inside the thermodynamic shell.
-        for starind, star in enumerate(self.onsagercalculator.thermo.stars[:self.onsagercalculator.thermo.mixedstartindex]):
-            # Get the symorlist index for the representative state of the star
-            if star[0].is_zero(self.onsagercalculator.thermo.pdbcontainer):
-                continue
-            # keep the total energies zero for origin states.
-            kinStarind = self.onsagercalculator.thermo2kin[starind]
-            bFSdb_total[kinStarind] += bFSdb[starind]
-            bFSdb_total_shift[kinStarind] += bFSdb[starind]
-
-        # Get the symmetrized rates - note - escapes are not necessary for the uncorrelated contribution.
-        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape), \
-        (omega4, omega4escape) = self.onsagercalculator.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min,
-                                                                     bFSdb_total_shift, bFT0, bFT1, bFT2, bFT3, bFT4)
+        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
+        (omega4, omega4escape) = omegas
 
         # First, check the omega1 rates coming out of origin states are zero
         for jt, rate in enumerate(omega1):
@@ -521,44 +475,24 @@ class test_dumbbell_mediated(unittest.TestCase):
         (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.onsagercalculator.bareExpansion(eta0total_solute,
                                                                                                 eta0total_solvent)
 
-        # check that omega1 returns nothing for solutes
-        self.assertTrue(np.allclose(D1expansion_aa, np.zeros_like(D1expansion_aa)))
-        self.assertTrue(np.allclose(D1expansion_ab, np.zeros_like(D1expansion_ab)))
-        # Now, let's set up the state probabilities.
-        complex_en = np.zeros(len(self.onsagercalculator.vkinetic.starset.complexStates))
-        mixed_en = np.zeros(len(self.onsagercalculator.vkinetic.starset.mixedstates))
-        # First, let's build the complex part
-        for stateind, state in enumerate(self.onsagercalculator.vkinetic.starset.complexStates):
-            # get the star to which the state belongs.
-            starind = self.onsagercalculator.vkinetic.starset.complexIndexdict[state][1]
-            complex_en[stateind] = bFSdb_total[starind]
-        # Now we build the energies for the mixed part
-        for stateind, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
-            # get the mixed star - be sure to subtract mixedstartindex
-            starind = self.onsagercalculator.vkinetic.starset.mixedindexdict[state][1] -\
-                      self.onsagercalculator.vkinetic.starset.mixedstartindex
-            mixed_en[stateind] = bFdb2[starind]
-
-        # Now, normalize
-        complex_en /= (np.sum(complex_en) + np.sum(mixed_en))
-        mixed_en /= (np.sum(complex_en) + np.sum(mixed_en))
+        complex_prob, mixed_prob = stateprobs
 
         # Now set up the multiplicative quantity for each jump type.
         prob_om1 = np.zeros(len(omega1))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.onsagercalculator.jnet1_indexed]):
-            prob_om1[jt] = np.sqrt(complex_en[IS] * complex_en[FS]) * omega1[jt]
+            prob_om1[jt] = np.sqrt(complex_prob[IS] * complex_prob[FS]) * omega1[jt]
 
         prob_om2 = np.zeros(len(self.onsagercalculator.jnet2))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.onsagercalculator.jnet2_indexed]):
-            prob_om2[jt] = np.sqrt(mixed_en[IS] * mixed_en[FS]) * omega2[jt]
+            prob_om2[jt] = np.sqrt(mixed_prob[IS] * mixed_prob[FS]) * omega2[jt]
 
         prob_om4 = np.zeros(len(self.onsagercalculator.symjumplist_omega4))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.onsagercalculator.symjumplist_omega4_indexed]):
-            prob_om4[jt] = np.sqrt(complex_en[IS] * mixed_en[FS]) * omega4[jt]
+            prob_om4[jt] = np.sqrt(complex_prob[IS] * mixed_prob[FS]) * omega4[jt]
 
         prob_om3 = np.zeros(len(self.onsagercalculator.symjumplist_omega3))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.onsagercalculator.symjumplist_omega3_indexed]):
-            prob_om3[jt] = np.sqrt(mixed_en[IS] * complex_en[FS]) * omega3[jt]
+            prob_om3[jt] = np.sqrt(mixed_prob[IS] * complex_prob[FS]) * omega3[jt]
 
         # Now, let's compute the contribution by omega1 jumps
         # For solutes, it's zero anyway - let's check for solvents
@@ -603,6 +537,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         L_uc_om3_test_aa = np.zeros((3, 3))
         L_uc_om3_test_bb = np.zeros((3, 3))
         L_uc_om3_test_ab = np.zeros((3, 3))
+
         for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3_indexed):
             # The initial state is a  mixed dumbbell and the final is a pure dumbbell
             sm_aa = np.zeros((3, 3))
