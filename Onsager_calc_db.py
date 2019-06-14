@@ -775,8 +775,8 @@ class dumbbellMediated(VacancyMediated):
         # build the omega1 lists
         for jt, jlist in enumerate(self.jnet_1):
 
-            st1 = jlist[0].state1  # - jlist[0].state1.R_s
-            st2 = jlist[0].state2  # - jlist[0].state2.R_s
+            st1 = jlist[0].state1
+            st2 = jlist[0].state2
 
             if st1.is_zero(self.vkinetic.starset.pdbcontainer) or st2.is_zero(self.vkinetic.starset.pdbcontainer):
                 # We want transition rates in and out of origin states to be to be zero
@@ -877,9 +877,9 @@ class dumbbellMediated(VacancyMediated):
         delta_om = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
 
         # off-diagonals
-        delta_om[Nvstars_mixed:, Nvstars_mixed:] = np.dot(rate1expansion, omega1) - np.dot(rate0expansion, omega0)
-        delta_om[:Nvstars_mixed, Nvstars_mixed:] = np.dot(rate3expansion, omega3)
-        delta_om[Nvstars_mixed:, :Nvstars_mixed] = np.dot(rate4expansion, omega4)
+        delta_om[Nvstars_mixed:, Nvstars_mixed:] += np.dot(rate1expansion, omega1) - np.dot(rate0expansion, omega0)
+        delta_om[:Nvstars_mixed, Nvstars_mixed:] += np.dot(rate3expansion, omega3)
+        delta_om[Nvstars_mixed:, :Nvstars_mixed] += np.dot(rate4expansion, omega4)
 
         # escapes
         # omega1 and omega4 terms
