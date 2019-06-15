@@ -576,8 +576,7 @@ class dumbbellMediated(VacancyMediated):
         grouped separately for each type of jump. Intended to be called after displacements have been applied to the displacements.
 
         Params:
-            jumpnetwork_omega* - indexed versions of the jumpnetworks with displacements for a given species. - jumps need to be of the form ((i,j),dx_species)
-            jumptype - list that contains the omega_0 jump a given omega_1 jump list corresponds to. - these are the rates to be used to dot into b_0.
+
 
         In mixed dumbbell space, both solute and solvent will have uncorrelated contributions.
         The mixed dumbbell space is completely non-local.

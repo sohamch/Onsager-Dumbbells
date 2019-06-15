@@ -469,12 +469,15 @@ class test_dumbbell_mediated(unittest.TestCase):
                     or self.onsagercalculator.jnet_1[jt][0].state2.is_zero(self.onsagercalculator.pdbcontainer):
                 self.assertEqual(rate, 0.)
 
+        eta0total_solute = self.onsagercalculator.eta0total_solute
+        eta0total_solvent = self.onsagercalculator.eta0total_solvent
         # Now, let's get the bias expansions
         (D1expansion_aa, D1expansion_bb, D1expansion_ab), \
         (D2expansion_aa, D2expansion_bb, D2expansion_ab), \
         (D3expansion_aa, D3expansion_bb, D3expansion_ab), \
-        (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.onsagercalculator.bareExpansion(eta0total_solute,
-                                                                                                eta0total_solvent)
+        (D4expansion_aa, D4expansion_bb, D4expansion_ab) =\
+            self.onsagercalculator.bareExpansion(eta0total_solute,
+                                                 eta0total_solvent)
 
         complex_prob, mixed_prob = stateprobs
 
@@ -773,7 +776,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                 for vi, invi in indlist1:
                     vec = self.onsagercalculator.vkinetic.vecvec[vi][invi]
                     vdot = np.dot(vec, vec)
-                    if jmp.state2.is_zero(self.onsagercalculator.pdbcontainer):
+                    if jmp.state2.is_zero(self.onsagercalculator.pdbcontainer) or\
+                            jmp.state1.is_zero(self.onsagercalculator.pdbcontainer):
                         diags[vi] -= 0 - np.exp(-bFT0[self.onsagercalculator.om1types[jt]]
                                                                 + bFdb0[dbwyck_i] - bFdb0_min) * vdot
                     else:
