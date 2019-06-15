@@ -945,7 +945,6 @@ class test_dumbbell_mediated(unittest.TestCase):
         Nvstars = self.onsagercalculator.vkinetic.Nvstars
         Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
         Nvstars_mixed = Nvstars - Nvstars_pure
-        Nvstars, Nvstars_pure, Nvstars_mixed
 
         GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.onsagercalculator.vkinetic.genGFstarset()
 
