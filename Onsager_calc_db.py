@@ -779,8 +779,6 @@ class dumbbellMediated(VacancyMediated):
             st2 = jlist[0].state2
 
             if st1.is_zero(self.vkinetic.starset.pdbcontainer) or st2.is_zero(self.vkinetic.starset.pdbcontainer):
-                # We want transition rates in and out of origin states to be to be zero
-                # So, since omega1 contains the total transition rate, we keep them to be zero.
                 continue
 
             # get the crystal stars of the representative jumps
@@ -954,7 +952,7 @@ class dumbbellMediated(VacancyMediated):
 
         # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
         # later.
-        # Also, we need to keep an unshifted version to be able to normalize probabilities
+        # Also, we need to keep an unshifted version to be able to normalize the probabilities
         for starind, star in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
             # For origin complex states, do nothing - leave them as zero.
             if star[0].is_zero(self.vkinetic.starset.pdbcontainer):

@@ -715,51 +715,109 @@ class test_dumbbell_mediated(unittest.TestCase):
         Nvstars_mixed = Nvstars - Nvstars_pure
 
         delta_om_test = np.zeros((Nvstars, Nvstars))
-        # 3a - First, we concentrate on the complex-complex block and the omega1 jumps
+        # 3a. First, we do the non-diagonal parts
+        delta_om_test = np.zeros((Nvstars, Nvstars))
+        # 3a.1 - First, we concentrate on the complex-complex block and the omega1 jumps
         for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
             delom1 = omega1[jt] - omega0[self.onsagercalculator.om1types[jt]]
             for jmp in jlist:
                 indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state1]
                 indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state2]
                 for vi, invi in indlist1:
-                    delta_om_test[vi + Nvstars_mixed, vi + Nvstars_mixed] -= \
-                        delom1 * np.dot(self.onsagercalculator.vkinetic.vecvec[vi][invi],
-                                            self.onsagercalculator.vkinetic.vecvec[vi][invi])
                     for vj, invj in indlist2:
                         delta_om_test[vi + Nvstars_mixed, vj + Nvstars_mixed] += \
                             delom1 * np.dot(self.onsagercalculator.vkinetic.vecvec[vi][invi],
-                                                self.onsagercalculator.vkinetic.vecvec[vj][invj])
+                                            self.onsagercalculator.vkinetic.vecvec[vj][invj])
 
-        # 3b - Next, we consider the contribution by omega3 jumps - mixed to complex
+        # 3a.2 - Next, we consider the contribution by omega3 jumps - mixed to complex
         for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3):
             for jmp in jlist:
                 indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_mixed[jmp.state1]
                 indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state2]
                 for vi, invi in indlist1:
-                    delta_om_test[vi - Nvstars_pure, vi - Nvstars_pure] -= \
-                        omega3[jt] * np.dot(self.onsagercalculator.vkinetic.vecvec[vi][invi],
-                                            self.onsagercalculator.vkinetic.vecvec[vi][invi])
                     for vj, invj in indlist2:
                         delta_om_test[vi - Nvstars_pure, vj + Nvstars_mixed] += \
                             omega3[jt] * np.dot(self.onsagercalculator.vkinetic.vecvec[vi][invi],
                                                 self.onsagercalculator.vkinetic.vecvec[vj][invj])
 
-        # 3c - Next, we consider the contribution by only the omega4 jumps - complex to mixed
+        # 3a.3 - Next, we consider the contribution by only the omega4 jumps - complex to mixed
         for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4):
             for jmp in jlist:
                 indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state1]
                 indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_mixed[jmp.state2]
                 for vi, invi in indlist1:
-                    delta_om_test[vi + Nvstars_mixed, vi + Nvstars_mixed] -= \
-                        omega4[jt] * np.dot(self.onsagercalculator.vkinetic.vecvec[vi][invi],
-                                            self.onsagercalculator.vkinetic.vecvec[vi][invi])
                     for vj, invj in indlist2:
                         delta_om_test[vi + Nvstars_mixed, vj - Nvstars_pure] += \
                             omega4[jt] * np.dot(self.onsagercalculator.vkinetic.vecvec[vi][invi],
                                                 self.onsagercalculator.vkinetic.vecvec[vj][invj])
 
-        self.assertTrue(np.allclose(delta_om_test, del_om))
+        # 3b - Now, we do the off diagonal parts
+        # 3b.1 - contribution by omega1
+        diags = np.zeros(Nvstars)
+        for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+            for jmp in jlist:
+                si = jmp.state1
 
+                if si.is_zero(self.onsagercalculator.pdbcontainer):
+                    if not omega1[jt] == 0.:
+                        raise ValueError
+                if jmp.state2.is_zero(self.onsagercalculator.pdbcontainer):
+                    if not omega1[jt] == 0.:
+                        raise ValueError
+
+                star_i = self.onsagercalculator.vkinetic.starset.complexIndexdict[si][1]
+                dbwyck_i = self.onsagercalculator.pdbcontainer.invmap[si.db.iorind]
+
+                indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[si]
+
+                for vi, invi in indlist1:
+                    vec = self.onsagercalculator.vkinetic.vecvec[vi][invi]
+                    vdot = np.dot(vec, vec)
+                    if jmp.state2.is_zero(self.onsagercalculator.pdbcontainer):
+                        diags[vi + Nvstars_mixed] -= 0 - np.exp(-bFT0[self.onsagercalculator.om1types[jt]]
+                                                                + bFdb0[dbwyck_i] - bFdb0_min) * vdot
+                    else:
+                        diags[vi + Nvstars_mixed] -= np.exp(-bFT1[jt] + bFSdb_total_shift[star_i]) * vdot - \
+                                                     np.exp(-bFT0[self.onsagercalculator.om1types[jt]] + bFdb0[
+                                                         dbwyck_i] - bFdb0_min) * vdot
+
+        # 3b.2 - contribution by omega4
+        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4):
+            for jmp in jlist:
+                si = jmp.state1
+
+                star_i = self.onsagercalculator.vkinetic.starset.complexIndexdict[si][1]
+                #         dbwyck_i = self.onsagercalculator.pdbcontainer.invmap[si.db.iorind]
+
+                indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[si]
+                #         indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state2]
+
+                for vi, invi in indlist1:
+                    vec = self.onsagercalculator.vkinetic.vecvec[vi][invi]
+                    vdot = np.dot(vec, vec)
+                    diags[vi + Nvstars_mixed] -= np.exp(-bFT4[jt] + bFSdb_total_shift[star_i]) * vdot
+
+        # 3b.3 - contribution by omega3
+        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3):
+            for jmp in jlist:
+                si = jmp.state1
+
+                star_i = self.onsagercalculator.vkinetic.starset.mixedindexdict[si][1]
+                dbwyck_i = self.onsagercalculator.mdbcontainer.invmap[si.db.iorind]
+
+                indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_mixed[si]
+                #         indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state2]
+
+                for vi, invi in indlist1:
+                    vec = self.onsagercalculator.vkinetic.vecvec[vi][invi]
+                    vdot = np.dot(vec, vec)
+                    diags[vi - Nvstars_pure] -= np.exp(-bFT3[jt] + bFdb2[dbwyck_i] - bFdb2_min) * vdot
+
+        # add the diagonal contributions
+        for i in range(Nvstars):
+            delta_om_test[i, i] += diags[i]
+
+        self.assertTrue(np.allclose(delta_om_test, del_om))
 
 
 
