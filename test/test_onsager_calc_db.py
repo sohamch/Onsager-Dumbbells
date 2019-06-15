@@ -819,7 +819,166 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         self.assertTrue(np.allclose(delta_om_test, del_om))
 
+    def test_G0(self):
+        # 1.  First get the rates and thermodynamic data.
 
+        # 1a. Energies and pre-factors
+        kT = 1.
+
+        predb0, enedb0 = np.ones(len(self.onsagercalculator.vkinetic.starset.pdbcontainer.symorlist)), \
+                         np.random.rand(len(self.onsagercalculator.vkinetic.starset.pdbcontainer.symorlist))
+
+        preS, eneS = np.ones(
+            len(self.onsagercalculator.vkinetic.starset.crys.sitelist(self.onsagercalculator.vkinetic.starset.chem))), \
+                     np.random.rand(len(self.onsagercalculator.vkinetic.starset.crys.sitelist(
+                         self.onsagercalculator.vkinetic.starset.chem)))
+
+        # These are the interaction or the excess energies and pre-factors for solutes and dumbbells.
+        preSdb, eneSdb = np.ones(self.onsagercalculator.thermo.mixedstartindex), \
+                         np.random.rand(self.onsagercalculator.thermo.mixedstartindex)
+
+        predb2, enedb2 = np.ones(len(self.onsagercalculator.vkinetic.starset.mdbcontainer.symorlist)), \
+                         np.random.rand(len(self.onsagercalculator.vkinetic.starset.mdbcontainer.symorlist))
+
+        preT0, eneT0 = np.ones(len(self.onsagercalculator.vkinetic.starset.jnet0)), np.random.rand(
+            len(self.onsagercalculator.vkinetic.starset.jnet0))
+        preT2, eneT2 = np.ones(len(self.onsagercalculator.vkinetic.starset.jnet2)), np.random.rand(
+            len(self.onsagercalculator.vkinetic.starset.jnet2))
+        preT1, eneT1 = np.ones(len(self.onsagercalculator.jnet_1)), np.random.rand(len(self.onsagercalculator.jnet_1))
+
+        preT43, eneT43 = np.ones(len(self.onsagercalculator.symjumplist_omega43_all)), \
+                         np.random.rand(len(self.onsagercalculator.symjumplist_omega43_all))
+
+        # 1c. Now get the beta*free energy values.
+        bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4 = \
+            self.onsagercalculator.preene2betafree(kT, predb0, enedb0, preS, eneS, preSdb, eneSdb, predb2, enedb2,
+                                                   preT0, eneT0, preT2, eneT2, preT1, eneT1, preT43, eneT43)
+
+        bFdb0_min = np.min(bFdb0)
+        bFdb2_min = np.min(bFdb2)
+        bFS_min = np.min(bFS)
+
+        # 1d. Modify the solute-dumbell interaction energies
+        bFSdb_total = np.zeros(self.onsagercalculator.vkinetic.starset.mixedstartindex)
+        bFSdb_total_shift = np.zeros(self.onsagercalculator.vkinetic.starset.mixedstartindex)
+
+        # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
+        # later.
+        # Also, we need to keep an unshifted version to be able to normalize probabilities
+        for starind, star in enumerate(self.onsagercalculator.vkinetic.starset.stars[
+                                       :self.onsagercalculator.vkinetic.starset.mixedstartindex]):
+            # For origin complex states, do nothing - leave them as zero.
+            if star[0].is_zero(self.onsagercalculator.vkinetic.starset.pdbcontainer):
+                continue
+            symindex = self.onsagercalculator.vkinetic.starset.star2symlist[starind]
+            # First, get the unshifted value
+            # check that invmaps are okay
+            solwyck = self.onsagercalculator.invmap_solute[star[0].i_s]
+            for state in star:
+                self.assertEqual(self.onsagercalculator.invmap_solute[state.i_s], solwyck)
+
+            bFSdb_total[starind] = bFdb0[symindex] + bFS[solwyck]
+            bFSdb_total_shift[starind] = bFSdb_total[starind] - (bFdb0_min + bFS_min)
+
+        # Now add in the changes for the complexes inside the thermodynamic shell.
+        for starind, star in enumerate(self.onsagercalculator.thermo.stars[
+                                       :self.onsagercalculator.thermo.mixedstartindex]):
+            # Get the symorlist index for the representative state of the star
+            if star[0].is_zero(self.onsagercalculator.thermo.pdbcontainer):
+                continue
+            # keep the total energies zero for origin states.
+            # check thermo2kin
+            kinind = self.onsagercalculator.thermo2kin[starind]
+            self.assertEqual(len(star), len(self.onsagercalculator.vkinetic.starset.stars[kinind]))
+            count = 0
+            for state in star:
+                for statekin in self.onsagercalculator.vkinetic.starset.stars[kinind]:
+                    if state == statekin:
+                        count += 1
+            self.assertEqual(count, len(star))
+
+            bFSdb_total[kinind] += bFSdb[starind]
+            bFSdb_total_shift[kinind] += bFSdb[starind]
+
+        # 1e. Now get the symmetrized rates
+        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape), \
+        (omega4, omega4escape) = self.onsagercalculator.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min,
+                                                                     bFSdb_total_shift, bFT0, bFT1, bFT2, bFT3, bFT4)
+
+        for jt in range(len(self.onsagercalculator.symjumplist_omega43_all)):
+            self.assertEqual(omega4[jt], omega3[jt])
+
+        omegas = (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape), \
+                 (omega4, omega4escape)
+
+        # 2. we get the delta omega matrix, as it is calculated in the code in the makeGF function
+        # Need to run calc_eta first to get g2 - this should be made universal later on
+        pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
+        pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
+        symrate0list = symmratelist(self.onsagercalculator.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
+                                    self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
+
+        symrate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
+                                    self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
+        self.onsagercalculator.calc_eta(symrate0list, symrate2list)
+        # Check consistency between the two rate
+        for jt in range(len(self.onsagercalculator.jnet0)):
+            self.assertEqual(symrate0list[jt][0], omega0[jt])
+
+        for jt in range(len(self.onsagercalculator.jnet2)):
+            self.assertEqual(symrate2list[jt][0], omega2[jt])
+
+        GF_total, GF20, del_om = self.onsagercalculator.makeGF(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFT0, bFT2, omegas)
+        print("GF made")
+
+        # to verify GF20, we need the GF starsets and the GF2 and GF0 lists for each starset
+        # setrates has already been run while running makeGF
+        GF0 = np.array([self.onsagercalculator.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
+                        [star[0] for star in self.onsagercalculator.GFstarset_pure]])
+
+        GF2 = np.array([self.onsagercalculator.g2[tup[0][0], tup[0][1]] for tup in
+                        [star[0] for star in self.onsagercalculator.GFstarset_mixed]])
+
+        GFstarset_complex = self.onsagercalculator.GFstarset_pure
+        GFstarset_mixed = self.onsagercalculator.GFstarset_mixed
+
+        Nvstars = self.onsagercalculator.vkinetic.Nvstars
+        Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
+        Nvstars_mixed = Nvstars - Nvstars_pure
+        Nvstars, Nvstars_pure, Nvstars_mixed
+
+        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.onsagercalculator.vkinetic.genGFstarset()
+
+        # Now, we must evaluate the GF20 tensor through explicit summation
+        GF20_test = np.zeros((Nvstars, Nvstars))
+        # First, we do it for the GF0 part
+        for i in range(Nvstars_pure):
+            for j in range(Nvstars_pure):
+                for si, vi in zip(self.onsagercalculator.vkinetic.vecpos[i], self.onsagercalculator.vkinetic.vecvec[i]):
+                    for sj, vj in zip(self.onsagercalculator.vkinetic.vecpos[j], self.onsagercalculator.vkinetic.vecvec[j]):
+                        # try to form a connection between the states
+                        try:
+                            ds = si ^ sj
+                        except:
+                            continue
+                        # If the connection has formed, locate it's star index
+                        Gstarind = GFPureStarInd[ds]
+                        GF20_test[i + Nvstars_mixed, j + Nvstars_mixed] += GF0[Gstarind] * np.dot(vi, vj)
+
+        # Now, we do it for the mixed part
+        for i in range(Nvstars_mixed):
+            for j in range(Nvstars_mixed):
+                for si, vi in zip(self.onsagercalculator.vkinetic.vecpos[i + Nvstars_pure],
+                                  self.onsagercalculator.vkinetic.vecvec[i + Nvstars_pure]):
+                    for sj, vj in zip(self.onsagercalculator.vkinetic.vecpos[j + Nvstars_pure],
+                                      self.onsagercalculator.vkinetic.vecvec[j + Nvstars_pure]):
+                        # try to form a connection between the states
+                        s = connector(si.db, sj.db)
+                        # If the connection has formed, locate it's star index
+                        Gstarind = GFMixedStarInd[s]
+                        GF20_test[i, j] += GF2[Gstarind] * np.dot(vi, vj)
+
+        np.allclose(GF20, GF20_test)
 
 class test_distorted(test_dumbbell_mediated):
     def setUp(self):
