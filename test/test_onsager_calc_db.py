@@ -711,8 +711,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         # form
 
         Nvstars = self.onsagercalculator.vkinetic.Nvstars
-        Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
-        Nvstars_mixed = Nvstars - Nvstars_pure
+        # Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
+        # Nvstars_mixed = Nvstars - Nvstars_pure
 
         delta_om_test = np.zeros((Nvstars, Nvstars))
         # 3a. First, we do the non-diagonal parts
@@ -725,7 +725,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state2]
                 for vi, invi in indlist1:
                     for vj, invj in indlist2:
-                        delta_om_test[vi + Nvstars_mixed, vj + Nvstars_mixed] += \
+                        delta_om_test[vi, vj] += \
                             delom1 * np.dot(self.onsagercalculator.vkinetic.vecvec[vi][invi],
                                             self.onsagercalculator.vkinetic.vecvec[vj][invj])
 
@@ -736,7 +736,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state2]
                 for vi, invi in indlist1:
                     for vj, invj in indlist2:
-                        delta_om_test[vi - Nvstars_pure, vj + Nvstars_mixed] += \
+                        delta_om_test[vi, vj] += \
                             omega3[jt] * np.dot(self.onsagercalculator.vkinetic.vecvec[vi][invi],
                                                 self.onsagercalculator.vkinetic.vecvec[vj][invj])
 
@@ -747,7 +747,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_mixed[jmp.state2]
                 for vi, invi in indlist1:
                     for vj, invj in indlist2:
-                        delta_om_test[vi + Nvstars_mixed, vj - Nvstars_pure] += \
+                        delta_om_test[vi, vj] += \
                             omega4[jt] * np.dot(self.onsagercalculator.vkinetic.vecvec[vi][invi],
                                                 self.onsagercalculator.vkinetic.vecvec[vj][invj])
 
@@ -774,10 +774,10 @@ class test_dumbbell_mediated(unittest.TestCase):
                     vec = self.onsagercalculator.vkinetic.vecvec[vi][invi]
                     vdot = np.dot(vec, vec)
                     if jmp.state2.is_zero(self.onsagercalculator.pdbcontainer):
-                        diags[vi + Nvstars_mixed] -= 0 - np.exp(-bFT0[self.onsagercalculator.om1types[jt]]
+                        diags[vi] -= 0 - np.exp(-bFT0[self.onsagercalculator.om1types[jt]]
                                                                 + bFdb0[dbwyck_i] - bFdb0_min) * vdot
                     else:
-                        diags[vi + Nvstars_mixed] -= np.exp(-bFT1[jt] + bFSdb_total_shift[star_i]) * vdot - \
+                        diags[vi] -= np.exp(-bFT1[jt] + bFSdb_total_shift[star_i]) * vdot - \
                                                      np.exp(-bFT0[self.onsagercalculator.om1types[jt]] + bFdb0[
                                                          dbwyck_i] - bFdb0_min) * vdot
 
@@ -795,7 +795,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 for vi, invi in indlist1:
                     vec = self.onsagercalculator.vkinetic.vecvec[vi][invi]
                     vdot = np.dot(vec, vec)
-                    diags[vi + Nvstars_mixed] -= np.exp(-bFT4[jt] + bFSdb_total_shift[star_i]) * vdot
+                    diags[vi] -= np.exp(-bFT4[jt] + bFSdb_total_shift[star_i]) * vdot
 
         # 3b.3 - contribution by omega3
         for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3):
@@ -811,7 +811,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 for vi, invi in indlist1:
                     vec = self.onsagercalculator.vkinetic.vecvec[vi][invi]
                     vdot = np.dot(vec, vec)
-                    diags[vi - Nvstars_pure] -= np.exp(-bFT3[jt] + bFdb2[dbwyck_i] - bFdb2_min) * vdot
+                    diags[vi] -= np.exp(-bFT3[jt] + bFdb2[dbwyck_i] - bFdb2_min) * vdot
 
         # add the diagonal contributions
         for i in range(Nvstars):
@@ -939,12 +939,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         GF2 = np.array([self.onsagercalculator.g2[tup[0][0], tup[0][1]] for tup in
                         [star[0] for star in self.onsagercalculator.GFstarset_mixed]])
 
-        GFstarset_complex = self.onsagercalculator.GFstarset_pure
-        GFstarset_mixed = self.onsagercalculator.GFstarset_mixed
-
         Nvstars = self.onsagercalculator.vkinetic.Nvstars
         Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
-        Nvstars_mixed = Nvstars - Nvstars_pure
 
         GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.onsagercalculator.vkinetic.genGFstarset()
 
@@ -962,15 +958,15 @@ class test_dumbbell_mediated(unittest.TestCase):
                             continue
                         # If the connection has formed, locate it's star index
                         Gstarind = GFPureStarInd[ds]
-                        GF20_test[i + Nvstars_mixed, j + Nvstars_mixed] += GF0[Gstarind] * np.dot(vi, vj)
+                        GF20_test[i, j] += GF0[Gstarind] * np.dot(vi, vj)
 
         # Now, we do it for the mixed part
-        for i in range(Nvstars_mixed):
-            for j in range(Nvstars_mixed):
-                for si, vi in zip(self.onsagercalculator.vkinetic.vecpos[i + Nvstars_pure],
-                                  self.onsagercalculator.vkinetic.vecvec[i + Nvstars_pure]):
-                    for sj, vj in zip(self.onsagercalculator.vkinetic.vecpos[j + Nvstars_pure],
-                                      self.onsagercalculator.vkinetic.vecvec[j + Nvstars_pure]):
+        for i in range(Nvstars_pure, Nvstars):
+            for j in range(Nvstars_pure, Nvstars):
+                for si, vi in zip(self.onsagercalculator.vkinetic.vecpos[i],
+                                  self.onsagercalculator.vkinetic.vecvec[i]):
+                    for sj, vj in zip(self.onsagercalculator.vkinetic.vecpos[j],
+                                      self.onsagercalculator.vkinetic.vecvec[j]):
                         # try to form a connection between the states
                         s = connector(si.db, sj.db)
                         # If the connection has formed, locate it's star index

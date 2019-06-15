@@ -842,7 +842,7 @@ class dumbbellMediated(VacancyMediated):
         if not hasattr(self, 'g2'):
             raise AttributeError("g2 not found yet. Please run calc_eta first.")
 
-        Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure  # type: int
+        Nvstars_pure = self.vkinetic.Nvstars_pure
 
         (rate0expansion, rate0escape), (rate1expansion, rate1escape), (rate2expansion, rate2escape), \
         (rate3expansion, rate3escape), (rate4expansion, rate4escape) = self.rateExps
@@ -852,8 +852,9 @@ class dumbbellMediated(VacancyMediated):
         (omega4, omega4escape) = omegas
 
         GF20 = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
-        # left-upper part of GF20 = Nvstars_mixed x Nvstars_mixed g2 matrix
-        # right-lower part of GF20 = Nvstars_pure x Nvstars_pure g0 matrix
+
+        # left-upper part of GF20 = Nvstars_pure x Nvstars_pure g0 matrix
+        # right-lower part of GF20 = Nvstars_mixed x Nvstars_mixed g2 matrix
 
         pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
         pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
@@ -868,30 +869,30 @@ class dumbbellMediated(VacancyMediated):
         GF2 = np.array([self.g2[tup[0][0], tup[0][1]] for tup in
                         [star[0] for star in self.GFstarset_mixed]])
 
-        GF20[:Nvstars_mixed, :Nvstars_mixed] = np.dot(self.GFexpansion_mixed, GF2)
-        GF20[Nvstars_mixed:, Nvstars_mixed:] = np.dot(self.GFexpansion_pure, GF0)
+        GF20[Nvstars_pure:, Nvstars_pure:] = np.dot(self.GFexpansion_mixed, GF2)
+        GF20[:Nvstars_pure, :Nvstars_pure] = np.dot(self.GFexpansion_pure, GF0)
 
         # make delta omega
         delta_om = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
 
         # off-diagonals
-        delta_om[Nvstars_mixed:, Nvstars_mixed:] += np.dot(rate1expansion, omega1) - np.dot(rate0expansion, omega0)
-        delta_om[:Nvstars_mixed, Nvstars_mixed:] += np.dot(rate3expansion, omega3)
-        delta_om[Nvstars_mixed:, :Nvstars_mixed] += np.dot(rate4expansion, omega4)
+        delta_om[:Nvstars_pure, :Nvstars_pure] += np.dot(rate1expansion, omega1) - np.dot(rate0expansion, omega0)
+        delta_om[Nvstars_pure:, :Nvstars_pure] += np.dot(rate3expansion, omega3)
+        delta_om[:Nvstars_pure, Nvstars_pure:] += np.dot(rate4expansion, omega4)
 
         # escapes
         # omega1 and omega4 terms
         for i, starind in enumerate(self.vkinetic.vstar2star[:self.vkinetic.Nvstars_pure]):
             #######
             symindex = self.vkinetic.starset.star2symlist[starind]
-            delta_om[i + Nvstars_mixed, i + Nvstars_mixed] += \
+            delta_om[i, i] += \
                 np.dot(rate1escape[i, :], omega1escape[i, :])-\
                 np.dot(rate0escape[i, :], omega0escape[symindex, :])+\
                 np.dot(rate4escape[i, :], omega4escape[i, :])
 
         # omega3 terms
-        for i in range(Nvstars_mixed):
-            delta_om[i, i] += np.dot(rate3escape[i, :], omega3escape[i, :])
+        for i in range(Nvstars_pure, self.vkinetic.Nvstars):
+            delta_om[i, i] += np.dot(rate3escape[i - Nvstars_pure, :], omega3escape[i - Nvstars_pure, :])
 
         GF_total = np.dot(np.linalg.inv(np.eye(self.vkinetic.Nvstars) + np.dot(GF20, delta_om)), GF20)
 
@@ -991,16 +992,15 @@ class dumbbellMediated(VacancyMediated):
         self.biases_solute_vs = np.zeros(self.vkinetic.Nvstars)
         self.biases_solvent_vs = np.zeros(self.vkinetic.Nvstars)
 
-        Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure
+        Nvstars_pure = self.vkinetic.Nvstars_pure
         # The values for the mixed dumbbells are stored first, and then the complexes
         # Among the complexes, the values for the origin states are stored first, then the other ones.
 
         # bias_..._new = the bias vector produced after updating with eta0 vectors.
-        self.biases_solute_vs[Nvstars_mixed:] = np.dot(self.bias4_solute_new, omega4)
+        self.biases_solute_vs[:Nvstars_pure] = np.dot(self.bias4_solute_new, omega4)
         # For the solutes in complex configurations, the only local bias comes due to displacements during association.
         # complex-complex jumps leave the solute unchanged and hence do not contribute to solute bias.
-
-        self.biases_solute_vs[:Nvstars_mixed] = np.dot(self.bias3_solute_new, omega3) + np.dot(self.bias2_solute_new, omega2)
+        self.biases_solute_vs[Nvstars_pure:] = np.dot(self.bias3_solute_new, omega3)
         # remember that the omega2 bias is the non-local bias, and so has been subtracted out.
         # See line 350 in the test module to check that bias2_solute_new is all zeros.
 
@@ -1008,12 +1008,12 @@ class dumbbellMediated(VacancyMediated):
         # non-local rates.
         omega1_change = omega1 - np.array([omega0[jt] for jt in self.om1types])
         # This gives us only the change in the rates within the kinetic shell due to solute interactions.
-        self.biases_solvent_vs[Nvstars_mixed:] = np.dot(self.bias1_solvent_new, omega1_change) +\
+        self.biases_solvent_vs[:Nvstars_pure] = np.dot(self.bias1_solvent_new, omega1_change) +\
                                             np.dot(self.bias4_solvent_new, omega4)
         # For solvents out of complex states, both omega1 and omega4 jumps contribute to the local bias.
 
-        self.biases_solvent_vs[:Nvstars_mixed] = np.dot(self.bias3_solvent_new, omega3)
-        # For solutes in the mixed states, the local bias comes due only to the omega3(dissociation) jumps.
+        self.biases_solvent_vs[Nvstars_pure:] = np.dot(self.bias3_solvent_new, omega3)
+        # In the mixed state space, the local bias comes due only to the omega3(dissociation) jumps.
 
         # Next, we create the gamma vector, projected onto the vector stars
         gamma_solute_vs = np.dot(GF_total, self.biases_solute_vs)
