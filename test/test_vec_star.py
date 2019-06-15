@@ -727,66 +727,6 @@ class test_vecstars(unittest.TestCase):
 
                 self.assertEqual(count, len(GFstarset_mixed[listind])) # check bijection
 
-    def test_GF_expansions(self):
-        """
-        Here we will test with the slow but sure version of GFexpansion
-        """
-
-        def getstar(tup, star):
-            for starind, list in enumerate(star):
-                for t in list:
-                    if (t[0][0] == tup[0][0] and t[0][1] == tup[0][1] and
-                            np.allclose(t[1], tup[1], atol=self.vec_stars.starset.crys.threshold)):
-                        return starind
-            return None
-
-        # First, pure GF expansion
-        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.vec_stars.genGFstarset()
-
-        Nvstars_pure = self.vec_stars.Nvstars_pure
-        Nvstars_mixed = self.vec_stars.Nvstars - self.vec_stars.Nvstars_pure
-        GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
-        GFexpansion_mixed = np.zeros((Nvstars_mixed, Nvstars_mixed, len(GFstarset_mixed)))
-        GFexpansion_pure_calc, GFexpansion_mixed_calc = self.vec_stars.GFexpansion()
-        # build up the pure GFexpansion
-        for i in range(Nvstars_pure):
-            for si, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
-                for j in range(Nvstars_pure):
-                    for sj, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
-                        try:
-                            ds = si ^ sj
-                        except:
-                            continue
-                        # print(ds)
-                        ds.shift()
-                        dx = disp(self.vec_stars.starset.pdbcontainer, ds.state1, ds.state2)
-                        ind1 = self.vec_stars.starset.pdbcontainer.db2ind(ds.state1)
-                        ind2 = self.vec_stars.starset.pdbcontainer.db2ind(ds.state2)
-                        if ind1 is None or ind2 is None:
-                            raise KeyError("enpoint subtraction within starset not found in iorlist")
-                        k = getstar(((ind1, ind2), dx), GFstarset_pure)
-                        k1 = GFPureStarInd[ds]
-                        # print("here")
-                        self.assertEqual(k, k1)
-                        if k is None:
-                            raise ArithmeticError(
-                                "complex GF starset not big enough to accomodate state pair {}".format(tup))
-                        GFexpansion_pure[i, j, k] += np.dot(vi, vj)
-        # # symmetrize
-        # for i in range(Nvstars_pure):
-        #     for j in range(0, i):
-        #         GFexpansion_pure[i, j, :] = GFexpansion_pure[j, i, :]
-        #
-        # self.assertTrue(np.allclose(zeroclean(GFexpansion_pure), GFexpansion_pure_calc[2]))
-        #
-        # # Next, we do the test for the mixed GF expansion, building only the origin states
-        # for i in range(Nvstars_mixed):
-        #     for si,vi in zip(self.vec_stars.vecpos[i + Nvstars_pure], self.vec_stars.vecvec[i + Nvstars_pure]):
-        #         for j in range(Nvstars_mixed):
-        #             for sj,vj in zip(self.vec_stars.vecpos[j + Nvstars_pure], self.vec_stars.vecvec[j + Nvstars_pure]):
-        #                 # F
-
-
     def test_order(self):
         "test that we have the origin spectator states at the begining"
         dx_list = []
@@ -801,6 +741,17 @@ class test_vecstars(unittest.TestCase):
         self.assertTrue(np.allclose(zeroclean(np.array(dx_list)), zeroclean(np.array(sorted(dx_list)))),
                         msg="\n{}\n{}".format(dx_list, sorted(dx_list)))
 
+    def test_outer(self):
+        kinouter = self.vec_stars.outer()
+        kinouter_test = np.zeros((3, 3, self.vec_stars.Nvstars, self.vec_stars.Nvstars))
+        for i in range(self.vec_stars.Nvstars):
+            for j in range(self.vec_stars.Nvstars):
+                for si, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
+                    for sj, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
+                        if si != sj:
+                            continue
+                        kinouter_test[:, :, i, j] += np.outer(vi, vj)
+        np.allclose(kinouter, kinouter_test)
 
 class test_Si(test_vecstars):
 
