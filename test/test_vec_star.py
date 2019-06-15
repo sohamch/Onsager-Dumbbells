@@ -572,9 +572,14 @@ class test_vecstars(unittest.TestCase):
                                     # Go through the final complex states - they must be at the origin unit cell.
                                     self.assertTrue(np.allclose(jmp.state2.R_s, np.zeros(3, dtype=int)))
                                     if chi_j == jmp.state2:
-                                        rate3escape[j - self.vec_stars.Nvstars_pure, k] -= np.dot(vj, vj)
                                         rate4expansion[i, j - self.vec_stars.Nvstars_pure, k] += np.dot(vi, vj)
                                         rate3expansion[j - self.vec_stars.Nvstars_pure, i, k] += np.dot(vj, vi)
+
+                for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
+                    # iterate over mixed states - the second inner sum
+                    for chi_j, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
+                        if chi_j == jmp.state2:
+                            rate3escape[j-self.vec_stars.Nvstars_pure, k] -= np.dot(vj, vj)
 
         self.assertFalse(np.allclose(rate3expansion, np.zeros_like(rate3expansion)))
 

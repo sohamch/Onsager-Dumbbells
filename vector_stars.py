@@ -533,9 +533,15 @@ class vectorStars(VectorStarSet):
 
                 for tup1 in indlist1:
                     rate4escape[tup1[0], k] -= np.dot(self.vecvec[tup1[0]][tup1[1]], self.vecvec[tup1[0]][tup1[1]])
+                for tup2 in indlist2:
+                    rate3escape[tup2[0] - self.Nvstars_pure, k] -= np.dot(self.vecvec[tup2[0]][tup2[1]],
+                                                                          self.vecvec[tup2[0]][tup2[1]])
+
+                for tup1 in indlist1:
+                    # rate4escape[tup1[0], k] -= np.dot(self.vecvec[tup1[0]][tup1[1]], self.vecvec[tup1[0]][tup1[1]])
                     for tup2 in indlist2:
-                        rate3escape[tup2[0] - self.Nvstars_pure, k] -= np.dot(self.vecvec[tup2[0]][tup2[1]],
-                                                                              self.vecvec[tup2[0]][tup2[1]])
+                        # rate3escape[tup2[0] - self.Nvstars_pure, k] -= np.dot(self.vecvec[tup2[0]][tup2[1]],
+                        #                                                       self.vecvec[tup2[0]][tup2[1]])
 
                         rate4expansion[tup1[0], tup2[0] - self.Nvstars_pure, k] += np.dot(self.vecvec[tup1[0]][tup1[1]],
                                                                                           self.vecvec[tup2[0]][tup2[1]])
