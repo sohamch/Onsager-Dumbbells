@@ -742,16 +742,15 @@ class test_vecstars(unittest.TestCase):
                         msg="\n{}\n{}".format(dx_list, sorted(dx_list)))
 
     def test_outer(self):
-        kinouter = self.vec_stars.outer()
-        kinouter_test = np.zeros((3, 3, self.vec_stars.Nvstars, self.vec_stars.Nvstars))
+        outer = self.vec_stars.outer()
+        outer_test = np.zeros((3, 3, self.vec_stars.Nvstars, self.vec_stars.Nvstars))
         for i in range(self.vec_stars.Nvstars):
             for j in range(self.vec_stars.Nvstars):
                 for si, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
                     for sj, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
-                        if si != sj:
-                            continue
-                        kinouter_test[:, :, i, j] += np.outer(vi, vj)
-        np.allclose(kinouter, kinouter_test)
+                        if si == sj:
+                            outer_test[:, :, i, j] += np.outer(vi, vj)
+        np.allclose(outer, outer_test)
 
 class test_Si(test_vecstars):
 

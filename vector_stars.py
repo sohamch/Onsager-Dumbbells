@@ -319,7 +319,7 @@ class vectorStars(VectorStarSet):
                         k = GFPureStarInd[ds]
                         if k is None:
                             raise ArithmeticError(
-                                "complex GF starset not big enough to accomodate state pair {}".format(tup))
+                                "complex GF starset not big enough to accomodate state pair {}".format(ds))
                         GFexpansion_pure[i, j, k] += np.dot(vi, vj)
 
         # Build up the mixed GF expansion
@@ -574,11 +574,18 @@ class vectorStars(VectorStarSet):
                (zeroclean(rate4expansion), zeroclean(rate4escape))
 
     def outer(self):
-        outerprods = np.zeros((3, 3, self.Nvstars, self.Nvstars))
-        for i in range(self.Nvstars):
-            for j in range(self.Nvstars):
-                for st_i, v_i in zip(self.vecpos[i], self.vecvec[i]):
-                    for st_j, v_j in zip(self.vecpos[j], self.vecvec[j]):
-                        if st_i == st_j:
-                            outerprods[:, :, i, j] += np.outer(v_i, v_j)
-        return zeroclean(outerprods)
+        outerprod = np.zeros((3, 3, self.Nvstars, self.Nvstars))
+        for i in range(self.Nvstars_pure):
+            for j in range(self.Nvstars_pure):
+                for si, vi in zip(self.vecpos[i], self.vecvec[i]):
+                    for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
+                        if si == sj:
+                            outerprod[:, :, i, j] += np.outer(vi, vj)
+
+        for i in range(self.Nvstars_pure, self.Nvstars):
+            for j in range(self.Nvstars_pure, self.Nvstars):
+                for si, vi in zip(self.vecpos[i], self.vecvec[i]):
+                    for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
+                        if si == sj:
+                            outerprod[:, :, i, j] += np.outer(vi, vj)
+        return zeroclean(outerprod)
