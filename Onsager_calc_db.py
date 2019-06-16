@@ -859,7 +859,6 @@ class dumbbellMediated(VacancyMediated):
         pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
 
         self.GFcalc_pure.SetRates(pre0, bFdb0, pre0T, bFT0)
-        self.GFcalc_mixed.SetRates(pre2, bFdb2, pre2T, bFT2)
 
         GF0 = np.array([self.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
                         [star[0] for star in self.GFstarset_pure]])
@@ -895,7 +894,7 @@ class dumbbellMediated(VacancyMediated):
 
         GF_total = np.dot(np.linalg.inv(np.eye(self.vkinetic.Nvstars) + np.dot(GF20, delta_om)), GF20)
 
-        return GF_total, GF20, delta_om
+        return zeroclean(GF_total), GF20, delta_om
 
     def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4):
 
@@ -1050,7 +1049,7 @@ class dumbbellMediated(VacancyMediated):
             part_func += np.exp(-bFdb2[wyckind])
             mixed_prob[siteind] = np.exp(-bFdb2[wyckind])
 
-        # Now add in the non-interactive complex contribution
+        # Now add in the non-interactive complex contribution to the partition function
         for dbsiteind, dbwyckind in enumerate(self.vkinetic.starset.pdbcontainer.invmap):
             for solsiteind, solwyckind in enumerate(self.invmap_solute):
                 part_func += np.exp(-(bFdb0[dbwyckind] + bFS[solwyckind]))

@@ -67,9 +67,11 @@ class test_dumbbell_mediated(unittest.TestCase):
         pre2T = np.random.rand(len(self.onsagercalculator.jnet2))
         betaene2T = np.random.rand(len(self.onsagercalculator.jnet2))
 
-        rate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
-        rate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
-        # (eta00_solvent,eta00_solute), (eta02_solvent,eta02_solute) = \
+        rate0list = symmratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
+                                 self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
+        rate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
+                                 self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
+
         self.onsagercalculator.calc_eta(rate0list, rate2list)
 
         self.assertEqual(len(self.onsagercalculator.eta00_solvent),len(self.onsagercalculator.vkinetic.starset.complexStates))
@@ -163,23 +165,13 @@ class test_dumbbell_mediated(unittest.TestCase):
         for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
             bias_test_solute = np.zeros(3)
             bias_test_solvent = np.zeros(3)
-            # db = self.onsagercalculator.vkinetic.starset.mixedStates[i]
             #First, let's check the indexing
             bias_true_solute = self.onsagercalculator.NlsoluteBias2[i]
             bias_true_solvent = self.onsagercalculator.NlsolventBias2[i]
-            # print(len(self.onsagercalculator.vkinetic.vecpos_bare[self.onsagercalculator.vkinetic.bareStTobareStar[db][0][0]]))
-            # eta_true *= len(self.onsagercalculator.vkinetic.vecpos_bare[self.onsagercalculator.vkinetic.bareStTobareStar[db][0][0]])
+
             for jt,jindlist,jlist in zip(itertools.count(),self.onsagercalculator.jnet2_indexed,self.onsagercalculator.jnet2):
                 for ((IS,FS),dx),jmp in zip(jindlist,jlist):
                     if i==IS:
-                        dx_solute =\
-                            dx +\
-                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state2.db.iorind][1]/2. -\
-                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state1.db.iorind][1]/2.
-                        dx_solvent =\
-                            dx -\
-                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state2.db.iorind][1]/2. +\
-                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state1.db.iorind][1]/2.
                         self.assertTrue(self.onsagercalculator.vkinetic.starset.mixedstates[IS]==jmp.state1)
                         self.assertTrue(self.onsagercalculator.vkinetic.starset.mixedstates[FS]==jmp.state2-jmp.state2.R_s)
                         bias_test_solute += rate2list[jt][0]*(self.onsagercalculator.eta02_solute[FS,:]-self.onsagercalculator.eta02_solute[IS,:])
@@ -200,10 +192,12 @@ class test_dumbbell_mediated(unittest.TestCase):
         pre2T = np.random.rand(len(self.onsagercalculator.jnet2))
         betaene2T = np.random.rand(len(self.onsagercalculator.jnet2))
 
-        rate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T, self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
-        rate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T, self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
+        rate0list = symmratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
+                                 self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
+        rate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
+                                 self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
 
-        self.onsagercalculator.update_bias_expansions(rate0list,rate2list)
+        self.onsagercalculator.update_bias_expansions(rate0list, rate2list)
 
         # Next, we calculate the bias updates explicitly First, we make lists to test against While the non-local
         # rates are determined by rate0list and rate2list, we are free to use random local corrections
@@ -229,13 +223,12 @@ class test_dumbbell_mediated(unittest.TestCase):
                     solvent_bias_Nl[i,:] += rate0list[jt][0]*(self.onsagercalculator.eta00_solvent_bare[i] - self.onsagercalculator.eta00_solvent_bare[j])
 
             self.assertTrue(np.allclose(solvent_bias_Nl,np.zeros_like(solvent_bias_Nl)))
-            # self.assertTrue(np.allclose(solute_bias_Nl,np.zeros_like(solute_bias_Nl)))
 
-        #Now, do check eta vectors for omega1
-        bias1solute,bias1solvent = self.biases[1]
+        # Now, do check eta vectors for omega1
+        bias1solute, bias1solvent = self.biases[1]
         bias1_solute_total = np.dot(bias1solute,W1list)
         bias1_solvent_total = np.dot(bias1solvent,W1list)
-        #Now, convert this into the Nstates x 3 form
+        # Now, convert this into the Nstates x 3 form
         solute_bias_1 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates),3))
         solvent_bias_1 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates),3))
         for i in range(len(self.onsagercalculator.vkinetic.starset.complexStates)):
@@ -253,7 +246,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                 solvent_bias_1[IS,:] += W1list[jt]*(self.onsagercalculator.eta00_solvent[IS] - self.onsagercalculator.eta00_solvent[FS])
 
         #Now, get the version from the updated expansion
-        bias1_solute_new_total,bias1_solvent_new_total = np.dot(self.onsagercalculator.bias1_solute_new,W1list),np.dot(self.onsagercalculator.bias1_solvent_new,W1list)
+        bias1_solute_new_total,bias1_solvent_new_total = np.dot(self.onsagercalculator.bias1_solute_new,W1list), \
+                                                         np.dot(self.onsagercalculator.bias1_solvent_new,W1list)
         solute_bias_1_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates),3))
         solvent_bias_1_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates),3))
         for i in range(len(self.onsagercalculator.vkinetic.starset.complexStates)):
@@ -263,9 +257,9 @@ class test_dumbbell_mediated(unittest.TestCase):
             solvent_bias_1_new[i,:] = sum([bias1_solvent_new_total[tup[0]]*self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
         #Check that they are the same
-        self.assertTrue(np.allclose(solute_bias_1,solute_bias_1_new))
-        self.assertTrue(np.allclose(solute_bias_1,np.zeros_like(solute_bias_1)))
-        self.assertTrue(np.allclose(solvent_bias_1,solvent_bias_1_new))
+        self.assertTrue(np.allclose(solute_bias_1, solute_bias_1_new))
+        self.assertTrue(np.allclose(solute_bias_1, np.zeros_like(solute_bias_1)))
+        self.assertTrue(np.allclose(solvent_bias_1, solvent_bias_1_new))
 
         #For the kinetic shell, we check that for those states, out of which every (omega0-allowed) jump leads
         #to another state in the kinetic shell, the non-local bias becomes zero, using omega1 jumps.
