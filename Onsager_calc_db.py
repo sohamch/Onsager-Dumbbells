@@ -1037,6 +1037,8 @@ class dumbbellMediated(VacancyMediated):
         # Otherwise, how do we think of preventing overflow?
         for starind, star in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
             for state in star:
+                if not (self.vkinetic.starset.complexIndexdict[state][1] == starind):
+                    raise ValueError("check complexIndexdict")
                 complex_prob[self.vkinetic.starset.complexIndexdict[state][0]] = np.exp(-bFSdb_total[starind])
 
         # Form the mixed dumbbell boltzmann factors and the partition function
@@ -1044,6 +1046,7 @@ class dumbbellMediated(VacancyMediated):
         # First add in the mixed dumbbell contributions
         for siteind, wyckind in enumerate(self.vkinetic.starset.mdbcontainer.invmap):
             # don't need the site index but the wyckoff index corresponding to the site index.
+            # The energies are not shifted with respect to the minimum
             part_func += np.exp(-bFdb2[wyckind])
             mixed_prob[siteind] = np.exp(-bFdb2[wyckind])
 
@@ -1052,18 +1055,17 @@ class dumbbellMediated(VacancyMediated):
             for solsiteind, solwyckind in enumerate(self.invmap_solute):
                 part_func += np.exp(-(bFdb0[dbwyckind] + bFS[solwyckind]))
 
-
         complex_prob *= 1./part_func
         mixed_prob *= 1./part_func
-
-        stateprobs = (complex_prob, mixed_prob)
 
         # For the complex states, weed out the origin state probabilities
         for stateind, prob in enumerate(complex_prob):
             if self.vkinetic.starset.complexStates[stateind].is_zero(self.vkinetic.starset.pdbcontainer):
                 complex_prob[stateind] = 0.
 
-        # This ensure that summing over all complex + mixed states gives a probability of 1.
+        stateprobs = (complex_prob, mixed_prob)  # For testing
+
+        # This ensured that summing over all complex + mixed states gives a probability of 1.
         # Note that this is why the bFdb0, bFS and bFdb2 values have to be entered unshifted.
         # The complex and mixed dumbbell energies need to be with respect to the same reference.
 
