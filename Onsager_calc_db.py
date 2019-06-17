@@ -231,6 +231,7 @@ class BareDumbbell(Interstitial):
         return D0 + Dcorr
 
 
+# noinspection PyAttributeOutsideInit
 class dumbbellMediated(VacancyMediated):
     """
     class to compute dumbbell mediated solute transport coefficients. We inherit the calculator
@@ -382,12 +383,10 @@ class dumbbellMediated(VacancyMediated):
         self.g0 = pinv2(omega0_nonloc)
 
         omega2_nonloc = np.zeros((len(self.vkinetic.starset.mixedstates), len(self.vkinetic.starset.mixedstates)))
-
         for rate2, symrate2, jlist in zip(rate2list, symrate2list, self.jnet2_indexed):
             for jnum, ((i, j), dx) in enumerate(jlist):
                 omega2_nonloc[i, j] += symrate2[0]
                 omega2_nonloc[i, i] -= rate2[jnum]
-
         self.g2 = pinv2(omega2_nonloc)
 
         self.biasBareExpansion = self.biases[-1]
@@ -856,7 +855,7 @@ class dumbbellMediated(VacancyMediated):
         # right-lower part of GF20 = Nvstars_mixed x Nvstars_mixed g2 matrix
 
         pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
-        pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
+        # pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
 
         self.GFcalc_pure.SetRates(pre0, bFdb0, pre0T, bFT0)
 
@@ -884,8 +883,8 @@ class dumbbellMediated(VacancyMediated):
             #######
             symindex = self.vkinetic.starset.star2symlist[starind]
             delta_om[i, i] += \
-                np.dot(rate1escape[i, :], omega1escape[i, :])-\
-                np.dot(rate0escape[i, :], omega0escape[symindex, :])+\
+                np.dot(rate1escape[i, :], omega1escape[i, :]) -\
+                np.dot(rate0escape[i, :], omega0escape[symindex, :]) +\
                 np.dot(rate4escape[i, :], omega4escape[i, :])
 
         # omega3 terms
