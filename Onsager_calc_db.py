@@ -358,7 +358,7 @@ class dumbbellMediated(VacancyMediated):
         self.kinouter =  self.vkinetic.outer()
         # self.clearcache()
 
-    def calc_eta(self, rate0list, rate2list):
+    def calc_eta(self, symrate0list, symrate2list, rate0list, rate2list):
         """
         Function to calculate the periodic eta vectors.
         rate0list, rate2list - the SYMMETRIZED rate lists for the bare and mixed dumbbell spaces.
@@ -374,19 +374,19 @@ class dumbbellMediated(VacancyMediated):
         # First, we build up g0 and g2 - g2 will be required in makeGF as well. So, we make it an object attribute.
         omega0_nonloc = np.zeros((len(self.vkinetic.starset.bareStates), len(self.vkinetic.starset.bareStates)))
         # use the indexed omega2 to fill this up - need omega2 indexed to mixed subspace of starset
-        for rate0, jlist in zip(rate0list, self.jnet0_indexed):
-            for (i, j), dx in jlist:
-                omega0_nonloc[i, j] += rate0[0]
-                omega0_nonloc[i, i] -= rate0[0]
+        for rate0, symrate0, jlist in zip(rate0list, symrate0list, self.jnet0_indexed):
+            for jnum, ((i, j), dx) in enumerate(jlist):
+                omega0_nonloc[i, j] += symrate0[0]
+                omega0_nonloc[i, i] -= rate0[jnum]
 
         self.g0 = pinv2(omega0_nonloc)
 
         omega2_nonloc = np.zeros((len(self.vkinetic.starset.mixedstates), len(self.vkinetic.starset.mixedstates)))
 
-        for rate2, jlist in zip(rate2list, self.jnet2_indexed):
-            for (i, j), dx in jlist:
-                omega2_nonloc[i, j] += rate2[0]
-                omega2_nonloc[i, i] -= rate2[0]
+        for rate2, symrate2, jlist in zip(rate2list, symrate2list, self.jnet2_indexed):
+            for jnum, ((i, j), dx) in enumerate(jlist):
+                omega2_nonloc[i, j] += symrate2[0]
+                omega2_nonloc[i, i] -= rate2[jnum]
 
         self.g2 = pinv2(omega2_nonloc)
 
@@ -555,8 +555,8 @@ class dumbbellMediated(VacancyMediated):
                     self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) * np.sum(
                     np.dot(initindexdict[st0], eta_proj_solvent))
 
-    def update_bias_expansions(self, rate0list, rate2list):
-        self.calc_eta(rate0list, rate2list)
+    def update_bias_expansions(self, symrate0list, symrate2list, rate0list, rate2list):
+        self.calc_eta(symrate0list, symrate2list, rate0list, rate2list)
         self.bias_changes()
         self.bias1_solute_new = zeroclean(self.biases[1][0] + self.delbias1expansion_solute)
         self.bias1_solvent_new = zeroclean(self.biases[1][1] + self.delbias1expansion_solvent)
@@ -940,6 +940,12 @@ class dumbbellMediated(VacancyMediated):
         symrate2list = symmratelist(self.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
                                  self.vkinetic.starset.mdbcontainer.invmap)
 
+        rate0list = ratelist(self.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
+                                    self.vkinetic.starset.pdbcontainer.invmap)
+
+        rate2list = ratelist(self.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
+                                    self.vkinetic.starset.mdbcontainer.invmap)
+
         # Make the symmetrized rates for calculating GF, bias and gamma.
         # First, make bFSdb_total from individual solute and pure dumbbell free energies and the binding free energy,
         # i.e, bFdb0, bFS, bFSdb (binding), respectively.
@@ -977,7 +983,7 @@ class dumbbellMediated(VacancyMediated):
                                                    bFT2, bFT3, bFT4)
 
         # Update the bias expansions
-        self.update_bias_expansions(symrate0list, symrate2list)
+        self.update_bias_expansions(symrate0list, symrate2list, rate0list, rate2list)
 
         # Make the Greens function
         omegas = ((omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),

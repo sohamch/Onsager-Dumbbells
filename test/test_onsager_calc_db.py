@@ -72,7 +72,12 @@ class test_dumbbell_mediated(unittest.TestCase):
         rate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
                                  self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
 
-        self.onsagercalculator.calc_eta(rate0list, rate2list)
+        unsymrate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
+                                 self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
+        unsymrate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
+                                 self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
+
+        self.onsagercalculator.calc_eta(rate0list, rate2list, unsymrate0list, unsymrate2list)
 
         self.assertEqual(len(self.onsagercalculator.eta00_solvent),len(self.onsagercalculator.vkinetic.starset.complexStates))
         self.assertEqual(len(self.onsagercalculator.eta00_solute),len(self.onsagercalculator.vkinetic.starset.complexStates))
@@ -158,8 +163,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                         bias_true_solute += rate2list[jt][0]*dx_solute
                         bias_true_solvent += rate2list[jt][0]*dx_solvent
             # print("testing lines 202,203")
-            self.assertTrue(np.allclose(bias_calc_solute,bias_true_solute))
-            self.assertTrue(np.allclose(bias_calc_solvent,bias_true_solvent))
+            self.assertTrue(np.allclose(bias_calc_solute, bias_true_solute))
+            self.assertTrue(np.allclose(bias_calc_solvent, bias_true_solvent))
 
         # Now that the bias vectors are correct, we should be able to recover them from the eta vectors
         for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
@@ -174,8 +179,10 @@ class test_dumbbell_mediated(unittest.TestCase):
                     if i==IS:
                         self.assertTrue(self.onsagercalculator.vkinetic.starset.mixedstates[IS]==jmp.state1)
                         self.assertTrue(self.onsagercalculator.vkinetic.starset.mixedstates[FS]==jmp.state2-jmp.state2.R_s)
-                        bias_test_solute += rate2list[jt][0]*(self.onsagercalculator.eta02_solute[FS,:]-self.onsagercalculator.eta02_solute[IS,:])
-                        bias_test_solvent += rate2list[jt][0]*(self.onsagercalculator.eta02_solvent[FS,:]-self.onsagercalculator.eta02_solvent[IS,:])
+                        bias_test_solute += rate2list[jt][0]*(self.onsagercalculator.eta02_solute[FS,:] -
+                                                              self.onsagercalculator.eta02_solute[IS,:])
+                        bias_test_solvent += rate2list[jt][0]*(self.onsagercalculator.eta02_solvent[FS,:] -
+                                                               self.onsagercalculator.eta02_solvent[IS,:])
             self.assertTrue(np.allclose(bias_test_solute,bias_true_solute))
             self.assertTrue(np.allclose(bias_test_solvent,bias_true_solvent))
         
@@ -197,7 +204,12 @@ class test_dumbbell_mediated(unittest.TestCase):
         rate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
                                  self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
 
-        self.onsagercalculator.update_bias_expansions(rate0list, rate2list)
+        unsymrate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
+                                  self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
+        unsymrate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
+                                  self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
+
+        self.onsagercalculator.update_bias_expansions(rate0list, rate2list, unsymrate0list, unsymrate2list)
 
         # Next, we calculate the bias updates explicitly First, we make lists to test against While the non-local
         # rates are determined by rate0list and rate2list, we are free to use random local corrections
