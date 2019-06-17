@@ -743,14 +743,33 @@ class test_vecstars(unittest.TestCase):
 
     def test_outer(self):
         outer = self.vec_stars.outer()
-        outer_test = np.zeros((3, 3, self.vec_stars.Nvstars, self.vec_stars.Nvstars))
-        for i in range(self.vec_stars.Nvstars):
-            for j in range(self.vec_stars.Nvstars):
-                for si, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
-                    for sj, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
-                        if si == sj:
-                            outer_test[:, :, i, j] += np.outer(vi, vj)
-        np.allclose(outer, outer_test)
+        for i in range(self.vec_stars.Nvstars_pure):
+            for j in range(self.vec_stars.Nvstars_pure):
+                if self.vec_stars.vecpos[i][0] != self.vec_stars.vecpos[j][0]:
+                    self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((3,3))))
+                else:
+                    outer_test = np.zeros((3,3))
+                    for si, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
+                        for sj, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
+                            if si == sj:
+                                outer_test += np.outer(vi, vj)
+                    self.assertTrue(np.allclose(outer[:, :, i, j], outer_test))
+
+        for i in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
+            for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
+                if self.vec_stars.vecpos[i][0] != self.vec_stars.vecpos[j][0]:
+                    self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((3,3))))
+                else:
+                    outer_test = np.zeros((3,3))
+                    for si, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
+                        for sj, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
+                            if si == sj:
+                                outer_test += np.outer(vi, vj)
+                    self.assertTrue(np.allclose(outer[:, :, i, j], outer_test))
+
+        for i in range(self.vec_stars.Nvstars_pure):
+            for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
+                self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((3,3))))
 
 class test_Si(test_vecstars):
 
