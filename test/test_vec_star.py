@@ -772,6 +772,8 @@ class test_vecstars(unittest.TestCase):
 
     def test_outer(self):
         outer = self.vec_stars.outer()
+        # check 3x3 tensor for the outer products
+        # First, we do it for the complex space
         for i in range(self.vec_stars.Nvstars_pure):
             for j in range(self.vec_stars.Nvstars_pure):
                 if self.vec_stars.vecpos[i][0] != self.vec_stars.vecpos[j][0]:
@@ -784,6 +786,7 @@ class test_vecstars(unittest.TestCase):
                                 outer_test += np.outer(vi, vj)
                     self.assertTrue(np.allclose(outer[:, :, i, j], outer_test))
 
+        # mixed dumbbell space
         for i in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
             for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
                 if self.vec_stars.vecpos[i][0] != self.vec_stars.vecpos[j][0]:
@@ -796,6 +799,7 @@ class test_vecstars(unittest.TestCase):
                                 outer_test += np.outer(vi, vj)
                     self.assertTrue(np.allclose(outer[:, :, i, j], outer_test))
 
+        # check that no non-zero matrix exists between complex and mixed space.
         for i in range(self.vec_stars.Nvstars_pure):
             for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
                 self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((3,3))))
