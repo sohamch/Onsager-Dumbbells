@@ -278,7 +278,7 @@ class vectorStars(VectorStarSet):
                     # If a group operation takes a connection's end point outside the origin unit cell,
                     # we can ignore it, since the problem dictates that both initial and final states in a connection
                     # lie inside the origin unit cell.
-                    # See the notebook on g2 testing - the GF relations still hold.
+                    # The sum over the unit cells is implicit in the g2 calculation - see makeGF
                     continue
                 if snew in GFMixedStarInd:
                     continue
