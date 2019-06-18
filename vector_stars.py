@@ -255,7 +255,7 @@ class vectorStars(VectorStarSet):
         GFMixedStarInd = {}
         connectset_mixed = set([])
         # For the mixed dumbbells, we need only the states in the initial unit cell.
-        for state1 in self.starset.mixedstates:
+        for state1 in mixedstates:
             for state2 in self.starset.mixedstates:
                 s = connector(state1.db, state2.db)
                 connectset_mixed.add(s)
