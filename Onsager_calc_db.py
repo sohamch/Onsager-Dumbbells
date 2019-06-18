@@ -381,7 +381,6 @@ class dumbbellMediated(VacancyMediated):
         # The equation can be derived from the Fourier space inverse relations at q=0 for their symmetrized versions.
         self.G0 = pinv2(W0)
 
-
         self.biasBareExpansion = self.biases[-1]
 
         # First check if non-local biases should be zero anyway (as is the case
@@ -416,7 +415,6 @@ class dumbbellMediated(VacancyMediated):
             self.eta00_solute_bare = np.zeros_like(self.eta00_solvent_bare)
 
             # Now match the non-local biases for complex states to the pure states
-            self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), 3))
             self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), 3))
             self.NlsolventBias0 = np.zeros((len(self.vkinetic.starset.complexStates), 3))
 
@@ -433,13 +431,14 @@ class dumbbellMediated(VacancyMediated):
         # But the jtags assume all the eta vectors are non-zero in the mixed list.
         # So, we need to produce a total eta vector list that the has mixed parts as zero.
 
+        # Nothing called solute eta vector in bare dumbbell jumps.
         self.eta0total_solute = np.zeros((len(self.vkinetic.starset.complexStates) +
                                           len(self.vkinetic.starset.mixedstates), 3))
         # noinspection PyAttributeOutsideInit
         self.eta0total_solvent = np.zeros((len(self.vkinetic.starset.complexStates) +
                                            len(self.vkinetic.starset.mixedstates), 3))
 
-        self.eta0total_solute[:len(self.vkinetic.starset.complexStates), :] = self.eta00_solute.copy()
+        # Just copy the portion for the complex states, leave mixed dumbbell state space as zeros.
         self.eta0total_solvent[:len(self.vkinetic.starset.complexStates), :] = self.eta00_solvent.copy()
 
     def bias_changes(self):
