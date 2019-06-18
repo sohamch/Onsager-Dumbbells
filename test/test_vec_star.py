@@ -179,6 +179,35 @@ class test_vecstars(unittest.TestCase):
             for tup in indToVecStars:
                 self.assertEqual(st, self.vec_stars.vecpos[tup[0]][tup[1]])
 
+    def test_vstar2star (self):
+        for vWyckInd, vWyckPos in enumerate(self.vec_stars.vecpos_bare):
+            wyckInd = self.vec_stars.vwycktowyck_bare[vWyckInd]
+            wyckSet = self.vec_stars.vecpos_bare[wyckInd]
+            for st1 in wyckSet:
+                count = 0
+                for st2 in vWyckPos:
+                    if st1 == st2:
+                        count += 1
+                self.assertEqual(count, 1)
+
+        for vInd, vpos in enumerate(self.vec_stars.vecpos[:self.vec_stars.Nvstars_pure]):
+            starInd = self.vec_stars.vstar2star[vInd]
+            star = self.vec_stars.vecpos[starInd]
+            for st1 in star:
+                count = 0
+                for st2 in vpos:
+                    if st1 == st2:
+                        count += 1
+
+        for vInd, vpos in enumerate(self.vec_stars.vecpos[self.vec_stars.Nvstars_pure:]):
+            starInd = self.vec_stars.vstar2star[vInd]
+            star = self.vec_stars.vecpos[starInd]
+            for st1 in star:
+                count = 0
+                for st2 in vpos:
+                    if st1 == st2:
+                        count += 1
+
     def test_bare_bias_expansion(self):
         if len(self.vec_stars.vecpos_bare) > 0:
             for i in range(len(self.vec_stars.vecpos_bare)):

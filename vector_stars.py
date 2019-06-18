@@ -183,6 +183,11 @@ class vectorStars(VectorStarSet):
 
         # We must produce two expansions. One for pure dumbbell states pointing to pure dumbbell state
         # and the other from mixed dumbbell states to mixed states.
+        self.vwycktowyck_bare = np.zeros(len(self.vecpos_bare), dtype=int)
+        for vstarind, vstar in enumerate(self.vecpos_bare):
+            # get the index of the wyckoff set (symorlist) in which the representative state belongs
+            wyckindex = self.starset.bareindexdict[vstar[0]][1]
+            self.vwycktowyck_bare[vstarind] = wyckindex
 
         # Need an indexing from the vector stars to the crystal stars
         self.vstar2star = np.zeros(self.Nvstars, dtype=int)
@@ -574,7 +579,6 @@ class vectorStars(VectorStarSet):
                (zeroclean(rate4expansion), zeroclean(rate4escape))
 
     def outer(self):
-        outerprod = np.zeros((3, 3, self.Nvstars, self.Nvstars))
         for i in range(self.Nvstars_pure):
             for j in range(self.Nvstars_pure):
                 for si, vi in zip(self.vecpos[i], self.vecvec[i]):
