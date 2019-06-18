@@ -358,12 +358,11 @@ class dumbbellMediated(VacancyMediated):
         self.kinouter =  self.vkinetic.outer()
         # self.clearcache()
 
-    def calc_eta(self, symrate0list, symrate2list, rate0list, rate2list):
+    def calc_eta(self, rate0list, omega0escape):
         """
         Function to calculate the periodic eta vectors.
-        rate0list, rate2list - the SYMMETRIZED rate lists for the bare and mixed dumbbell spaces.
-        There is a slight misnomer - what we refer to as the eta vector here, is actually the gamma vector in the
-        2017 phil. mag. paper (because we are using symmetrized rates).
+        rate0list, rate2list - the NON-SYMMETRIZED rate lists for the bare and mixed dumbbell spaces.
+        We are calulcating the eta vectors, not the gamma vectors.
         """
 
         # The non-local bias for the complex space has to be carried out based on the omega0 jumpnetwork,
@@ -371,32 +370,33 @@ class dumbbellMediated(VacancyMediated):
         # state are not there in omega1. That is because omega1 considers only those states that are in the kinetic
         # shell. Not outside it.
 
-        # First, we build up g0 and g2 - g2 will be required in makeGF as well. So, we make it an object attribute.
-        omega0_nonloc = np.zeros((len(self.vkinetic.starset.bareStates), len(self.vkinetic.starset.bareStates)))
+        # First, we build up G0
+        W0 = np.zeros((len(self.vkinetic.starset.bareStates), len(self.vkinetic.starset.bareStates)))
         # use the indexed omega2 to fill this up - need omega2 indexed to mixed subspace of starset
-        for rate0, symrate0, jlist in zip(rate0list, symrate0list, self.jnet0_indexed):
+        for jt, jlist in zip(rate0list, self.jnet0_indexed):
             for jnum, ((i, j), dx) in enumerate(jlist):
-                omega0_nonloc[i, j] += symrate0[0]
-                omega0_nonloc[i, i] -= rate0[jnum]
+                W0[i, j] += rate0list[jt][jnum]
+                W0[i, i] -= rate0list[jt][jnum]
+        self.G0 = pinv2(W0)
 
-        self.g0 = pinv2(omega0_nonloc)
-
-        omega2_nonloc = np.zeros((len(self.vkinetic.starset.mixedstates), len(self.vkinetic.starset.mixedstates)))
-
-        for rate2, symrate2, jlist in zip(rate2list, symrate2list, self.jnet2_indexed):
-            for jnum, ((i, j), dx) in enumerate(jlist):
-                omega2_nonloc[i, j] += symrate2[0]
-                omega2_nonloc[i, i] -= rate2[jnum]
-
-        self.g2 = pinv2(omega2_nonloc)
+        # Since for mixed dumbbells, x_d = 0 always (literally same location as the solute), we don't need to worry
+        # about cancelling out their non-local eta vectors.
+        # omega2_nonloc = np.zeros((len(self.vkinetic.starset.mixedstates), len(self.vkinetic.starset.mixedstates)))
+        #
+        # for rate2, symrate2, jlist in zip(rate2list, symrate2list, self.jnet2_indexed):
+        #     for jnum, ((i, j), dx) in enumerate(jlist):
+        #         omega2_nonloc[i, j] += symrate2[0]
+        #         omega2_nonloc[i, i] -= rate2[jnum]
+        # self.g2 = pinv2(omega2_nonloc)
 
         self.biasBareExpansion = self.biases[-1]
 
-        # get the biasBare and bias2 expansions. First check if non-local biases should be zero anyway (as is the case
-        # with highly symmetric lattices - in that case vecpos_bare should be zero)
+        # First check if non-local biases should be zero anyway (as is the case
+        # with highly symmetric lattices - in that case vecpos_bare should be zero sized)
         if len(self.vkinetic.vecpos_bare) == 0:
             self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), 3))
             self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), 3))
+
         # otherwise, we need to build the bare bias expansion
         else:
             # First we build up for just the bare starset
@@ -404,18 +404,17 @@ class dumbbellMediated(VacancyMediated):
             # We first get the bias vector in the basis of the vector stars.
             # Since we are using symmetrized rates, we only need to consider them
             self.NlsolventBias_bare = np.zeros((len(self.vkinetic.starset.bareStates), 3))
-            # We are evaluating the velocity vectors. need omega0_escape
-            # So, we need to use the UNSYMMETRIZED rates out of states in a vector star, for a given jump type
-            # So, we need a vwyck2wyck version for the bare vector wyckoff sets as well.
-            bias0SolventTotNonLoc = np.dot(self.biasBareExpansion,
-                                           np.array([rate0list[i][0] for i in range(len(self.jnet0))]))
+
+            # We are evaluating the velocity vectors. need omega0_escape.
+            velocity0SolventTotNonLoc = np.array([np.dot(self.biasBareExpansion[i, :], omega0escape[i, :])
+                                                  for i in range(len(self.vkinetic.vecpos_bare))])
 
             # Then, we convert them to cartesian form for each state.
             for st in self.vkinetic.starset.bareStates:
                 indlist = self.vkinetic.stateToVecStar_bare[st]
                 if len(indlist) != 0:
                     self.NlsolventBias_bare[self.vkinetic.starset.bareindexdict[st][0]][:] = \
-                        sum([bias0SolventTotNonLoc[tup[0]] * self.vkinetic.vecvec_bare[tup[0]][tup[1]] for tup in
+                        sum([velocity0SolventTotNonLoc[tup[0]] * self.vkinetic.vecvec_bare[tup[0]][tup[1]] for tup in
                              indlist])
 
             # Then, we use g0 to get the eta0 vectors. The second 0 in eta00 indicates omega0 space.
