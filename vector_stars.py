@@ -579,6 +579,7 @@ class vectorStars(VectorStarSet):
                (zeroclean(rate4expansion), zeroclean(rate4escape))
 
     def outer(self):
+        outerprod = np.zeros((3, 3, self.Nvstars, self.Nvstars))
         for i in range(self.Nvstars_pure):
             for j in range(self.Nvstars_pure):
                 for si, vi in zip(self.vecpos[i], self.vecvec[i]):
