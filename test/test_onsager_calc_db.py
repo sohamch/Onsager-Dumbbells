@@ -726,7 +726,6 @@ class test_dumbbell_mediated(unittest.TestCase):
         # Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
         # Nvstars_mixed = Nvstars - Nvstars_pure
 
-        delta_om_test = np.zeros((Nvstars, Nvstars))
         # 3a. First, we do the non-diagonal parts
         delta_om_test = np.zeros((Nvstars, Nvstars))
         # 3a.1 - First, we concentrate on the complex-complex block and the omega1 jumps
@@ -803,7 +802,6 @@ class test_dumbbell_mediated(unittest.TestCase):
                 #         dbwyck_i = self.onsagercalculator.pdbcontainer.invmap[si.db.iorind]
 
                 indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[si]
-                #         indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state2]
 
                 for vi, invi in indlist1:
                     vec = self.onsagercalculator.vkinetic.vecvec[vi][invi]

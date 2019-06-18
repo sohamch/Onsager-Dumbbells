@@ -404,6 +404,9 @@ class dumbbellMediated(VacancyMediated):
             # We first get the bias vector in the basis of the vector stars.
             # Since we are using symmetrized rates, we only need to consider them
             self.NlsolventBias_bare = np.zeros((len(self.vkinetic.starset.bareStates), 3))
+            # We are evaluating the velocity vectors. need omega0_escape
+            # So, we need to use the UNSYMMETRIZED rates out of states in a vector star, for a given jump type
+            # So, we need a vwyck2wyck version for the bare vector wyckoff sets as well.
             bias0SolventTotNonLoc = np.dot(self.biasBareExpansion,
                                            np.array([rate0list[i][0] for i in range(len(self.jnet0))]))
 
@@ -880,7 +883,7 @@ class dumbbellMediated(VacancyMediated):
 
         # escapes
         # omega1 and omega4 terms
-        for i, starind in enumerate(self.vkinetic.vstar2star[:self.vkinetic.Nvstars_pure]):
+        for i, starind in enumerate(self.vkinetic.vstar2star[:Nvstars_pure]):
             #######
             symindex = self.vkinetic.starset.star2symlist[starind]
             delta_om[i, i] += \
@@ -1044,17 +1047,20 @@ class dumbbellMediated(VacancyMediated):
             for state in star:
                 if not (self.vkinetic.starset.complexIndexdict[state][1] == starind):
                     raise ValueError("check complexIndexdict")
+                # For states outside the thermodynamics shell, there is no interaction and the probabilities are
+                # just the product solute and dumbbell probabilities.
                 complex_prob[self.vkinetic.starset.complexIndexdict[state][0]] = np.exp(-bFSdb_total[starind])
 
-        # Form the mixed dumbbell boltzmann factors and the partition function
-        part_func = 0.
+        # Form the mixed dumbbell boltzmann factors
         # First add in the mixed dumbbell contributions
         for siteind, wyckind in enumerate(self.vkinetic.starset.mdbcontainer.invmap):
             # don't need the site index but the wyckoff index corresponding to the site index.
             # The energies are not shifted with respect to the minimum
-            part_func += np.exp(-bFdb2[wyckind])
+            # part_func += np.exp(-bFdb2[wyckind])
             mixed_prob[siteind] = np.exp(-bFdb2[wyckind])
 
+        # Form the partition function
+        part_func = 0.
         # Now add in the non-interactive complex contribution to the partition function
         for dbsiteind, dbwyckind in enumerate(self.vkinetic.starset.pdbcontainer.invmap):
             for solsiteind, solwyckind in enumerate(self.invmap_solute):
@@ -1075,9 +1081,7 @@ class dumbbellMediated(VacancyMediated):
         # The complex and mixed dumbbell energies need to be with respect to the same reference.
 
         # First, make the square root prob * rate lists to multiply with the rates
-
-        # First, omega1
-        # Is there a way to combine all of the next four loops?
+        # TODO Is there a way to combine all of the next four loops?
         prob_om1 = np.zeros(len(self.jnet_1))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet1_indexed]):
             prob_om1[jt] = np.sqrt(complex_prob[IS]*complex_prob[FS])*omega1[jt]
@@ -1095,6 +1099,7 @@ class dumbbellMediated(VacancyMediated):
             prob_om3[jt] = np.sqrt(mixed_prob[IS]*complex_prob[FS])*omega3[jt]
 
         probs = (prob_om1, prob_om2, prob_om4, prob_om3)
+
         start = time.time()
         # Generate the bare expansions
         (D1expansion_aa, D1expansion_bb, D1expansion_ab),\
