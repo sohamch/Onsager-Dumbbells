@@ -67,21 +67,19 @@ class test_dumbbell_mediated(unittest.TestCase):
         pre2T = np.random.rand(len(self.onsagercalculator.jnet2))
         betaene2T = np.random.rand(len(self.onsagercalculator.jnet2))
 
-        rate0list = symmratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
+        rate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
                                  self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
-        rate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
-                                 self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
 
-        unsymrate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
-                                 self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
-        unsymrate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
-                                 self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
+        rate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
+                             self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
 
         rate0_forward = np.array([rate0list[jt][0] for jt in range(len(rate0list))])
         rate0_backward = np.array([rate0list[jt][1] for jt in range(len(rate0list))])
 
-        rate0_wycks = np.zeros((len(self.onsagercalculator.pdbcontainer.symorlist), len(rate0list)))
+        rate2_forward = np.array([rate2list[jt][0] for jt in range(len(rate2list))])
+        rate2_backward = np.array([rate2list[jt][1] for jt in range(len(rate2list))])
 
+        rate0_wycks = np.zeros((len(self.onsagercalculator.pdbcontainer.symorlist), len(rate0list)))
         # send in rate0_wycks as the argument to calc_eta - this is the same as omega0escape, except with a
         # randomized form.
 
@@ -95,23 +93,38 @@ class test_dumbbell_mediated(unittest.TestCase):
             rate0_wycks[w1, jt] = rate0_forward[jt]
             rate0_wycks[w2, jt] = rate0_backward[jt]
 
-        self.onsagercalculator.calc_eta(rate0list, rate0_wycks)
+        rate2_wycks = np.zeros((len(self.onsagercalculator.mdbcontainer.symorlist), len(rate2list)))
+
+        for jt, jlist in enumerate(self.onsagercalculator.jnet2):
+            db1_ind = jlist[0].state1.db.iorind
+            db2_ind = jlist[0].state2.db.iorind
+
+            w1 = self.onsagercalculator.mdbcontainer.invmap[db1_ind]
+            w2 = self.onsagercalculator.mdbcontainer.invmap[db2_ind]
+
+            rate2_wycks[w1, jt] = rate2_forward[jt]
+            rate2_wycks[w2, jt] = rate2_backward[jt]
+
+        self.onsagercalculator.calc_eta(rate0list, rate0_wycks, rate2list, rate2_wycks)
 
         # Now, local corrections (randomized)
         # randomize the forward and backward rates for every jump type./
-        rate1_forward = np.random.rand((len(self.onsagercalculator.jnet_1)))
-        rate1_backward = np.random.rand((len(self.onsagercalculator.jnet_1)))
+        rate1_forward = np.random.rand(len(self.onsagercalculator.jnet_1))
+        rate1_backward = np.random.rand(len(self.onsagercalculator.jnet_1))
 
-        rate1_stars = np.zeros((len(self.onsagercalculator.vkinetic.Nvstars_pure), len(self.onsagercalculator.jnet_1)))
+        rate1_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure, len(self.onsagercalculator.jnet_1)))
         for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+
             st1 = jlist[0].state1
             st2 = jlist[0].state2
 
-            v1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
-            v2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[st2]
+            v1list = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
+            v2list = self.onsagercalculator.vkinetic.stateToVecStar_pure[st2]
 
-            rate1_stars[v1, jt] = rate1_forward
-            rate1_stars[v2, jt] = rate1_backward
+            for v1, inv1 in v1list:
+                rate1_stars[v1, jt] = rate1_forward[jt]
+            for v2, inv2 in v2list:
+                rate1_stars[v2, jt] = rate1_backward[jt]
 
         rate43_forward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
         rate43_backward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
@@ -120,29 +133,23 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         rate3_stars = np.zeros((Nvstars_mixed, len(self.onsagercalculator.symjumplist_omega43_all)))
 
-        rate4_stars = np.zeros((len(self.onsagercalculator.vkinetic.Nvstars_pure),
+        rate4_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure,
                                 len(self.onsagercalculator.symjumplist_omega43_all)))
 
         for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega43_all):
             st1 = jlist[0].state1
             st2 = jlist[0].state2
 
-            v1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
+            v1list = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
 
-            v2 = self.onsagercalculator.vkinetic.stateToVecStar_mixed[st2] -\
-                 self.onsagercalculator.vkinetic.Nvstars_pure
-
-            rate4_stars[v1, jt] = rate43_forward[jt]
-            rate3_stars[v2, jt] = rate43_backward[jt]
+            v2list = self.onsagercalculator.vkinetic.stateToVecStar_mixed[st2]
+            for v1, inv1 in v1list:
+                rate4_stars[v1, jt] = rate43_forward[jt]
+            for v2, inv2 in v2list:
+                rate3_stars[v2 - self.onsagercalculator.vkinetic.Nvstars_pure, jt] = rate43_backward[jt]
 
         self.assertEqual(len(self.onsagercalculator.eta00_solvent),
                          len(self.onsagercalculator.vkinetic.starset.complexStates))
-
-        # Nothing to do in the mixed dumbbell space
-        # self.assertEqual(len(self.onsagercalculator.eta02_solvent),
-        #                  len(self.onsagercalculator.vkinetic.starset.mixedstates))
-        # self.assertEqual(len(self.onsagercalculator.eta02_solute),
-        #                  len(self.onsagercalculator.vkinetic.starset.mixedstates))
 
         if len(self.onsagercalculator.vkinetic.vecpos_bare) == 0:
             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent,
@@ -150,38 +157,45 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         else:
             # Here, we check if for periodic dumbbells, we have the same non- local solvent velocity vector.
-            for state1 in self.onsagercalculator.vkinetic.starset.complexStates:
-                for state2 in self.onsagercalculator.vkinetic.starset.complexStates:
-                    if self.onsagercalculator.vkinetic.starset.complexStates[i].db.iorind == self.onsagercalculator.vkinetic.starset.complexStates[j].db.iorind:
-                        # if np.allclose(self.onsagercalculator.vkinetic.starset.complexStates[i].db.o,self.onsagercalculator.vkinetic.starset.complexStates[j].db.o):
-                        self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent[j,:]))
-                        self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent_bare[self.onsagercalculator.vkinetic.starset.bareindexdict[self.onsagercalculator.vkinetic.starset.complexStates[i].db - self.onsagercalculator.vkinetic.starset.complexStates[i].db.R][0]]))
+            for i, state1 in enumerate(self.onsagercalculator.vkinetic.starset.complexStates):
+                for j, state2 in enumerate(self.onsagercalculator.vkinetic.starset.complexStates):
+                    if state1.db.iorind == state2.db.iorind:
+                        self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i, :],
+                                                    self.onsagercalculator.eta00_solvent[j, :]))
+                        self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i, :],
+                                                    self.onsagercalculator.eta00_solvent_bare[state1.iorind]))
 
-            # Check that we get the correct non-local bias vector
-            for i, db in self.onsagercalculator.vkinetic.starset.bareStates:
-                bias_true = self.onsagercalculator.NlsolventBias_bare[i, :]
-                bias_calc = np.zeros(3)
-                for jt,jlist in enumerate(self.onsagercalculator.jnet0_indexed):
-                    for (IS,FS),dx in jlist:
-                        if i==IS:
-                            bias_calc += rate0list[jt][0]*dx
-                self.assertTrue(np.allclose(bias_calc,bias_true), msg="\n{}\n{}".format(bias_calc, bias_true))
+            # Check that we get the correct non-local velocity vector
+            for i, db in enumerate(self.onsagercalculator.vkinetic.starset.bareStates):
+                vel_calc = self.onsagercalculator.NlsolventVel_bare[i, :]
+                vel_true = np.zeros(3)
+                for jt, jlist in enumerate(self.onsagercalculator.jnet0_indexed):
+                    for jnum, ((IS, FS), dx) in enumerate(jlist):
+                        if i == IS:
+                            vel_true += rate0list[jt][jnum] * dx
+                self.assertTrue(np.allclose(vel_true, vel_calc), msg="\n{}\n{}\n{}".format(i, vel_true, vel_calc))
 
-            # The above test confirms that our NlsolventBias_bare is correct
-            # Now we check if the eta vectors are otrue
-            for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
-                bias_test = np.zeros(3)
-                db = self.onsagercalculator.vkinetic.starset.bareStates[i]
-                # First, let's check the indexing
-                self.assertEqual(i,self.onsagercalculator.vkinetic.starset.bareindexdict[db][0])
-                bias_true = self.onsagercalculator.NlsolventBias_bare[i,:]
+            # The above test confirms that our NlsolventVel_bare is correct
+            # Now we check if the eta vectors are true
+            for i, dbstate in enumerate(self.onsagercalculator.vkinetic.starset.bareStates):
 
-                for jt,jindlist,jlist in zip(itertools.count(),self.onsagercalculator.jnet0_indexed,self.onsagercalculator.jnet0):
-                    for ((IS,FS),dx),jmp in zip(jindlist,jlist):
-                        if i==IS:
-                            self.assertTrue(db==jmp.state1)
-                            bias_test += rate0list[jt][0]*(self.onsagercalculator.eta00_solvent_bare[FS,:]-self.onsagercalculator.eta00_solvent_bare[IS,:])
-                self.assertTrue(np.allclose(bias_test,bias_true),msg="{}{}".format(bias_test,bias_true))
+                vel_test = np.zeros(3)
+
+                # First, quickly check the barestate indexing
+                self.assertEqual(i, self.onsagercalculator.vkinetic.starset.bareindexdict[dbstate][0])
+
+                vel_calc = self.onsagercalculator.NlsolventVel_bare[i, :]
+
+                for jt, jindlist, jlist in zip(itertools.count(), self.onsagercalculator.jnet0_indexed,
+                                               self.onsagercalculator.jnet0):
+
+                    for jnum, ((IS, FS), dx), jmp in zip(itertools.count(), jindlist, jlist):
+                        if i == IS:
+                            # quick check to see jump indexing in consistent (although done while testing stars)
+                            self.assertTrue(dbstate == jmp.state1)
+                            vel_test += rate0list[jt][jnum] * (self.onsagercalculator.eta00_solvent_bare[FS, :] -
+                                                                self.onsagercalculator.eta00_solvent_bare[IS, :])
+                self.assertTrue(np.allclose(vel_test, vel_calc), msg="{}{}".format(vel_test, vel_calc))
 
             # A small test to reaffirm that vector bases are calculated properly for the bare states.
             for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
@@ -191,59 +205,74 @@ class test_dumbbell_mediated(unittest.TestCase):
                 indlist = self.onsagercalculator.vkinetic.stateToVecStar_bare[st]
                 # The IndOfStar in indlist for the mixed case is already shifted by the number of pure vector stars.
                 if len(indlist)!=0:
-                    vlist=[]
+                    vlist = []
                     for tup in indlist:
-                        vlist.append(self.onsagercalculator.vkinetic.vecvec_bare[tup[0]][tup[1]])
-                    eta_test_solvent = sum([np.dot(self.onsagercalculator.eta00_solvent_bare[i,:],v)*v for v in vlist])
-                    self.assertTrue(np.allclose(eta_test_solvent*len(self.onsagercalculator.vkinetic.vecvec_bare[indlist[0][0]]),self.onsagercalculator.eta00_solvent_bare[i]),msg="{} {}".format(eta_test_solvent,self.onsagercalculator.eta00_solvent_bare[i]))
+                        # get the vectors and the length of the vector stars.
+                        vlist.append((self.onsagercalculator.vkinetic.vecvec_bare[tup[0]][tup[1]],
+                                      len(self.onsagercalculator.vkinetic.vecvec_bare[tup[0]])))
 
+                    # See that all the vector stars are consistent
+                    nsv0 = vlist[0][1]
+                    for v, N_sv in vlist:
+                        self.assertEqual(N_sv, nsv0)
 
-        # Repeat the above tests for mixed dumbbells
-        # First check if we have the correct bias vectors
-        for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
-            bias_calc_solute = self.onsagercalculator.NlsoluteBias2[i]
-            bias_calc_solvent = self.onsagercalculator.NlsolventBias2[i]
-            bias_true_solute = np.zeros(3)
-            bias_true_solvent = np.zeros(3)
-            for jt,jlist,jindlist in zip(itertools.count(),self.onsagercalculator.jnet2,self.onsagercalculator.jnet2_indexed):
-                for ((IS,FS),dx),jmp in zip(jindlist,jlist):
-                    self.assertEqual(jmp.state1,self.onsagercalculator.vkinetic.starset.mixedstates[IS])
-                    self.assertEqual(jmp.state2-jmp.state2.R_s,self.onsagercalculator.vkinetic.starset.mixedstates[FS],msg="\n{}\n{}".format(jmp.state2,self.onsagercalculator.vkinetic.starset.mixedstates[FS]))
-                    if i==IS:
-                        dx_solute =\
-                            dx +\
-                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state2.db.iorind][1]/2. -\
-                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state1.db.iorind][1]/2.
-                        dx_solvent = \
-                            dx -\
-                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state2.db.iorind][1]/2. +\
-                            self.onsagercalculator.vkinetic.starset.mdbcontainer.iorlist[jmp.state1.db.iorind][1]/2.
-                        bias_true_solute += rate2list[jt][0]*dx_solute
-                        bias_true_solvent += rate2list[jt][0]*dx_solvent
-            # print("testing lines 202,203")
-            self.assertTrue(np.allclose(bias_calc_solute, bias_true_solute))
-            self.assertTrue(np.allclose(bias_calc_solvent, bias_true_solvent))
+                    eta_test_solvent = sum([np.dot(self.onsagercalculator.eta00_solvent_bare[i, :], v) * v * N_sv
+                                            for v, N_sv in vlist])
 
-        # Now that the bias vectors are correct, we should be able to recover them from the eta vectors
-        for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
-            bias_test_solute = np.zeros(3)
-            bias_test_solvent = np.zeros(3)
-            #First, let's check the indexing
-            bias_true_solute = self.onsagercalculator.NlsoluteBias2[i]
-            bias_true_solvent = self.onsagercalculator.NlsolventBias2[i]
+                    self.assertTrue(np.allclose(eta_test_solvent, self.onsagercalculator.eta00_solvent_bare[i]),
+                                    msg="{} {}".format(eta_test_solvent, self.onsagercalculator.eta00_solvent_bare[i]))
 
-            for jt,jindlist,jlist in zip(itertools.count(),self.onsagercalculator.jnet2_indexed,self.onsagercalculator.jnet2):
-                for ((IS,FS),dx),jmp in zip(jindlist,jlist):
-                    if i==IS:
-                        self.assertTrue(self.onsagercalculator.vkinetic.starset.mixedstates[IS]==jmp.state1)
-                        self.assertTrue(self.onsagercalculator.vkinetic.starset.mixedstates[FS]==jmp.state2-jmp.state2.R_s)
-                        bias_test_solute += rate2list[jt][0]*(self.onsagercalculator.eta02_solute[FS,:] -
-                                                              self.onsagercalculator.eta02_solute[IS,:])
-                        bias_test_solvent += rate2list[jt][0]*(self.onsagercalculator.eta02_solvent[FS,:] -
-                                                               self.onsagercalculator.eta02_solvent[IS,:])
-            self.assertTrue(np.allclose(bias_test_solute,bias_true_solute))
-            self.assertTrue(np.allclose(bias_test_solvent,bias_true_solvent))
-        
+        # Now we test the solute and solvent non-local eta vectors in mixed dumbbell space
+        # Check that we get the correct non-local velocity vector
+        for i, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
+            vel_calc_solvent = self.onsagercalculator.NlsolventVel_mixed[i, :]
+            vel_true_solvent = np.zeros(3)
+
+            vel_calc_solute = self.onsagercalculator.NlsoluteVel_mixed[i, :]
+            vel_true_solute = np.zeros(3)
+
+            for jt, jlist in enumerate(self.onsagercalculator.jnet2_indexed):
+                for jnum, ((IS, FS), dx) in enumerate(jlist):
+                    if i == IS:
+                        or1 = self.onsagercalculator.mdbcontainer.iorlist[IS][1]
+                        or2 = self.onsagercalculator.mdbcontainer.iorlist[FS][1]
+                        dx_solute = dx + or2/2. - or1/2.
+                        dx_solvent = dx - or2 / 2. + or1 / 2.
+                        vel_true_solvent += rate2list[jt][jnum] * dx_solvent
+                        vel_true_solute += rate2list[jt][jnum] * dx_solute
+
+            self.assertTrue(np.allclose(vel_true_solvent, vel_calc_solvent),
+                            msg="\n{}\n{}\n{}".format(i, vel_true_solvent, vel_calc_solvent))
+            self.assertTrue(np.allclose(vel_true_solute, vel_calc_solute),
+                            msg="\n{}\n{}\n{}".format(i, vel_true_solute, vel_calc_solute))
+
+        # Now we check if the eta vectors are true
+        for i, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
+
+            vel_test_solute = np.zeros(3)
+            vel_test_solvent = np.zeros(3)
+
+            vel_calc_solvent = self.onsagercalculator.NlsolventVel_mixed[i, :]
+            vel_calc_solute = self.onsagercalculator.NlsoluteVel_mixed[i, :]
+
+            for jt, jindlist, jlist in zip(itertools.count(), self.onsagercalculator.jnet2_indexed,
+                                           self.onsagercalculator.jnet2):
+
+                for jnum, ((IS, FS), dx), jmp in zip(itertools.count(), jindlist, jlist):
+                    if i == IS:
+                        # quick check to see jump indexing in consistent (although done while testing stars)
+                        self.assertTrue(state == jmp.state1)
+                        vel_test_solvent += rate2list[jt][jnum] * (self.onsagercalculator.eta02_solvent[FS, :] -
+                                                                   self.onsagercalculator.eta02_solvent[IS, :])
+
+                        vel_test_solute += rate2list[jt][jnum] * (self.onsagercalculator.eta02_solute[FS, :] -
+                                                                  self.onsagercalculator.eta02_solute[IS, :])
+
+            self.assertTrue(np.allclose(vel_test_solute, vel_calc_solute), msg="{}{}".format(vel_test_solute,
+                                                                                             vel_calc_solute))
+            self.assertTrue(np.allclose(vel_test_solvent, vel_calc_solvent), msg="{}{}".format(vel_test_solvent,
+                                                                                             vel_calc_solvent))
+
     def test_bias_updates(self):
         """
         This is to check if the del_bias expansions are working fine, prod.
