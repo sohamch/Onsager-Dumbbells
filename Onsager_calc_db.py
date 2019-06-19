@@ -497,21 +497,18 @@ class dumbbellMediated(VacancyMediated):
 
         The steps are illustrated in the GM slides of Feb 25, 2019 - will include in the detailed documentation later on
         """
-        # create updated bias expansions
+        # create updates to the bias expansions
         # Construct the projection of eta vectors
         self.delbias1expansion_solute = np.zeros_like(self.biases[1][0])
-        self.delbias1expansion_solvent = np.zeros_like(self.biases[1][0])
+        self.delbias1expansion_solvent = np.zeros_like(self.biases[1][1])
 
         self.delbias4expansion_solute = np.zeros_like(self.biases[4][0])
-        self.delbias4expansion_solvent = np.zeros_like(self.biases[4][0])
+        self.delbias4expansion_solvent = np.zeros_like(self.biases[4][1])
         for i in range(self.vkinetic.Nvstars_pure):
             # get the representative state(its index in complexStates) and vector
             v0 = self.vkinetic.vecvec[i][0]
             st0 = self.vkinetic.starset.complexIndexdict[self.vkinetic.vecpos[i][0]][0]
             # Index of the state in the flat list
-
-            # Form the projection of the eta vectors on v0
-            # np.dot takes each eta vector and dots it into v0
             eta_proj_solute = np.dot(self.eta0total_solute, v0)
             eta_proj_solvent = np.dot(self.eta0total_solvent, v0)
             # Now go through the omega1 jump network tags
@@ -549,18 +546,17 @@ class dumbbellMediated(VacancyMediated):
             eta_proj_solute = np.dot(self.eta0total_solute, v0)
             eta_proj_solvent = np.dot(self.eta0total_solvent, v0)
 
-            # Nothing needs to be done for omega2 since all the solute and solvent shift vectors in the mixed space are
-            # kept zero.
+
             # Now go through the omega2 jump network tags
-            # for jt, initindexdict in enumerate(self.jtags2):
-            #     # see if there's an array corresponding to the initial state
-            #     if not st0 in initindexdict:
-            #         continue
-            #     self.delbias2expansion_solute[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) *\
-            #                                             np.sum(np.dot(initindexdict[st0], eta_proj_solute))
-            #
-            #     self.delbias2expansion_solvent[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) *\
-            #                                              np.sum(np.dot(initindexdict[st0], eta_proj_solvent))
+            for jt, initindexdict in enumerate(self.jtags2):
+                # see if there's an array corresponding to the initial state
+                if not st0 in initindexdict:
+                    continue
+                self.delbias2expansion_solute[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) *\
+                                                        np.sum(np.dot(initindexdict[st0], eta_proj_solute))
+
+                self.delbias2expansion_solvent[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) *\
+                                                         np.sum(np.dot(initindexdict[st0], eta_proj_solvent))
 
             # However, need to update for omega3 because the solvent shift vector in the complex space is not zero.
             # Now let's build the change expansion for omega3

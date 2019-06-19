@@ -286,23 +286,88 @@ class test_dumbbell_mediated(unittest.TestCase):
         pre2T = np.random.rand(len(self.onsagercalculator.jnet2))
         betaene2T = np.random.rand(len(self.onsagercalculator.jnet2))
 
-        rate0list = symmratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
-                                 self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
-        rate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
-                                 self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
+        rate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
+                             self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
 
-        unsymrate0list = ratelist(self.onsagercalculator.jnet0_indexed, pre0, betaene0, pre0T, betaene0T,
-                                  self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
-        unsymrate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
-                                  self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
+        rate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
+                             self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
 
-        self.onsagercalculator.update_bias_expansions(rate0list, rate2list, unsymrate0list, unsymrate2list)
+        rate0_forward = np.array([rate0list[jt][0] for jt in range(len(rate0list))])
+        rate0_backward = np.array([rate0list[jt][1] for jt in range(len(rate0list))])
 
-        # Form omega0escape
+        rate2_forward = np.array([rate2list[jt][0] for jt in range(len(rate2list))])
+        rate2_backward = np.array([rate2list[jt][1] for jt in range(len(rate2list))])
 
-        # Next, we calculate the bias updates explicitly First, we make lists to test against While the non-local
-        # rates are determined by rate0list and rate2list, we are free to use random local corrections
-        # Form a version of omega0escape from the rate0list
+        rate0_wycks = np.zeros((len(self.onsagercalculator.pdbcontainer.symorlist), len(rate0list)))
+        # send in rate0_wycks as the argument to calc_eta - this is the same as omega0escape, except with a
+        # randomized form.
+
+        for jt, jlist in enumerate(self.onsagercalculator.jnet0):
+            db1_ind = jlist[0].state1.iorind
+            db2_ind = jlist[0].state2.iorind
+
+            w1 = self.onsagercalculator.pdbcontainer.invmap[db1_ind]
+            w2 = self.onsagercalculator.pdbcontainer.invmap[db2_ind]
+
+            rate0_wycks[w1, jt] = rate0_forward[jt]
+            rate0_wycks[w2, jt] = rate0_backward[jt]
+
+        rate2_wycks = np.zeros((len(self.onsagercalculator.mdbcontainer.symorlist), len(rate2list)))
+
+        for jt, jlist in enumerate(self.onsagercalculator.jnet2):
+            db1_ind = jlist[0].state1.db.iorind
+            db2_ind = jlist[0].state2.db.iorind
+
+            w1 = self.onsagercalculator.mdbcontainer.invmap[db1_ind]
+            w2 = self.onsagercalculator.mdbcontainer.invmap[db2_ind]
+
+            rate2_wycks[w1, jt] = rate2_forward[jt]
+            rate2_wycks[w2, jt] = rate2_backward[jt]
+
+        # Now, local corrections (randomized)
+        # randomize the forward and backward rates for every jump type./
+        rate1_forward = np.random.rand(len(self.onsagercalculator.jnet_1))
+        rate1_backward = np.random.rand(len(self.onsagercalculator.jnet_1))
+
+        rate1_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure, len(self.onsagercalculator.jnet_1)))
+        for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+
+            st1 = jlist[0].state1
+            st2 = jlist[0].state2
+
+            v1list = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
+            v2list = self.onsagercalculator.vkinetic.stateToVecStar_pure[st2]
+
+            for v1, inv1 in v1list:
+                rate1_stars[v1, jt] = rate1_forward[jt]
+            for v2, inv2 in v2list:
+                rate1_stars[v2, jt] = rate1_backward[jt]
+
+        rate43_forward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
+        rate43_backward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
+
+        Nvstars_mixed = self.onsagercalculator.vkinetic.Nvstars - self.onsagercalculator.vkinetic.Nvstars_pure
+
+        rate3_stars = np.zeros((Nvstars_mixed, len(self.onsagercalculator.symjumplist_omega43_all)))
+
+        rate4_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure,
+                                len(self.onsagercalculator.symjumplist_omega43_all)))
+
+        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega43_all):
+            st1 = jlist[0].state1
+            st2 = jlist[0].state2
+
+            v1list = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
+
+            v2list = self.onsagercalculator.vkinetic.stateToVecStar_mixed[st2]
+            for v1, inv1 in v1list:
+                rate4_stars[v1, jt] = rate43_forward[jt]
+            for v2, inv2 in v2list:
+                rate3_stars[v2 - self.onsagercalculator.vkinetic.Nvstars_pure, jt] = rate43_backward[jt]
+
+        self.onsagercalculator.update_bias_expansions(rate0list, rate0_wycks, rate2list, rate2_wycks)
+
+        # Next, we calculate the velocity updates explicitly. First, we make lists to test against. While the non-local
 
         # First, we verify that the non-local velocity out of all the bare dumbbell states disappear
         if not len(self.onsagercalculator.vkinetic.vecpos_bare) == 0:
