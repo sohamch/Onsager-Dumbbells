@@ -485,7 +485,7 @@ class vectorStars(VectorStarSet):
                         bias3expansion_solvent[i, k] += geom_bias_solvent
 
         if len(self.vecpos_bare) == 0:
-            return zeroclean(bias0expansion), (zeroclean(bias1expansion_solute), zeroclean(bias1expansion_solvent)), \
+            return bias0expansion, (zeroclean(bias1expansion_solute), zeroclean(bias1expansion_solvent)), \
                    (zeroclean(bias2expansion_solute), zeroclean(bias2expansion_solvent)), \
                    (zeroclean(bias3expansion_solute), zeroclean(bias3expansion_solvent)), \
                    (zeroclean(bias4expansion_solute), zeroclean(bias4expansion_solvent)), biasBareExpansion
