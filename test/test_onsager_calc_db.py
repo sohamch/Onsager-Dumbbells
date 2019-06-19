@@ -77,23 +77,81 @@ class test_dumbbell_mediated(unittest.TestCase):
         unsymrate2list = ratelist(self.onsagercalculator.jnet2_indexed, pre2, betaene2, pre2T, betaene2T,
                                  self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
 
-        self.onsagercalculator.calc_eta(rate0list, rate2list, unsymrate0list, unsymrate2list)
+        rate0_forward = np.array([rate0list[jt][0] for jt in range(len(rate0list))])
+        rate0_backward = np.array([rate0list[jt][1] for jt in range(len(rate0list))])
 
-        self.assertEqual(len(self.onsagercalculator.eta00_solvent),len(self.onsagercalculator.vkinetic.starset.complexStates))
-        self.assertEqual(len(self.onsagercalculator.eta00_solute),len(self.onsagercalculator.vkinetic.starset.complexStates))
+        rate0_wycks = np.zeros((len(self.onsagercalculator.pdbcontainer.symorlist), len(rate0list)))
 
-        self.assertEqual(len(self.onsagercalculator.eta02_solvent),len(self.onsagercalculator.vkinetic.starset.mixedstates))
-        self.assertEqual(len(self.onsagercalculator.eta02_solute),len(self.onsagercalculator.vkinetic.starset.mixedstates))
+        # send in rate0_wycks as the argument to calc_eta - this is the same as omega0escape, except with a
+        # randomized form.
 
-        if len(self.onsagercalculator.vkinetic.vecpos_bare)==0:
-            self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent,np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates),3))))
-            self.assertTrue(np.allclose(self.onsagercalculator.eta00_solute,np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates),3))))
+        for jt, jlist in enumerate(self.onsagercalculator.jnet0):
+            db1_ind = jlist[0].state1.iorind
+            db2_ind = jlist[0].state2.iorind
+
+            w1 = self.onsagercalculator.pdbcontainer.invmap[db1_ind]
+            w2 = self.onsagercalculator.pdbcontainer.invmap[db2_ind]
+
+            rate0_wycks[w1, jt] = rate0_forward[jt]
+            rate0_wycks[w2, jt] = rate0_backward[jt]
+
+        self.onsagercalculator.calc_eta(rate0list, rate0_wycks)
+
+        # Now, local corrections (randomized)
+        # randomize the forward and backward rates for every jump type./
+        rate1_forward = np.random.rand((len(self.onsagercalculator.jnet_1)))
+        rate1_backward = np.random.rand((len(self.onsagercalculator.jnet_1)))
+
+        rate1_stars = np.zeros((len(self.onsagercalculator.vkinetic.Nvstars_pure), len(self.onsagercalculator.jnet_1)))
+        for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+            st1 = jlist[0].state1
+            st2 = jlist[0].state2
+
+            v1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
+            v2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[st2]
+
+            rate1_stars[v1, jt] = rate1_forward
+            rate1_stars[v2, jt] = rate1_backward
+
+        rate43_forward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
+        rate43_backward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
+
+        Nvstars_mixed = self.onsagercalculator.vkinetic.Nvstars - self.onsagercalculator.vkinetic.Nvstars_pure
+
+        rate3_stars = np.zeros((Nvstars_mixed, len(self.onsagercalculator.symjumplist_omega43_all)))
+
+        rate4_stars = np.zeros((len(self.onsagercalculator.vkinetic.Nvstars_pure),
+                                len(self.onsagercalculator.symjumplist_omega43_all)))
+
+        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega43_all):
+            st1 = jlist[0].state1
+            st2 = jlist[0].state2
+
+            v1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
+
+            v2 = self.onsagercalculator.vkinetic.stateToVecStar_mixed[st2] -\
+                 self.onsagercalculator.vkinetic.Nvstars_pure
+
+            rate4_stars[v1, jt] = rate43_forward[jt]
+            rate3_stars[v2, jt] = rate43_backward[jt]
+
+        self.assertEqual(len(self.onsagercalculator.eta00_solvent),
+                         len(self.onsagercalculator.vkinetic.starset.complexStates))
+
+        # Nothing to do in the mixed dumbbell space
+        # self.assertEqual(len(self.onsagercalculator.eta02_solvent),
+        #                  len(self.onsagercalculator.vkinetic.starset.mixedstates))
+        # self.assertEqual(len(self.onsagercalculator.eta02_solute),
+        #                  len(self.onsagercalculator.vkinetic.starset.mixedstates))
+
+        if len(self.onsagercalculator.vkinetic.vecpos_bare) == 0:
+            self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent,
+                                        np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))))
 
         else:
-            # The non-local pure dumbbell biases have been tested in test_vecstars.
-            # Here, we check if for periodic dumbbells, we have the same solvent bias.
-            for i in range(len(self.onsagercalculator.vkinetic.starset.complexStates)):
-                for j in range(len(self.onsagercalculator.vkinetic.starset.complexStates)):
+            # Here, we check if for periodic dumbbells, we have the same non- local solvent velocity vector.
+            for state1 in self.onsagercalculator.vkinetic.starset.complexStates:
+                for state2 in self.onsagercalculator.vkinetic.starset.complexStates:
                     if self.onsagercalculator.vkinetic.starset.complexStates[i].db.iorind == self.onsagercalculator.vkinetic.starset.complexStates[j].db.iorind:
                         # if np.allclose(self.onsagercalculator.vkinetic.starset.complexStates[i].db.o,self.onsagercalculator.vkinetic.starset.complexStates[j].db.o):
                         self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i,:],self.onsagercalculator.eta00_solvent[j,:]))
@@ -211,18 +269,15 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         self.onsagercalculator.update_bias_expansions(rate0list, rate2list, unsymrate0list, unsymrate2list)
 
+        # Form omega0escape
+
         # Next, we calculate the bias updates explicitly First, we make lists to test against While the non-local
         # rates are determined by rate0list and rate2list, we are free to use random local corrections
-        W0list = np.array([rate0list[i][0] for i in range(len(rate0list))])
-        W2list = np.array([rate2list[i][0] for i in range(len(rate2list))])
-        # Now, local corrections (randomized)
-        W1list = np.random.rand(len(self.onsagercalculator.jnet_1))
-        W3list = np.random.rand(len(self.onsagercalculator.symjumplist_omega3))
-        W4list = np.random.rand(len(self.onsagercalculator.symjumplist_omega4))
+        # Form a version of omega0escape from the rate0list
 
-        # First, we verify that the non-local bias out of all the bare dumbbell states disappear
+        # First, we verify that the non-local velocity out of all the bare dumbbell states disappear
         if not len(self.onsagercalculator.vkinetic.vecpos_bare) == 0:
-            bias0_solvent_nonloc = np.dot(self.onsagercalculator.biasBareExpansion,W0list)
+            bias0_solvent_nonloc = np.dot(self.onsagercalculator.biasBareExpansion, W0list)
             # solute_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
             solvent_bias_Nl = np.zeros((len(self.onsagercalculator.vkinetic.starset.bareStates),3))
             for i in range(len(self.onsagercalculator.vkinetic.starset.bareStates)):
@@ -234,7 +289,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 for (i,j),dx in jindlist:
                     solvent_bias_Nl[i,:] += rate0list[jt][0]*(self.onsagercalculator.eta00_solvent_bare[i] - self.onsagercalculator.eta00_solvent_bare[j])
 
-            self.assertTrue(np.allclose(solvent_bias_Nl,np.zeros_like(solvent_bias_Nl)))
+            self.assertTrue(np.allclose(solvent_bias_Nl, np.zeros_like(solvent_bias_Nl)))
 
         # Now, do check eta vectors for omega1
         bias1solute, bias1solvent = self.biases[1]
