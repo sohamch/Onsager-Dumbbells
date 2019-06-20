@@ -309,8 +309,8 @@ class test_dumbbell_mediated(unittest.TestCase):
             newlist = []
             count = 0
             while count < len(jlist) // 2:
-                newlist.append(rate1_forward)
-                newlist.append(rate1_backward)
+                newlist.append(rate1_forward[jt])
+                newlist.append(rate1_backward[jt])
                 count += 1
 
             rate1list.append(newlist)
@@ -344,8 +344,8 @@ class test_dumbbell_mediated(unittest.TestCase):
             newlist4 = []
             count = 0
             while count < len(jlist) // 2:
-                newlist3.append(rate43_backward)
-                newlist4.append(rate43_forward)
+                newlist3.append(rate43_backward[jt])
+                newlist4.append(rate43_forward[jt])
                 count += 1
             rate3list.append(newlist3)
             rate4list.append(newlist4)
@@ -400,13 +400,13 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         # Next, manually update with the eta0 vectors
         # for i in range(len(self.onsagercalculator.vkinetic.starset.complexStates)):
-        for jt,jlist in enumerate(self.onsagercalculator.jnet1_indexed):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet1_indexed):
             for jnum, ((IS, FS), dx) in enumerate(jlist):
                 # if i==IS:
-                solute_vel_1[IS, :] += rate1list[jt][jnum]*(self.onsagercalculator.eta00_solute[IS] -
-                                                             self.onsagercalculator.eta00_solute[FS])
-                solvent_vel_1[IS, :] += rate1list[jt][jnum]*(self.onsagercalculator.eta00_solvent[IS] -
-                                                              self.onsagercalculator.eta00_solvent[FS])
+                solute_vel_1[IS, :] += rate1list[jt][jnum]*(self.onsagercalculator.eta00_solute[IS, :] -
+                                                            self.onsagercalculator.eta00_solute[FS, :])
+                solvent_vel_1[IS, :] += rate1list[jt][jnum]*(self.onsagercalculator.eta00_solvent[IS, :] -
+                                                             self.onsagercalculator.eta00_solvent[FS, :])
 
         # Now, get the version from the updated expansion
         vel1_solute_new_vs = np.array([np.dot(self.onsagercalculator.bias1_solute_new[i, :], rate1_stars[i, :])
@@ -463,13 +463,17 @@ class test_dumbbell_mediated(unittest.TestCase):
                 # We need to iterate over only that jlist0 that corresponds to the current jlist.
                 for jnum0, ((ISdb0, FSdb0), dxdb0) in enumerate(self.onsagercalculator.jnet0_indexed[
                                                        self.onsagercalculator.om1types[jt]]):
-                    if ISdb == ISdb0 and FSdb == FSdb0 and np.allclose(dx, dxdb0):
+                    j0 = self.onsagercalculator.jnet0[self.onsagercalculator.om1types[jt]][jnum0]
+                    if np.allclose(dxdb0, np.zeros(3)):
+                        condc = (j0.c1 == jmp.c1 and j0.c2 == jmp.c2) or (-j0.c1 == jmp.c1 and -j0.c2 == jmp.c2)
+                    else:
+                        condc = j0.c1 == jmp.c1 and j0.c2 == jmp.c2
+                    if ISdb == ISdb0 and FSdb == FSdb0 and np.allclose(dx, dxdb0) and condc:
                         # check that the omega0 and omega1 jumps are consistent
-                        j0 = self.onsagercalculator.jnet0[self.onsagercalculator.om1types[jt]][jnum0]
                         self.assertEqual(j0.state1.iorind, jmp.state1.db.iorind)
                         self.assertEqual(j0.state2.iorind, jmp.state2.db.iorind)
-                        self.assertEqual(j0.c1, jmp.c1)
-                        self.assertEqual(j0.c2, jmp.c2)
+                        # self.assertEqual(j0.c1, jmp.c1)
+                        # self.assertEqual(j0.c2, jmp.c2)
                         dx0 = disp(self.onsagercalculator.pdbcontainer, j0.state1, j0.state2)
                         self.assertTrue(np.allclose(dx0, dxdb0))
                         self.assertTrue(np.allclose(dx0, dx))
@@ -477,8 +481,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                         newlist.append(rate01)
                         count += 1
                 self.assertEqual(count, 1)
-                self.assertFalse(rate01 is None)  # there must be exactly one omega0 jump for am omega1 jump.
-                rate10list.append(newlist)
+                self.assertFalse(rate01 is None)  # there must be exactly one omega0 jump for an omega1 jump.
+            rate10list.append(newlist)
 
         # Get the omega1 contribution to the non-local bias vectors
         # First check that there is no movement in the solutes
@@ -586,7 +590,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         self.assertTrue(np.allclose(solvent_vel_2_new, np.zeros_like(solvent_vel_2)))
 
         # Now, do it for omega3
-        bias3solute,bias3solvent = self.biases[3]
+        bias3solute, bias3solvent = self.biases[3]
 
         vel3_solute_vs = np.array([np.dot(bias3solute[i - Nvstars_pure, :], rate3_stars[i - Nvstars_pure, :])
                                   for i in range(Nvstars_pure, self.onsagercalculator.vkinetic.Nvstars)])
@@ -616,16 +620,16 @@ class test_dumbbell_mediated(unittest.TestCase):
         # Now, get the version from the updated expansion
         vel3_solute_new_vs = np.array([np.dot(self.onsagercalculator.bias3_solute_new[i - Nvstars_pure, :],
                                               rate3_stars[i - Nvstars_pure, :])
-                                       for i in range(Nvstars_pure, self.onsagercalculator.vkinetic.Nvstars_pure)])
+                                       for i in range(Nvstars_pure, self.onsagercalculator.vkinetic.Nvstars)])
         vel3_solvent_new_vs = np.array([np.dot(self.onsagercalculator.bias3_solvent_new[i - Nvstars_pure, :],
                                                rate3_stars[i - Nvstars_pure, :])
-                                        for i in range(Nvstars_pure, self.onsagercalculator.vkinetic.Nvstars_pure)])
+                                        for i in range(Nvstars_pure, self.onsagercalculator.vkinetic.Nvstars)])
 
         solute_vel_3_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), 3))
         solvent_vel_3_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), 3))
 
-        for i in range(len(self.onsagercalculator.vkinetic.starset.mixedstates)):
-            indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[self.onsagercalculator.vkinetic.starset.mixedstates[i]]
+        for i, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
+            indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[state]
             # We have indlist as (IndOfStar, IndOfState)
             solute_vel_3_new[i, :] = sum([vel3_solute_new_vs[tup[0] - Nvstars_pure] *
                                           self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
