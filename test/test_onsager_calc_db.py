@@ -815,8 +815,6 @@ class test_dumbbell_mediated(unittest.TestCase):
             for (IS, FS), dx in jlist:
                 o1 = self.onsagercalculator.mdbcontainer.iorlist[
                     self.onsagercalculator.vkinetic.starset.mixedstates[IS].db.iorind][1]
-                o2 = self.onsagercalculator.pdbcontainer.iorlist[
-                    self.onsagercalculator.vkinetic.starset.complexStates[IS].db.iorind][1]
 
                 dx_solute = -o1/2. + eta0total_solute[IS + Ncomp] - eta0total_solute[FS]
                 dx_solvent = o1/2. + dx + eta0total_solvent[IS + Ncomp] - eta0total_solvent[FS]
