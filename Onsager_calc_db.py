@@ -297,7 +297,6 @@ class dumbbellMediated(VacancyMediated):
         # Generate the initialized crystal and vector stars and the jumpnetworks with the kinetic shell
         self.generate(Nthermo, cutoff, solt_solv_cut, solv_solv_cut, closestdistance)
 
-
     def generate_jnets(self, cutoff, solt_solv_cut, solv_solv_cut, closestdistance):
         """
         Note - for mixed dumbbells, indexing to the iorlist is the same as indexing to mixedstates, as the latter is
@@ -426,6 +425,7 @@ class dumbbellMediated(VacancyMediated):
 
             # Now match the non-local biases for complex states to the pure states
             self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), 3))
+            self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), 3))
             self.NlsolventBias0 = np.zeros((len(self.vkinetic.starset.complexStates), 3))
 
             for i, state in enumerate(self.vkinetic.starset.complexStates):
@@ -545,7 +545,6 @@ class dumbbellMediated(VacancyMediated):
             # Form the projection of the eta vectors on v0
             eta_proj_solute = np.dot(self.eta0total_solute, v0)
             eta_proj_solvent = np.dot(self.eta0total_solvent, v0)
-
 
             # Now go through the omega2 jump network tags
             for jt, initindexdict in enumerate(self.jtags2):
