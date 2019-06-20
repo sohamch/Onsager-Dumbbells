@@ -957,17 +957,11 @@ class dumbbellMediated(VacancyMediated):
         pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
 
         # Make the unsymmetrized rates for calculating eta0
-        symrate0list = symmratelist(self.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
-                                 self.vkinetic.starset.pdbcontainer.invmap)
-
-        symrate2list = symmratelist(self.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
-                                 self.vkinetic.starset.mdbcontainer.invmap)
-
         rate0list = ratelist(self.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
-                                    self.vkinetic.starset.pdbcontainer.invmap)
+                             self.vkinetic.starset.pdbcontainer.invmap)
 
         rate2list = ratelist(self.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
-                                    self.vkinetic.starset.mdbcontainer.invmap)
+                             self.vkinetic.starset.mdbcontainer.invmap)
 
         # Make the symmetrized rates for calculating GF, bias and gamma.
         # First, make bFSdb_total from individual solute and pure dumbbell free energies and the binding free energy,
