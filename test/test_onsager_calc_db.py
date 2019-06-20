@@ -858,7 +858,7 @@ class test_dumbbell_mediated(unittest.TestCase):
 
     # construct a test for the way the rates are constructed.
 
-    def test_delom_G0_probs(self):
+    def test_Lij(self):
         """
         This is to check the delta omega matrix
         """
@@ -943,19 +943,9 @@ class test_dumbbell_mediated(unittest.TestCase):
             bFSdb_total[kinind] += bFSdb[starind]
             bFSdb_total_shift[kinind] += bFSdb[starind]
 
-        # 1e. Now get the symmetrized rates
-        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
-        (omega4, omega4escape) = self.onsagercalculator.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min,
-                                                                     bFSdb_total_shift, bFT0, bFT1, bFT2, bFT3, bFT4)
+        print("Passed tests 1 - making complex energies")
 
-        for jt in range(len(self.onsagercalculator.symjumplist_omega43_all)):
-            self.assertEqual(omega4[jt], omega3[jt])
-
-        omegas = (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
-                 (omega4, omega4escape)
-
-        # 2. we get the delta omega matrix, as it is calculated in the code in the makeGF function
-        # Need to run calc_eta first to get g2 - this should be made universal later on
+        # 2. Next, we get all the relevant data from the L_ij function.
         pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
         pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
         symrate0list = symmratelist(self.onsagercalculator.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
@@ -963,25 +953,33 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         symrate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
                                     self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
-        self.onsagercalculator.calc_eta(symrate0list, symrate2list)
-        # Check consistency between the two rate
+
+        (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF20, del_om, part_func, probs, omegas,\
+        stateprobs = self.onsagercalculator.L_ij(bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4)
+
+        # 2a - get the symmetrized and escape rates.
+        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
+        (omega4, omega4escape) = omegas
+        # 2a.1 - check equivalence of symmetrized omega3 and 4 rates
+        for jt in range(len(self.onsagercalculator.symjumplist_omega43_all)):
+            self.assertEqual(omega4[jt], omega3[jt])
+
+        # 2a.2 - check consistency of non-local rates
         for jt in range(len(self.onsagercalculator.jnet0)):
             self.assertEqual(symrate0list[jt][0], omega0[jt])
 
         for jt in range(len(self.onsagercalculator.jnet2)):
             self.assertEqual(symrate2list[jt][0], omega2[jt])
 
-        GF_total, GF20, del_om = self.onsagercalculator.makeGF(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFT0, bFT2, omegas)
-        print("GF made")
-        (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF20, del_om, part_func, probs, omegas, stateprobs = \
-            self.onsagercalculator.L_ij(bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4)
+        # 2b - get the state probabilities.
+        complex_prob, mixed_prob = stateprobs
+        print("passed tests in 2 - checking non-local rate consistencies")
 
         # 3. Now, that we have the symmetrized rates, we need to construct the delta_om matrix using it's mathematical
         # form
-
         Nvstars = self.onsagercalculator.vkinetic.Nvstars
-        # Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
-        # Nvstars_mixed = Nvstars - Nvstars_pure
+        Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
+        Nvstars_mixed = Nvstars - Nvstars_pure
 
         # 3a. First, we do the non-diagonal parts
         delta_om_test = np.zeros((Nvstars, Nvstars))
@@ -1086,10 +1084,10 @@ class test_dumbbell_mediated(unittest.TestCase):
             delta_om_test[i, i] += diags[i]
 
         self.assertTrue(np.allclose(delta_om_test, del_om))
+        print("passed tests 3 - checking delta omega")
 
-        # NEXT WE VERIFY G0
-
-        # to verify GF20, we need the GF starsets and the GF2 and GF0 lists for each starset
+        # 4. NEXT WE VERIFY G0
+        # 4a. to verify GF20, we need the GF starsets and the GF2 and GF0 lists for each starset
         # setrates has already been run while running makeGF
         GF0 = np.array([self.onsagercalculator.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
                         [star[0] for star in self.onsagercalculator.GFstarset_pure]])
@@ -1097,12 +1095,9 @@ class test_dumbbell_mediated(unittest.TestCase):
         GF2 = np.array([self.onsagercalculator.g2[tup[0][0], tup[0][1]] for tup in
                         [star[0] for star in self.onsagercalculator.GFstarset_mixed]])
 
-        Nvstars = self.onsagercalculator.vkinetic.Nvstars
-        Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
-
         GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.onsagercalculator.vkinetic.genGFstarset()
 
-        # Now, we must evaluate the GF20 tensor through explicit summation
+        # 4b. Now, we must evaluate the GF20 tensor through explicit summation
         GF20_test = np.zeros((Nvstars, Nvstars))
         # First, we do it for the GF0 part
         for i in range(Nvstars_pure):
@@ -1119,7 +1114,26 @@ class test_dumbbell_mediated(unittest.TestCase):
                         Gstarind = GFPureStarInd[ds]
                         GF20_test[i, j] += GF0[Gstarind] * np.dot(vi, vj)
 
-        # Now, we do it for the mixed part
+        # 4c. Now, we do it for the mixed part
+
+        # 4.c.1 - First, we check that the symmetrization of g2 is okay.
+        # 4.c.1.1 - check the symmetry.
+        for i in range(Nvstars - Nvstars_pure):
+            for j in range(i):
+                self.assertTrue(np.allclose(self.onsagercalculator.g2[j, i], self.onsagercalculator.g2[i, j]))
+
+        # 4.c.1.2 - check consistency with G2
+        for i in range(len(self.onsagercalculator.kinetic.mixedstates)):
+            for j in range(len(self.onsagercalculator.kinetic.mixedstates)):
+                g_ij = np.sqrt(mixed_prob[i]) * self.onsagercalculator.G2[i, j] * 1./np.sqrt(mixed_prob[j])
+                self.assertTrue(np.allclose(g_ij, self.onsagercalculator.g2[i, j]))
+
+        # 4.c.1.3 - check negative definiteness
+        eigvals, eigvecs = np.linalg.eig(self.onsagercalculator.g2)
+        for val in eigvals:
+            self.assertTrue(val <= 0.)
+
+        # 4.c.1.4 - check vector star representation.
         for i in range(Nvstars_pure, Nvstars):
             for j in range(Nvstars_pure, Nvstars):
                 for si, vi in zip(self.onsagercalculator.vkinetic.vecpos[i],
@@ -1133,9 +1147,9 @@ class test_dumbbell_mediated(unittest.TestCase):
                         GF20_test[i, j] += GF2[Gstarind] * np.dot(vi, vj)
 
         np.allclose(GF20, GF20_test)
+        print("passed tests 4 - checking non-local Green's function")
 
-        # NEXT, WE TEST THE STATE PROBABILITIES
-        complex_prob, mixed_prob = stateprobs
+        # 5. NEXT, WE TEST THE STATE PROBABILITIES
         for prob in complex_prob:
             self.assertTrue(prob >= 0.)
         for prob in mixed_prob:
@@ -1151,7 +1165,7 @@ class test_dumbbell_mediated(unittest.TestCase):
             wyckind = self.onsagercalculator.mdbcontainer.invmap[state.db.iorind]
             self.assertTrue(np.allclose(np.exp(-bFdb2[wyckind]), mixed_prob[i] * part_func))
 
-        # Test consistency with omega1 rates
+        # 5a. Test consistency with omega1 rates
         for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
             for jmp in jlist:
                 st1 = jmp.state1
@@ -1170,7 +1184,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 symrate = np.sqrt(complex_prob[stateind1]) * rate * 1. / np.sqrt(complex_prob[stateind2])
                 self.assertTrue(np.allclose(symrate, omega1[jt]))
 
-        # Test consistency with omega2 rates
+        # 5b. Test consistency with omega2 rates
         for jt, jlist in enumerate(self.onsagercalculator.jnet2):
             for jmp in jlist:
                 st1 = jmp.state1
@@ -1185,7 +1199,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 symrate = np.sqrt(mixed_prob[stateind1]) * rate * 1 / np.sqrt(mixed_prob[stateind2])
                 self.assertTrue(np.allclose(symrate, omega2[jt]))
 
-        # Test consistency of omega3 and omega4 rates
+        # 5c. Test consistency of omega3 and omega4 rates
         for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3):
             for jmp in jlist:
                 st1 = jmp.state1
@@ -1197,8 +1211,9 @@ class test_dumbbell_mediated(unittest.TestCase):
 
                 rate3 = np.exp(-(bFT3[jt] + bFdb2_min) + bFdb2[wyck1])
                 symrate3 = np.sqrt(mixed_prob[stateind1]) * rate3 * 1. / np.sqrt(complex_prob[stateind2])
-                if not np.allclose(omega3[jt], symrate3):
-                    print(jt, symrate3, omega3[jt])
+                # if not np.allclose(omega3[jt], symrate3):
+                #     print(jt, symrate3, omega3[jt])
+                self.assertTrue(np.allclose(omega3[jt], symrate3))
 
                 rate4 = np.exp(-(bFT4[jt] + bFdb0_min + bFS_min) + bFSdb_total[starind2])
                 symrate4 = 1. / np.sqrt(mixed_prob[stateind1]) * rate4 * np.sqrt(complex_prob[stateind2])
@@ -1207,6 +1222,126 @@ class test_dumbbell_mediated(unittest.TestCase):
                 self.assertTrue( np.allclose(bFT4[jt] + bFdb0_min + bFS_min, bFT3[jt] + bFdb2_min))
 
                 self.assertTrue(np.allclose(symrate3, symrate4))
+
+        print("passed tests 5 - checking state probabilities")
+
+        # 6. Next, we test the final bias vector
+        Ncomp = len(self.onsagercalculator.kinetic.complexStates)
+        Nmix = len(self.onsagercalculator.kinetic.mixedstates)
+        bias_true_updated_solute = np.zeros((Ncomp + Nmix, 3))
+        bias_true_updated_solvent = np.zeros((Ncomp + Nmix, 3))
+
+        # To get the unsymmetrized rate out of a state, we locate it's vector star, and get the unsymmetrized
+        # rate from the escape arrays.
+
+        # 6a. First, we do it for the complex states - we'll use the eta vector updates, so that we don't have to worry
+        # about excluded omega0 jumps from the kinetic shell states.
+        for i in range(Ncomp):
+            comp_state = self.onsagercalculator.kinetic.complexStates[i]
+            vstar_indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[comp_state]
+            starind = self.onsagercalculator.kinetic.complexIndexdict[comp_state][1]
+            dbwyckind = self.onsagercalculator.kinetic.star2symlist[starind]
+            # Also, check the correctness of the omega_escape arrays.
+            # if some vector stars contain the same crystal stars (and hence states), then for a given jt, they should
+            # also have the same unsymmetrized rates.
+            # omega1 jumps lead to no solute updates
+            if comp_state.is_zero(self.onsagercalculator.pdbcontainer):
+                continue
+            for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+                for jnum, jmp in enumerate(jlist):
+                    if jmp.state1 == comp_state:
+                        jt0 = self.onsagercalculator.om1types[jt]
+                        # get the jump rate
+                        rate1 = np.exp(- bFT1[jt] + bFSdb_total_shift[starind])
+                        # next, we need the bare dumbbell transition rate for this jump
+                        rate0 = np.exp(- bFT0[jt0] + bFdb0[dbwyckind] - bFdb0_min)
+                        # the non-local rate is the difference between the two.
+                        rate = rate1 - rate0
+                        (IS, FS), dx = self.onsagercalculator.jnet1_indexed[jt][jnum]
+                        self.assertEqual(IS, i)
+                        bias_true_updated_solvent[i, :] += rate * np.sqrt(complex_prob[i]) *\
+                                                           (dx + self.onsagercalculator.eta0total_solvent[IS] -
+                                                            self.onsagercalculator.eta0total_solvent[FS])
+                        for tup in vstar_indlist:
+                            self.assertTrue(np.allclose(omega1escape[tup[0], jt], rate1), msg="\n{}\n{}".format(jt, dx))
+                            self.assertTrue(np.allclose(self.onsagercalculator.del_W1[tup[0], jt], rate))
+
+            # Now, update with omega4 contributions
+            for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4):
+                for jnum, jmp in enumerate(jlist):
+                    if jmp.state1 == comp_state:
+                        # get the jump rate
+                        rate = np.exp(- bFT4[jt] + bFSdb_total_shift[starind])
+                        (IS, FS), dx = self.onsagercalculator.symjumplist_omega4_indexed[jt][jnum]
+                        or2 = self.onsagercalculator.mdbcontainer.iorlist[jmp.state2.db.iorind][1]
+                        dx_solute = or2/2.
+                        dx_solvent = dx - or2/2.
+                        self.assertEqual(IS, i)
+                        bias_true_updated_solvent[i, :] += rate * np.sqrt(complex_prob[i]) *\
+                                                           (dx_solvent + self.onsagercalculator.eta0total_solvent[IS] -
+                                                            self.onsagercalculator.eta0total_solvent[FS + Ncomp])
+                        bias_true_updated_solute[i, :] += rate * np.sqrt(complex_prob[i]) * \
+                                                          (dx_solute + self.onsagercalculator.eta0total_solute[IS] -
+                                                           self.onsagercalculator.eta0total_solute[FS + Ncomp])
+                        for tup in vstar_indlist:
+                            self.assertTrue(np.allclose(omega4escape[tup[0], jt], rate))
+
+        # 6b. - Now, we do it for the mixed dumbbell states
+        # In the mixed dumbbell state space, the non-local rates come only from the contributions by the omega3 jumps
+        for i in range(Ncomp, Ncomp + Nmix):
+            mixstate = self.onsagercalculator.kinetic.mixedstates[i - Ncomp]
+            vstar_indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[mixstate]
+            starind = self.onsagercalculator.kinetic.complexIndexdict[mixstate][1]
+            mdbwyckind = self.onsagercalculator.kinetic.star2symlist[starind]
+
+            # Now, update with omega3 contributions
+            for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3):
+                for jnum, jmp in enumerate(jlist):
+                    if jmp.state1 == mixstate:
+                        # get the jump rate
+                        rate = np.exp(- bFT3[jt] + bFdb2[mdbwyckind] - bFdb2_min)
+                        (IS, FS), dx = self.onsagercalculator.symjumplist_omega3_indexed[jt][jnum]
+                        or1 = self.onsagercalculator.mdbcontainer.iorlist[jmp.state1.db.iorind][1]
+                        dx_solute = - or1 / 2.
+                        dx_solvent = dx + or1 / 2.
+                        self.assertEqual(IS, i - Ncomp)
+                        bias_true_updated_solvent[i, :] += rate * np.sqrt(mixed_prob[i - Ncomp]) * \
+                                                           (dx_solvent +
+                                                            self.onsagercalculator.eta0total_solvent[IS + Ncomp] -
+                                                            self.onsagercalculator.eta0total_solvent[FS])
+                        bias_true_updated_solute[i, :] += rate * np.sqrt(mixed_prob[i - Ncomp]) * \
+                                                          (dx_solute +
+                                                           self.onsagercalculator.eta0total_solute[IS + Ncomp] -
+                                                           self.onsagercalculator.eta0total_solute[FS])
+                        for tup in vstar_indlist:
+                            self.assertTrue(np.allclose(omega4escape[tup[0], jt], rate))
+
+        # 6c. Now, we get the bias vector as calculated in the code from the corresponding vector stars.
+        bias_solvent_calc = np.zeros((Ncomp + Nmix, 3))
+        bias_solute_calc = np.zeros((Ncomp + Nmix, 3))
+
+        # first, we convert the complex states into cartesian form
+        for i, state in enumerate(self.onsagercalculator.kinetic.complexStates):
+            indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[state]
+            bias_solute_calc[i, :] = sum([self.onsagercalculator.biases_solute_vs[tup[0]] *
+                                          self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+            bias_solvent_calc[i, :] = sum([self.onsagercalculator.biases_solvent_vs[tup[0]] *
+                                          self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
+
+        for i, state in enumerate(self.onsagercalculator.kinetic.mixedstates):
+            indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[state]
+            bias_solute_calc[i + Ncomp, :] = sum([self.onsagercalculator.biases_solute_vs[tup[0]] *
+                                                  self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]
+                                                  for tup in indlist])
+            bias_solvent_calc[i + Ncomp, :] = sum([self.onsagercalculator.biases_solvent_vs[tup[0]] *
+                                                   self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]
+                                                   for tup in indlist])
+
+        self.assertTrue(np.allclose(bias_solvent_calc, bias_true_updated_solvent))
+        self.assertTrue(np.allclose(bias_solute_calc, bias_true_updated_solute))
+
+        print("passed tests 6 - checking the final bias vector")
+
 
 class test_distorted(test_dumbbell_mediated):
     def setUp(self):

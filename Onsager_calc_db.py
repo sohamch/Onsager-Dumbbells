@@ -853,8 +853,8 @@ class dumbbellMediated(VacancyMediated):
         """
         Constructs the N_vs x N_vs GF matrix.
         """
-        if not hasattr(self, 'g2'):
-            raise AttributeError("g2 not found yet. Please run calc_eta first.")
+        if not hasattr(self, 'G2'):
+            raise AttributeError("G2 not found yet. Please run calc_eta first.")
 
         Nvstars_pure = self.vkinetic.Nvstars_pure
 
@@ -948,33 +948,36 @@ class dumbbellMediated(VacancyMediated):
         if not len(bFSdb) == self.thermo.mixedstartindex:
             raise TypeError("Interaction energies must be present for all and only all thermodynamic shell states.")
 
-        # Get the minimum free energies of solutes, pure dumbbells and mixed dumbbells
+        # 1. Get the minimum free energies of solutes, pure dumbbells and mixed dumbbells
         bFdb0_min = np.min(bFdb0)
         bFdb2_min = np.min(bFdb2)
         bFS_min = np.min(bFS)
 
+        # 2. Make the unsymmetrized rates for calculating eta0
+        # The energies of bare dumbbells, solutes and mixed dumbbells are not shifted with their minimum values
+        # pass them in after shifting them.
+
         pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
         pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
 
-        # Make the unsymmetrized rates for calculating eta0
         rate0list = ratelist(self.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
                              self.vkinetic.starset.pdbcontainer.invmap)
 
         rate2list = ratelist(self.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
                              self.vkinetic.starset.mdbcontainer.invmap)
 
-        # Make the symmetrized rates for calculating GF, bias and gamma.
-        # First, make bFSdb_total from individual solute and pure dumbbell free energies and the binding free energy,
+        # 3. Make the symmetrized rates and escape rates for calculating eta0, GF, bias and gamma.
+        # 3a. First, make bFSdb_total from individual solute and pure dumbbell and the binding free energies,
         # i.e, bFdb0, bFS, bFSdb (binding), respectively.
         # For origin states, this should be in such a way so that omega_0 + del_omega = 0 -> this is taken care of in
         # getsymmrates function.
+        # Also, we need to keep a shifted version, to calculate rates.
 
         bFSdb_total = np.zeros(self.vkinetic.starset.mixedstartindex)
         bFSdb_total_shift = np.zeros(self.vkinetic.starset.mixedstartindex)
 
         # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
         # later.
-        # Also, we need to keep an unshifted version to be able to normalize the probabilities
         for starind, star in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
             # For origin complex states, do nothing - leave them as zero.
             if star[0].is_zero(self.vkinetic.starset.pdbcontainer):
@@ -985,36 +988,39 @@ class dumbbellMediated(VacancyMediated):
             bFSdb_total_shift[starind] = bFSdb_total[starind] - (bFdb0_min + bFS_min)
 
         # Now add in the changes for the complexes inside the thermodynamic shell.
+        # Note that we are still not making any changes to the origin states.
+        # We always keep them as zero.
         for starind, star in enumerate(self.thermo.stars[:self.thermo.mixedstartindex]):
             # Get the symorlist index for the representative state of the star
             if star[0].is_zero(self.thermo.pdbcontainer):
                 continue
             # keep the total energies zero for origin states.
-            kinStarind = self.thermo2kin[starind]
-            bFSdb_total[kinStarind] += bFSdb[starind]
+            kinStarind = self.thermo2kin[starind]  # Get the index of the thermo star in the kinetic starset
+            bFSdb_total[kinStarind] += bFSdb[starind]  # add in the interaction energy to the appropriate index
             bFSdb_total_shift[kinStarind] += bFSdb[starind]
 
-        # Get the rates and escapes
+        # 3b. Get the rates and escapes
         # We incorporate a separate "shift" array so that even after shifting, the origin state energies remain
         # zero.
         (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
         (omega4, omega4escape) = self.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFSdb_total_shift, bFT0, bFT1,
                                                    bFT2, bFT3, bFT4)
 
-        # Put them in a tuple to use in makeGF later on.
+        # 3b.1 - Put them in a tuple to use in makeGF later on - maybe simplify this process later on.
         omegas = ((omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),
                   (omega4, omega4escape))
 
-        # Update the bias expansions
+        # 4. Update the bias expansions
         self.update_bias_expansions(rate0list, omega0escape, rate2list, omega2escape)
 
-        # Work out the probabilities and the normalization.
+        # 5. Work out the probabilities and the normalization - will be needed to produce g2 from G2 (created in bias
+        # updates)
         mixed_prob = np.zeros(len(self.vkinetic.starset.mixedstates))
         complex_prob = np.zeros(len(self.vkinetic.starset.complexStates))
 
-        # get the complex boltzmann factors - unshifted
+        # 5a. get the complex boltzmann factors - unshifted
         # TODO Should we at least shift with respect to the minimum of the two (complex, mixed)
-        # Otherwise, how do we think of preventing overflow?
+        # Otherwise, how do we think of preventing overflow in case it occurs?
         for starind, star in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
             for state in star:
                 if not (self.vkinetic.starset.complexIndexdict[state][1] == starind):
@@ -1023,46 +1029,53 @@ class dumbbellMediated(VacancyMediated):
                 # just the product solute and dumbbell probabilities.
                 complex_prob[self.vkinetic.starset.complexIndexdict[state][0]] = np.exp(-bFSdb_total[starind])
 
+        # 5b. get the mixed dumbbell boltzmann factors.
         for siteind, wyckind in enumerate(self.vkinetic.starset.mdbcontainer.invmap):
             # don't need the site index but the wyckoff index corresponding to the site index.
             # The energies are not shifted with respect to the minimum
             mixed_prob[siteind] = np.exp(-bFdb2[wyckind])
 
-        # Form the partition function
+        # 5c. Form the partition function
         part_func = 0.
         # Now add in the non-interactive complex contribution to the partition function
         for dbsiteind, dbwyckind in enumerate(self.vkinetic.starset.pdbcontainer.invmap):
             for solsiteind, solwyckind in enumerate(self.invmap_solute):
                 part_func += np.exp(-(bFdb0[dbwyckind] + bFS[solwyckind]))
 
-        # Normalize
+        # 5d. Normalize - division by the partition function ensures effects of shifting go away.
         complex_prob *= 1. / part_func
         mixed_prob *= 1. / part_func
 
+        # 6. Get the symmetrized Green's function in the basis of the vector stars.
+        # arguments for makeGF - bFdb0 (shifted), bFT0(shifted), omegas, mixed_prob
+        # Note about mixed prob: g2_ij = p_mixed(i)^0.5 * G2_ij * p_mixed(j)^-0.5
+        # So, at the end of the end the day, it only depends on boltzmann factors of the mixed states.
+        # All other factors cancel out (including partition function).
         GF_total, GF20, del_om = self.makeGF(bFdb0 - bFdb0_min, bFT0, omegas, mixed_prob)
 
-        # Once the GF is built, make the correlated part of the transport coefficient
-        # First we make the projection of the bias vector
+        # 7. Once the GF is built, make the correlated part of the transport coefficient
+        # 7a. First we make the projection of the bias vector
         self.biases_solute_vs = np.zeros(self.vkinetic.Nvstars)
         self.biases_solvent_vs = np.zeros(self.vkinetic.Nvstars)
 
         Nvstars_pure = self.vkinetic.Nvstars_pure
 
-        # We need the probabilities of the representative state out of each vector star.
-        prob_sqrt_complex_vs = np.array([complex_prob[self.kinetic.complexIndexdict[vp[0]][0]]
+        # 7b. We need the square roots of the probabilities of the representative state of each vector star.
+        prob_sqrt_complex_vs = np.array([np.sqrt(complex_prob[self.kinetic.complexIndexdict[vp[0]][0]])
                                          for vp in self.vkinetic.vecpos[:Nvstars_pure]])
-        prob_sqrt_mixed_vs = np.array([mixed_prob[self.kinetic.mixedindexdict[vp[0]][0]]
+        prob_sqrt_mixed_vs = np.array([np.sqrt(mixed_prob[self.kinetic.mixedindexdict[vp[0]][0]])
                                        for vp in self.vkinetic.vecpos[Nvstars_pure:]])
 
         # bias_..._new = the bias vector produced after updating with eta0 vectors.
-        # For the solutes in complex configurations, the only local solute bias comes due to displacements during
+        # 7c. For the solutes in complex configurations, the only local bias comes due to displacements during
         # association.
         # complex-complex jumps leave the solute unchanged and hence do not contribute to solute bias.
         self.biases_solute_vs[:Nvstars_pure] = np.array([np.dot(self.bias4_solute_new[i, :], omega4escape[i, :]) *
                                                          prob_sqrt_complex_vs[i] for i in range(Nvstars_pure)])
 
+        # 7d. Next, we work out the updated solute bias in the mixed space.
         # remember that the omega2 bias is the non-local bias, and so has been subtracted out.
-        # See line test_bias_updates function to check that bias2_solute_new is all zeros.
+        # See test_bias_updates function to check that bias2_solute_new is all zeros.
         self.biases_solute_vs[Nvstars_pure:] = np.array([np.dot(self.bias3_solute_new[i - Nvstars_pure, :],
                                                                 omega3escape[i - Nvstars_pure, :]) *
                                                          prob_sqrt_mixed_vs[i - Nvstars_pure]
@@ -1072,13 +1085,14 @@ class dumbbellMediated(VacancyMediated):
         # non-local rates.
         # This gives us only the change in the rates within the kinetic shell due to solute interactions.
         # For solvents out of complex states, both omega1 and omega4 jumps contribute to the local bias.
-        del_W1 = np.zeros_like(omega1escape)
+
+        self.del_W1 = np.zeros_like(omega1escape)
         for i in range(Nvstars_pure):
             for jt in range(len(self.jnet_1)):
-                del_W1[i, jt] = omega1escape[i, jt] -\
+                self.del_W1[i, jt] = omega1escape[i, jt] -\
                                 omega0escape[self.kinetic.star2symlist[self.vkinetic.vstar2star[i]], self.om1types[jt]]
 
-        self.biases_solvent_vs[:Nvstars_pure] = np.array([(np.dot(self.bias1_solvent_new[i, :], del_W1[i, :]) +
+        self.biases_solvent_vs[:Nvstars_pure] = np.array([(np.dot(self.bias1_solvent_new[i, :], self.del_W1[i, :]) +
                                                           np.dot(self.bias4_solvent_new[i, :], omega4escape[i, :])) *
                                                           prob_sqrt_complex_vs[i] for i in range(Nvstars_pure)])
 
@@ -1089,14 +1103,14 @@ class dumbbellMediated(VacancyMediated):
         # In the mixed state space, the local bias comes due only to the omega3(dissociation) jumps.
 
         # Next, we create the gamma vector, projected onto the vector stars
-        gamma_solute_vs = np.dot(GF_total, self.biases_solute_vs)
-        gamma_solvent_vs = np.dot(GF_total, self.biases_solvent_vs)
+        self.gamma_solute_vs = np.dot(GF_total, self.biases_solute_vs)
+        self.gamma_solvent_vs = np.dot(GF_total, self.biases_solvent_vs)
 
         # Next we produce the outer product in the basis of the vector star vector state functions
         # a=solute, b=solvent
-        L_c_aa = np.dot(np.dot(self.kinouter, gamma_solute_vs), self.biases_solute_vs)
-        L_c_bb = np.dot(np.dot(self.kinouter, gamma_solvent_vs), self.biases_solvent_vs)
-        L_c_ab = np.dot(np.dot(self.kinouter, gamma_solvent_vs), self.biases_solute_vs)
+        L_c_aa = np.dot(np.dot(self.kinouter, self.gamma_solute_vs), self.biases_solute_vs)
+        L_c_bb = np.dot(np.dot(self.kinouter, self.gamma_solvent_vs), self.biases_solvent_vs)
+        L_c_ab = np.dot(np.dot(self.kinouter, self.gamma_solvent_vs), self.biases_solute_vs)
 
         # Next, we get to the bare or uncorrelated terms
         # First, we have to generate the probability arrays and multiply them with the ratelists. This will
