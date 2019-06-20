@@ -107,50 +107,6 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         self.onsagercalculator.calc_eta(rate0list, rate0_wycks, rate2list, rate2_wycks)
 
-        # Now, local corrections (randomized)
-        # randomize the forward and backward rates for every jump type./
-        rate1_forward = np.random.rand(len(self.onsagercalculator.jnet_1))
-        rate1_backward = np.random.rand(len(self.onsagercalculator.jnet_1))
-
-        rate1_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure, len(self.onsagercalculator.jnet_1)))
-        for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
-
-            st1 = jlist[0].state1
-            st2 = jlist[0].state2
-
-            v1list = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
-            v2list = self.onsagercalculator.vkinetic.stateToVecStar_pure[st2]
-
-            for v1, inv1 in v1list:
-                rate1_stars[v1, jt] = rate1_forward[jt]
-            for v2, inv2 in v2list:
-                rate1_stars[v2, jt] = rate1_backward[jt]
-
-        rate43_forward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
-        rate43_backward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
-
-        Nvstars_mixed = self.onsagercalculator.vkinetic.Nvstars - self.onsagercalculator.vkinetic.Nvstars_pure
-
-        rate3_stars = np.zeros((Nvstars_mixed, len(self.onsagercalculator.symjumplist_omega43_all)))
-
-        rate4_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure,
-                                len(self.onsagercalculator.symjumplist_omega43_all)))
-
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega43_all):
-            st1 = jlist[0].state1
-            st2 = jlist[0].state2
-
-            v1list = self.onsagercalculator.vkinetic.stateToVecStar_pure[st1]
-
-            v2list = self.onsagercalculator.vkinetic.stateToVecStar_mixed[st2]
-            for v1, inv1 in v1list:
-                rate4_stars[v1, jt] = rate43_forward[jt]
-            for v2, inv2 in v2list:
-                rate3_stars[v2 - self.onsagercalculator.vkinetic.Nvstars_pure, jt] = rate43_backward[jt]
-
-        self.assertEqual(len(self.onsagercalculator.eta00_solvent),
-                         len(self.onsagercalculator.vkinetic.starset.complexStates))
-
         if len(self.onsagercalculator.vkinetic.vecpos_bare) == 0:
             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent,
                                         np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))))
@@ -260,7 +216,7 @@ class test_dumbbell_mediated(unittest.TestCase):
 
                 for jnum, ((IS, FS), dx), jmp in zip(itertools.count(), jindlist, jlist):
                     if i == IS:
-                        # quick check to see jump indexing in consistent (although done while testing stars)
+                        # quick check to see if jump indexing in consistent
                         self.assertTrue(state == jmp.state1)
                         vel_test_solvent += rate2list[jt][jnum] * (self.onsagercalculator.eta02_solvent[FS, :] -
                                                                    self.onsagercalculator.eta02_solvent[IS, :])
@@ -271,7 +227,7 @@ class test_dumbbell_mediated(unittest.TestCase):
             self.assertTrue(np.allclose(vel_test_solute, vel_calc_solute), msg="{}{}".format(vel_test_solute,
                                                                                              vel_calc_solute))
             self.assertTrue(np.allclose(vel_test_solvent, vel_calc_solvent), msg="{}{}".format(vel_test_solvent,
-                                                                                             vel_calc_solvent))
+                                                                                               vel_calc_solvent))
 
     def test_bias_updates(self):
         """
