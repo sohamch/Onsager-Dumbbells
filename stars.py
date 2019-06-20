@@ -360,11 +360,10 @@ class StarSet(object):
                                 jumpset.add(jnew)
                                 jumpset.add(-jnew)
 
-                        # remove redundant rotations, if present
+                        # remove redundant rotations.
                         if np.allclose(disp(self.pdbcontainer, newlist[0].state1, newlist[0].state2), np.zeros(3),
                                        atol=self.pdbcontainer.crys.threshold)\
                                 and newlist[0].state1.i_s == newlist[0].state2.i_s:
-                            newnewlist = []
                             for jind in range(len(newlist)-1, -1, -1):
                                 # start from the last, so we don't skip elements while removing.
                                 j = newlist[jind]

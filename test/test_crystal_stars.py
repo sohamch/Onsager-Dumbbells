@@ -220,15 +220,6 @@ class test_StarSet(unittest.TestCase):
                     if not any(jnew == j for j in jlist):
                         jlist.append(jnew)
                         jlist.append(-jnew)
-                # # Check for absence of redundant rotations.
-                # if (np.allclose(disp(crys_stars.pdbcontainer, jmp.state1, jmp.state2), np.zeros(3),
-                #                atol=crys_stars.pdbcontainer.crys.threshold) and
-                #         jmp.state1.i_s == jmp.state2.i_s):
-                #     j_equiv = jump(jmp.state1, jmp.state2, -jmp.c1, -jmp.c2)
-                #     if j_equiv in jlist:
-                #         self.assertEqual(len(jlist) / 2, len(omega1_network[x]), msg="{}".format(struct))
-                #     # Because here we haven't eliminated redundant rotations, we'll get twice the number of jumps.
-                # else:
                 self.assertEqual(len(jlist), len(omega1_network[x]))
 
             # Now check the rotations
