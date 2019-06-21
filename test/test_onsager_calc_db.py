@@ -959,14 +959,6 @@ class test_dumbbell_mediated(unittest.TestCase):
         print("Passed tests 1 - making complex energies")
 
         # 2. Next, we get all the relevant data from the L_ij function.
-        pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
-        pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
-        symrate0list = symmratelist(self.onsagercalculator.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
-                                    self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
-
-        symrate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
-                                    self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
-
         (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF20, del_om, part_func, probs, omegas,\
         stateprobs = self.onsagercalculator.L_ij(bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4)
 
@@ -978,6 +970,14 @@ class test_dumbbell_mediated(unittest.TestCase):
             self.assertEqual(omega4[jt], omega3[jt])
 
         # 2a.2 - check consistency of non-local rates
+        pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
+        pre2, pre2T = np.ones_like(bFdb2), np.ones_like(bFT2)
+
+        symrate0list = symmratelist(self.onsagercalculator.jnet0_indexed, pre0, bFdb0 - bFdb0_min, pre0T, bFT0,
+                                    self.onsagercalculator.vkinetic.starset.pdbcontainer.invmap)
+
+        symrate2list = symmratelist(self.onsagercalculator.jnet2_indexed, pre2, bFdb2 - bFdb2_min, pre2T, bFT2,
+                                    self.onsagercalculator.vkinetic.starset.mdbcontainer.invmap)
         for jt in range(len(self.onsagercalculator.jnet0)):
             self.assertEqual(symrate0list[jt][0], omega0[jt])
 
@@ -1337,41 +1337,6 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                            self.onsagercalculator.eta0total_solute[FS + Ncomp])
                         for tup in vstar_indlist:
                             self.assertTrue(np.allclose(omega4escape[tup[0], jt], rate))
-
-        # bias14_calc_solvent_vs = np.zeros(Nvstars)
-        # # bias14_calc_solute_vs = np.zeros(Nvstars)
-        # for i in range(Nvstars_pure):
-        #     # get the square root probability for this star
-        #     stateind = self.onsagercalculator.kinetic.complexIndexdict[self.onsagercalculator.vkinetic.vecpos[i][0]][0]
-        #     prob_sqrt = np.sqrt(complex_prob[stateind])
-        #     bias14_calc_solvent_vs[i] += np.dot(self.onsagercalculator.bias1_solvent_new[i, :],
-        #                                         self.onsagercalculator.del_W1[i, :]) * prob_sqrt
-        #     # bias14_calc_solvent_vs[i] += np.dot(self.onsagercalculator.bias4_solvent_new[i, :],
-        #     #                                     omega4escape[i, :]) * prob_sqrt
-        #     # bias14_calc_solute_vs[i] += np.dot(self.onsagercalculator.bias4_solute_new[i, :],
-        #     #                                     omega4escape[i, :]) * prob_sqrt
-        #
-        # # self.assertTrue(np.allclose(self.onsagercalculator.biases_solvent_vs[:Nvstars_pure],
-        # #                             bias14_calc_solvent_vs[:Nvstars_pure]))
-        # # self.assertTrue(np.allclose(self.onsagercalculator.biases_solute_vs[:Nvstars_pure],
-        # #                             bias14_calc_solute_vs[:Nvstars_pure]))
-        # # Now convert to cartesian form
-        # bias14_calc_solvent = np.zeros((Ncomp + Nmix, 3))
-        # # bias14_calc_solute = np.zeros((Ncomp + Nmix, 3))
-        # for i, state in enumerate(self.onsagercalculator.kinetic.complexStates):
-        #     indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[state]
-        #     for tup in indlist:
-        #         bias14_calc_solvent[i, :] += bias14_calc_solvent_vs[tup[0]] *\
-        #                                      self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]
-        #
-        #         # bias14_calc_solute[i, :] += sum([bias14_calc_solute_vs[tup[0]] *
-        #         #                                  self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]])
-        #
-        # for i in range(Ncomp):
-        #     self.assertTrue(np.allclose(bias14_calc_solvent[i], bias_true_updated_solvent[i]), msg="\n{}\n{}".format(
-        #         bias14_calc_solvent[i], bias_true_updated_solvent[i]
-        #     ))
-        # # self.assertTrue(np.allclose(bias14_calc_solute, bias_true_updated_solute))
 
         # 6b. - Now, we do it for the mixed dumbbell states
         # In the mixed dumbbell state space, the non-local rates come only from the contributions by the omega3 jumps
