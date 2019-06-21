@@ -1131,7 +1131,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         # 4.c.1.3 - check negative definiteness
         eigvals, eigvecs = np.linalg.eig(self.onsagercalculator.g2)
         for val in eigvals:
-            self.assertTrue(val <= 0.)
+            self.assertTrue(val <= 1e-8, msg="\n{}".format(val))
 
         # 4.c.1.4 - check vector star representation.
         for i in range(Nvstars_pure, Nvstars):
@@ -1245,9 +1245,27 @@ class test_dumbbell_mediated(unittest.TestCase):
             # if some vector stars contain the same crystal stars (and hence states), then for a given jt, they should
             # also have the same unsymmetrized rates.
             # omega1 jumps lead to no solute updates
+
+            # Do nothing for origin states - bias out of them needs to remain zero.
             if comp_state.is_zero(self.onsagercalculator.pdbcontainer):
+                self.assertTrue(np.allclose(complex_prob[i], 0.))
+                for jt in range(len(self.onsagercalculator.jnet_1)):
+                    for tup in vstar_indlist:
+                        self.assertTrue(np.allclose(omega1escape[tup[0], jt], 0.))
                 continue
+
             for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+
+                # first check if we start from or end up into an origin state.
+                if jlist[0].state1.is_zero(self.onsagercalculator.pdbcontainer):
+                    for tup in vstar_indlist:
+                        self.assertTrue(np.allclose(omega1escape[tup[0], jt], 0.))
+                    continue
+
+                if jlist[0].state2.is_zero(self.onsagercalculator.pdbcontainer):
+                    for tup in vstar_indlist:
+                        self.assertTrue(np.allclose(omega1escape[tup[0], jt], 0.))
+                    continue
                 for jnum, jmp in enumerate(jlist):
                     if jmp.state1 == comp_state:
                         jt0 = self.onsagercalculator.om1types[jt]
@@ -1263,7 +1281,9 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                            (dx + self.onsagercalculator.eta0total_solvent[IS] -
                                                             self.onsagercalculator.eta0total_solvent[FS])
                         for tup in vstar_indlist:
-                            self.assertTrue(np.allclose(omega1escape[tup[0], jt], rate1), msg="\n{}\n{}".format(jt, dx))
+                            self.assertTrue(np.allclose(omega1escape[tup[0], jt], rate1),
+                                            msg="\n{}\n{}\n{}\n{}\n{}".format(rate1, omega1escape[tup[0], jt],
+                                                                          jmp.state1, jmp.state2, self.onsagercalculator.pdbcontainer.iorlist))
                             self.assertTrue(np.allclose(self.onsagercalculator.del_W1[tup[0], jt], rate))
 
             # Now, update with omega4 contributions
@@ -1291,7 +1311,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         for i in range(Ncomp, Ncomp + Nmix):
             mixstate = self.onsagercalculator.kinetic.mixedstates[i - Ncomp]
             vstar_indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[mixstate]
-            starind = self.onsagercalculator.kinetic.complexIndexdict[mixstate][1]
+            starind = self.onsagercalculator.kinetic.mixedindexdict[mixstate][1]
             mdbwyckind = self.onsagercalculator.kinetic.star2symlist[starind]
 
             # Now, update with omega3 contributions
@@ -1314,7 +1334,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                            self.onsagercalculator.eta0total_solute[IS + Ncomp] -
                                                            self.onsagercalculator.eta0total_solute[FS])
                         for tup in vstar_indlist:
-                            self.assertTrue(np.allclose(omega4escape[tup[0], jt], rate))
+                            self.assertTrue(np.allclose(omega3escape[tup[0] - Nvstars_pure, jt], rate))
 
         # 6c. Now, we get the bias vector as calculated in the code from the corresponding vector stars.
         bias_solvent_calc = np.zeros((Ncomp + Nmix, 3))
