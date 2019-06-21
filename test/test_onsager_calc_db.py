@@ -652,13 +652,26 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.complexStates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[state]
-            solute_vel_4[i, :] = sum([vel4_solute_vs[tup[0] ] * self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]
+            solute_vel_4[i, :] = sum([vel4_solute_vs[tup[0]] * self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]
                                      for tup in indlist])
             solvent_vel_4[i, :] = sum([vel4_solvent_vs[tup[0]] * self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]
                                        for tup in indlist])
+
+        # check against explicit evaluation
+        solute_vel_4_direct = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
+        solvent_vel_4_direct = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
+        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4_indexed):
+            for jnum, ((IS, FS), dx) in enumerate(jlist):
+                or2 = self.onsagercalculator.mdbcontainer.iorlist[FS][1]
+                dx_solute = or2/2.
+                dx_solvent = dx - or2/2.
+                solute_vel_4_direct[IS, :] += rate4list[jt][jnum] * dx_solute
+                solvent_vel_4_direct[IS, :] += rate4list[jt][jnum] * dx_solvent
+        self.assertTrue(np.allclose(solute_vel_4_direct, solute_vel_4))
+        self.assertTrue(np.allclose(solvent_vel_4_direct, solvent_vel_4))
         # Next, manually update with the eta0 vectors
         for jt,jlist in enumerate(self.onsagercalculator.symjumplist_omega4_indexed):
-            for jnum, ((IS,FS),dx) in enumerate(jlist):
+            for jnum, ((IS, FS), dx) in enumerate(jlist):
                 solute_vel_4[IS, :] += rate4list[jt][jnum] * (self.onsagercalculator.eta00_solute[IS] -
                                                               self.onsagercalculator.eta02_solute[FS])
                 solvent_vel_4[IS, :] += rate4list[jt][jnum] * (self.onsagercalculator.eta00_solvent[IS] -
@@ -971,16 +984,31 @@ class test_dumbbell_mediated(unittest.TestCase):
         for jt in range(len(self.onsagercalculator.jnet2)):
             self.assertEqual(symrate2list[jt][0], omega2[jt])
 
-        # 2b - get the state probabilities.
+        # 2b - get the state probabilities and check that all states in a vector star have the same probability
+        Nvstars = self.onsagercalculator.vkinetic.Nvstars
+        Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
+        Nvstars_mixed = Nvstars - Nvstars_pure
         complex_prob, mixed_prob = stateprobs
+        for vp in self.onsagercalculator.vkinetic.vecpos[:Nvstars_pure]:
+            prob0 = complex_prob[self.onsagercalculator.kinetic.complexIndexdict[vp[0]][0]]
+            for state in vp:
+                stateind = self.onsagercalculator.kinetic.complexIndexdict[state][0]
+                self.assertEqual(complex_prob[stateind], prob0)
+        for vp in self.onsagercalculator.vkinetic.vecpos[Nvstars_pure:]:
+            prob0 = mixed_prob[self.onsagercalculator.kinetic.mixedindexdict[vp[0]][0]]
+            for state in vp:
+                stateind = self.onsagercalculator.kinetic.mixedindexdict[state][0]
+                self.assertEqual(mixed_prob[stateind], prob0)
+
+        # 2c - check that origin states have zero probability
+        for i, state in enumerate(self.onsagercalculator.kinetic.complexStates):
+            if state.is_zero(self.onsagercalculator.pdbcontainer):
+                self.assertTrue(np.allclose(complex_prob[i], 0.))
+
         print("passed tests in 2 - checking non-local rate consistencies")
 
         # 3. Now, that we have the symmetrized rates, we need to construct the delta_om matrix using it's mathematical
         # form
-        Nvstars = self.onsagercalculator.vkinetic.Nvstars
-        Nvstars_pure = self.onsagercalculator.vkinetic.Nvstars_pure
-        Nvstars_mixed = Nvstars - Nvstars_pure
-
         # 3a. First, we do the non-diagonal parts
         delta_om_test = np.zeros((Nvstars, Nvstars))
         # 3a.1 - First, we concentrate on the complex-complex block and the omega1 jumps
@@ -1248,6 +1276,8 @@ class test_dumbbell_mediated(unittest.TestCase):
 
             # Do nothing for origin states - bias out of them needs to remain zero.
             if comp_state.is_zero(self.onsagercalculator.pdbcontainer):
+                # self.assertTrue(np.allclose(self.onsagercalculator.eta0total_solvent[i], np.zeros(3)))
+                # self.assertTrue(np.allclose(self.onsagercalculator.eta0total_solute[i], np.zeros(3)))
                 self.assertTrue(np.allclose(complex_prob[i], 0.))
                 for jt in range(len(self.onsagercalculator.jnet_1)):
                     for tup in vstar_indlist:
@@ -1255,24 +1285,24 @@ class test_dumbbell_mediated(unittest.TestCase):
                 continue
 
             for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
-
-                # first check if we start from or end up into an origin state.
-                if jlist[0].state1.is_zero(self.onsagercalculator.pdbcontainer):
-                    for tup in vstar_indlist:
-                        self.assertTrue(np.allclose(omega1escape[tup[0], jt], 0.))
-                    continue
-
-                if jlist[0].state2.is_zero(self.onsagercalculator.pdbcontainer):
-                    for tup in vstar_indlist:
-                        self.assertTrue(np.allclose(omega1escape[tup[0], jt], 0.))
-                    continue
                 for jnum, jmp in enumerate(jlist):
+                    jt0 = self.onsagercalculator.om1types[jt]
+                    rate0 = np.exp(- bFT0[jt0] + bFdb0[dbwyckind] - bFdb0_min)
+                    rate1 = np.exp(- bFT1[jt] + bFSdb_total_shift[starind])
                     if jmp.state1 == comp_state:
-                        jt0 = self.onsagercalculator.om1types[jt]
-                        # get the jump rate
-                        rate1 = np.exp(- bFT1[jt] + bFSdb_total_shift[starind])
+                        if jmp.state2.is_zero(self.onsagercalculator.pdbcontainer):
+                            # If the final state is an origin state, then the omega1 rate of that jump is zero,
+                            # but delta omega is still non-zero.
+                            # And if the initial state is not an origin state, then that means the non-local change
+                            # in the bias for that jump is non-zero and is exactly the opposite of the total bias for
+                            # that jump.
+                            # which means delW1 = -rate0
+                            rate1 = 0. #set the omega1 rate to zero
+                            for tup in vstar_indlist:
+                                self.assertTrue(np.allclose(omega1escape[tup[0], jt], 0.))
+                                self.assertTrue(np.allclose(self.onsagercalculator.del_W1[tup[0], jt], -rate0))
+                            # continue
                         # next, we need the bare dumbbell transition rate for this jump
-                        rate0 = np.exp(- bFT0[jt0] + bFdb0[dbwyckind] - bFdb0_min)
                         # the non-local rate is the difference between the two.
                         rate = rate1 - rate0
                         (IS, FS), dx = self.onsagercalculator.jnet1_indexed[jt][jnum]
@@ -1281,10 +1311,11 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                            (dx + self.onsagercalculator.eta0total_solvent[IS] -
                                                             self.onsagercalculator.eta0total_solvent[FS])
                         for tup in vstar_indlist:
-                            self.assertTrue(np.allclose(omega1escape[tup[0], jt], rate1),
-                                            msg="\n{}\n{}\n{}\n{}\n{}".format(rate1, omega1escape[tup[0], jt],
-                                                                          jmp.state1, jmp.state2, self.onsagercalculator.pdbcontainer.iorlist))
-                            self.assertTrue(np.allclose(self.onsagercalculator.del_W1[tup[0], jt], rate))
+                            if not jmp.state2.is_zero(self.onsagercalculator.pdbcontainer):
+                                self.assertTrue(np.allclose(omega1escape[tup[0], jt], rate1),
+                                                msg="\n{}\n{}\n{}\n{}\n{}".format(rate1, omega1escape[tup[0], jt],
+                                                                              jmp.state1, jmp.state2,self.onsagercalculator.pdbcontainer.iorlist))
+                                self.assertTrue(np.allclose(self.onsagercalculator.del_W1[tup[0], jt], rate))
 
             # Now, update with omega4 contributions
             for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4):
@@ -1293,6 +1324,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                         # get the jump rate
                         rate = np.exp(- bFT4[jt] + bFSdb_total_shift[starind])
                         (IS, FS), dx = self.onsagercalculator.symjumplist_omega4_indexed[jt][jnum]
+                        self.assertEqual(FS, jmp.state2.db.iorind)
                         or2 = self.onsagercalculator.mdbcontainer.iorlist[jmp.state2.db.iorind][1]
                         dx_solute = or2/2.
                         dx_solvent = dx - or2/2.
@@ -1306,23 +1338,40 @@ class test_dumbbell_mediated(unittest.TestCase):
                         for tup in vstar_indlist:
                             self.assertTrue(np.allclose(omega4escape[tup[0], jt], rate))
 
-        bias14_calc_solvent_vs = np.zeros(Nvstars)
-        bias14_calc_solute_vs = np.zeros(Nvstars)
-        for i in range(Nvstars_pure):
-            # get the square root probability for this star
-            stateind = self.onsagercalculator.kinetic.complexIndexdict[self.onsagercalculator.vkinetic.vecpos[i][0]][0]
-            prob_sqrt = np.sqrt(complex_prob[stateind])
-            bias14_calc_solvent_vs[i] += np.dot(self.onsagercalculator.bias1_solvent_new[i, :],
-                                                omega1escape[i, :]) * prob_sqrt
-            bias14_calc_solvent_vs[i] += np.dot(self.onsagercalculator.bias4_solvent_new[i, :],
-                                                omega4escape[i, :]) * prob_sqrt
-            bias14_calc_solute_vs[i] += np.dot(self.onsagercalculator.bias4_solute_new[i, :],
-                                                omega4escape[i, :]) * prob_sqrt
-        # Now convert to cartesian form
-        bias14_calc_solvent = np.zeros((Ncomp + Nmix, 3))
-        for i, state in range(Ncomp):
-
-
+        # bias14_calc_solvent_vs = np.zeros(Nvstars)
+        # # bias14_calc_solute_vs = np.zeros(Nvstars)
+        # for i in range(Nvstars_pure):
+        #     # get the square root probability for this star
+        #     stateind = self.onsagercalculator.kinetic.complexIndexdict[self.onsagercalculator.vkinetic.vecpos[i][0]][0]
+        #     prob_sqrt = np.sqrt(complex_prob[stateind])
+        #     bias14_calc_solvent_vs[i] += np.dot(self.onsagercalculator.bias1_solvent_new[i, :],
+        #                                         self.onsagercalculator.del_W1[i, :]) * prob_sqrt
+        #     # bias14_calc_solvent_vs[i] += np.dot(self.onsagercalculator.bias4_solvent_new[i, :],
+        #     #                                     omega4escape[i, :]) * prob_sqrt
+        #     # bias14_calc_solute_vs[i] += np.dot(self.onsagercalculator.bias4_solute_new[i, :],
+        #     #                                     omega4escape[i, :]) * prob_sqrt
+        #
+        # # self.assertTrue(np.allclose(self.onsagercalculator.biases_solvent_vs[:Nvstars_pure],
+        # #                             bias14_calc_solvent_vs[:Nvstars_pure]))
+        # # self.assertTrue(np.allclose(self.onsagercalculator.biases_solute_vs[:Nvstars_pure],
+        # #                             bias14_calc_solute_vs[:Nvstars_pure]))
+        # # Now convert to cartesian form
+        # bias14_calc_solvent = np.zeros((Ncomp + Nmix, 3))
+        # # bias14_calc_solute = np.zeros((Ncomp + Nmix, 3))
+        # for i, state in enumerate(self.onsagercalculator.kinetic.complexStates):
+        #     indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[state]
+        #     for tup in indlist:
+        #         bias14_calc_solvent[i, :] += bias14_calc_solvent_vs[tup[0]] *\
+        #                                      self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]
+        #
+        #         # bias14_calc_solute[i, :] += sum([bias14_calc_solute_vs[tup[0]] *
+        #         #                                  self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]])
+        #
+        # for i in range(Ncomp):
+        #     self.assertTrue(np.allclose(bias14_calc_solvent[i], bias_true_updated_solvent[i]), msg="\n{}\n{}".format(
+        #         bias14_calc_solvent[i], bias_true_updated_solvent[i]
+        #     ))
+        # # self.assertTrue(np.allclose(bias14_calc_solute, bias_true_updated_solute))
 
         # 6b. - Now, we do it for the mixed dumbbell states
         # In the mixed dumbbell state space, the non-local rates come only from the contributions by the omega3 jumps
@@ -1375,8 +1424,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                    self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]]
                                                    for tup in indlist])
 
-        # self.assertTrue(np.allclose(bias_solvent_calc, bias_true_updated_solvent))
-        # self.assertTrue(np.allclose(bias_solute_calc, bias_true_updated_solute))
+        self.assertTrue(np.allclose(bias_solvent_calc, bias_true_updated_solvent))
+        self.assertTrue(np.allclose(bias_solute_calc, bias_true_updated_solute))
 
         print("passed tests 6 - checking the final bias vector")
 
