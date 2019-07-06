@@ -19,6 +19,7 @@ import itertools
 from copy import deepcopy
 from numpy import linalg as LA
 from scipy.special import hyp1f1, gamma, expi #, gammainc
+from scipy.linalg import pinv2
 
 # two quick shortcuts
 T3D, T2D = PE.Taylor3D, PE.Taylor2D
@@ -344,6 +345,7 @@ class GFCrystalcalc(object):
             #Why should there be as many zeros as there are disconnected pieces of the jumpnetwork?
             #Work this out
             raise ArithmeticError("Did not find {} equilibrium solution to rates?".format(self.Ndiff))
+        # Project the Taylor jumps on to the eigenbasis
         self.omega_Taylor_rotate = (self.omega_Taylor.ldot(self.vr.T)).rdot(self.vr)
         oT_dd, oT_dr, oT_rd, oT_rr, oT_D, etav = self.BlockRotateOmegaTaylor(self.omega_Taylor_rotate)
         #dd(q),dr(q),rd(q),rr(q),D(p or q?)
@@ -367,7 +369,9 @@ class GFCrystalcalc(object):
         for t in [oT_dd, oT_dr, oT_rd, oT_rr, oT_D]:
             t.irotate(powtrans)  # rotate in place
             t.reduce()
-        if oT_D.coefflist[0][1] != 0: raise ArithmeticError("Problem isotropizing D?")
+        if oT_D.coefflist[0][1] != 0:
+            print(oT_D.coefflist[0][1])
+            raise ArithmeticError("Problem isotropizing D?")
         # 4. Invert Taylor expansion using block inversion formula, and truncate at n=0
         gT_rotate = self.BlockInvertOmegaTaylor(oT_dd, oT_dr, oT_rd, oT_rr, oT_D)
         self.g_Taylor = (gT_rotate.ldot(self.vr)).rdot(self.vr.T)
@@ -386,8 +390,17 @@ class GFCrystalcalc(object):
                                     for n in range(self.Ndiff))
             else:
                 # invert, subtract off Taylor expansion to leave semicontinuum piece
-                gsc_qij[qind] = np.linalg.inv(self.omega_qij[qind, :, :]) \
+                try:
+                    # print(qind)
+                    gsc_qij[qind] = np.linalg.inv(self.omega_qij[qind, :, :]) \
                                 - self.g_Taylor(np.dot(self.pqtrans, q), g_Taylor_fnlp)
+                except:
+                    print(self.omega_qij[qind, :, :])
+                    print(q, qind)
+                    gsc_qij[qind] = pinv2(self.omega_qij[qind, :, :])\
+                                    - self.g_Taylor(np.dot(self.pqtrans, q), g_Taylor_fnlp)
+
+
         # 6. Slice the pieces we want for fast(er) evaluation (since we specify i and j in evaluation)
         self.gsc_ijq = np.zeros((self.N, self.N, self.Nkpt), dtype=complex)
         for i in range(self.N):

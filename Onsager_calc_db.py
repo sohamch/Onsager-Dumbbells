@@ -339,7 +339,6 @@ class dumbbellMediated(VacancyMediated):
             if count != 1:
                 raise TypeError("thermodynamic and kinetic shells not consistent.")
 
-
         self.generate_jnets(cutoff, solt_solv_cut, solv_solv_cut, closestdistance)
 
         # Generate the GF expansions
@@ -380,7 +379,8 @@ class dumbbellMediated(VacancyMediated):
         # The equation can be derived from the Fourier space inverse relations at q=0 for their symmetrized versions.
         self.G0 = pinv2(W0)
 
-        W2 = np.zeros((len(self.vkinetic.starset.mixedstates), len(self.vkinetic.starset.mixedstates)))
+        W2 = np.zeros((len(self.kinetic.mixedstates),
+                       len(self.kinetic.mixedstates)))
         # use the indexed omega2 to fill this up - need omega2 indexed to mixed subspace of starset
         for jt, jlist in enumerate(self.jnet2_indexed):
             for jnum, ((i, j), dx) in enumerate(jlist):
@@ -865,10 +865,10 @@ class dumbbellMediated(VacancyMediated):
         (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
         (omega4, omega4escape) = omegas
 
-        GF20 = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
+        GF02 = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
 
-        # left-upper part of GF20 = Nvstars_pure x Nvstars_pure g0 matrix
-        # right-lower part of GF20 = Nvstars_mixed x Nvstars_mixed g2 matrix
+        # left-upper part of GF02 = Nvstars_pure x Nvstars_pure g0 matrix
+        # right-lower part of GF02 = Nvstars_mixed x Nvstars_mixed g2 matrix
 
         pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
 
@@ -878,7 +878,6 @@ class dumbbellMediated(VacancyMediated):
         P0mixedSqrt = np.diag(np.sqrt(mixed_prob))
         P0mixedSqrt_inv = np.diag(1./np.sqrt(mixed_prob))
 
-        # Add a test for this - diagonality and explicit construction
         self.g2 = np.dot(np.dot(P0mixedSqrt, self.G2), P0mixedSqrt_inv)
 
         self.GFcalc_pure.SetRates(pre0, bFdb0, pre0T, bFT0)
@@ -886,12 +885,11 @@ class dumbbellMediated(VacancyMediated):
         GF0 = np.array([self.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
                         [star[0] for star in self.GFstarset_pure]])
 
-        # noinspection PyTypeChecker
         GF2 = np.array([self.g2[tup[0][0], tup[0][1]] for tup in
                         [star[0] for star in self.GFstarset_mixed]])
 
-        GF20[Nvstars_pure:, Nvstars_pure:] = np.dot(self.GFexpansion_mixed, GF2)
-        GF20[:Nvstars_pure, :Nvstars_pure] = np.dot(self.GFexpansion_pure, GF0)
+        GF02[Nvstars_pure:, Nvstars_pure:] = np.dot(self.GFexpansion_mixed, GF2)
+        GF02[:Nvstars_pure, :Nvstars_pure] = np.dot(self.GFexpansion_pure, GF0)
 
         # make delta omega
         delta_om = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
@@ -915,9 +913,9 @@ class dumbbellMediated(VacancyMediated):
         for i in range(Nvstars_pure, self.vkinetic.Nvstars):
             delta_om[i, i] += np.dot(rate3escape[i - Nvstars_pure, :], omega3escape[i - Nvstars_pure, :])
 
-        GF_total = np.dot(np.linalg.inv(np.eye(self.vkinetic.Nvstars) + np.dot(GF20, delta_om)), GF20)
+        GF_total = np.dot(np.linalg.inv(np.eye(self.vkinetic.Nvstars) + np.dot(GF02, delta_om)), GF02)
 
-        return zeroclean(GF_total), GF20, delta_om
+        return zeroclean(GF_total), GF02, delta_om
 
     def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4):
 
@@ -1051,7 +1049,7 @@ class dumbbellMediated(VacancyMediated):
         # Note about mixed prob: g2_ij = p_mixed(i)^0.5 * G2_ij * p_mixed(j)^-0.5
         # So, at the end of the end the day, it only depends on boltzmann factors of the mixed states.
         # All other factors cancel out (including partition function).
-        GF_total, GF20, del_om = self.makeGF(bFdb0 - bFdb0_min, bFT0, omegas, mixed_prob)
+        GF_total, GF02, del_om = self.makeGF(bFdb0 - bFdb0_min, bFT0, omegas, mixed_prob)
 
         # 7. Once the GF is built, make the correlated part of the transport coefficient
         # 7a. First we make the projection of the bias vector
@@ -1165,4 +1163,4 @@ class dumbbellMediated(VacancyMediated):
         L_uc_ab = np.dot(D1expansion_ab, prob_om1) + np.dot(D2expansion_ab, prob_om2) + \
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
-        return (L_uc_aa,L_c_aa), (L_uc_bb,L_c_bb), (L_uc_ab,L_c_ab), GF_total, GF20, del_om, part_func, probs, omegas, stateprobs
+        return (L_uc_aa,L_c_aa), (L_uc_bb,L_c_bb), (L_uc_ab,L_c_ab), GF_total, GF02, del_om, part_func, probs, omegas, stateprobs
