@@ -278,7 +278,6 @@ class GFCrystalcalc(object):
                 pexp = Taylor.powexp(dx, normalize=False) #make the powerexpansion for the components of dx
                 for n in range(Taylor.Lmax + 1):
                     (c[n][2])[:, i, j] += pre[n] * (Taylor.powercoeff[n] * pexp)[:Taylor.powlrange[n]]
-                    ######
             Taylorjumps.append(Taylor(c))
         return Taylorjumps
 
@@ -347,7 +346,9 @@ class GFCrystalcalc(object):
             raise ArithmeticError("Did not find {} equilibrium solution to rates?".format(self.Ndiff))
         # Project the Taylor jumps on to the eigenbasis
         self.omega_Taylor_rotate = (self.omega_Taylor.ldot(self.vr.T)).rdot(self.vr)
+        # Get the Taylor expansions of different blocks of omega(q)
         oT_dd, oT_dr, oT_rd, oT_rr, oT_D, etav = self.BlockRotateOmegaTaylor(self.omega_Taylor_rotate)
+        # print(oT_D.coefflist[0][1])
         #dd(q),dr(q),rd(q),rr(q),D(p or q?)
         # 2. Calculate D and eta
         self.D = self.Diffusivity(oT_D)
@@ -370,7 +371,6 @@ class GFCrystalcalc(object):
             t.irotate(powtrans)  # rotate in place
             t.reduce()
         if oT_D.coefflist[0][1] != 0:
-            print(oT_D.coefflist[0][1])
             raise ArithmeticError("Problem isotropizing D?")
         # 4. Invert Taylor expansion using block inversion formula, and truncate at n=0
         gT_rotate = self.BlockInvertOmegaTaylor(oT_dd, oT_dr, oT_rd, oT_rr, oT_D)
@@ -391,12 +391,9 @@ class GFCrystalcalc(object):
             else:
                 # invert, subtract off Taylor expansion to leave semicontinuum piece
                 try:
-                    # print(qind)
                     gsc_qij[qind] = np.linalg.inv(self.omega_qij[qind, :, :]) \
                                 - self.g_Taylor(np.dot(self.pqtrans, q), g_Taylor_fnlp)
                 except:
-                    print(self.omega_qij[qind, :, :])
-                    print(q, qind)
                     gsc_qij[qind] = pinv2(self.omega_qij[qind, :, :])\
                                     - self.g_Taylor(np.dot(self.pqtrans, q), g_Taylor_fnlp)
 
