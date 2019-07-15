@@ -76,15 +76,6 @@ class GF_dumbbells(GFCrystalcalc):
 
         self.D, self.eta = 0, 0
 
-        Taylor = T3D()
-        self.indlist_2 = []
-        for i in range(3):
-            for j in range(3):
-                for k in range(3):
-                    if i + j + k > 2:
-                        continue
-                    self.indlist_2.append(Taylor.pow2ind[i, j, k])
-
     def BreakdownGroups(self):
         """
         indexing breakdown for each (i,j) pair.
