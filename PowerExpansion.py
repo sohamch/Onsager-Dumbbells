@@ -942,8 +942,10 @@ class Taylor3D(object):
         acoeff = sorted(getattr(a, 'coefflist', a),
                         key=cls.__sortkey)  # fallback to a if not there... which assumes it's a list
         lead = acoeff[0]
+
         if lead[1] != 0:
             raise ValueError('Cannot invert expansion: leading-order term {} has l={}>0'.format(lead[0], lead[1]))
+
         if len(lead[2].shape) == 1:
             leadinvmat = 1 / lead[2][0]
         else:

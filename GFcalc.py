@@ -400,7 +400,7 @@ class GFCrystalcalc(object):
                 # gamma point... need to treat separately
                 gsc_qij[qind] = (-1 / self.pmax ** 2) * \
                                 sum(np.outer(self.vr[:, n], self.vr[:, n])
-                                    for n in range(self.Ndiff))
+                                    for n in range(self.Ndiff))  # why this?
             else:
                 # invert, subtract off Taylor expansion to leave semicontinuum piece
                 try:
