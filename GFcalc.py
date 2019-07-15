@@ -18,7 +18,7 @@ from onsager import PowerExpansion as PE
 import itertools
 from copy import deepcopy
 from numpy import linalg as LA
-from scipy.special import hyp1f1, gamma, expi #, gammainc
+from scipy.special import hyp1f1, gamma, expi  # , gammainc
 from scipy.linalg import pinv2
 
 # two quick shortcuts
@@ -61,8 +61,8 @@ class Fnl_u(object):
         self.half_pm = 0.5 * pm
         self.log = (self.a == 0)  # (n == -2 and l == 0 and d == 2)
         self.pre = (-1j) ** l * prefactor * (pm ** (d + n + l)) * gamma(self.a) / \
-                   ((np.pi ** (d/2)) * (2 ** (d + l)) * gamma(self.b)) if not self.log else \
-                   prefactor/(2*np.pi)
+                   ((np.pi ** (d / 2)) * (2 ** (d + l)) * gamma(self.b)) if not self.log else \
+            prefactor / (2 * np.pi)
 
     def __call__(self, u):
         # return self.pre * u ** self.l * hyp1f1(self.a, self.b, -(u * self.half_pm) ** 2)
@@ -70,11 +70,11 @@ class Fnl_u(object):
             return self.pre * u ** self.l * hyp1f1(self.a, self.b, -(u * self.half_pm) ** 2)
         else:
             if u == 0:
-                return self.pre * (-0.5*np.euler_gamma + np.log(self.half_pm))
+                return self.pre * (-0.5 * np.euler_gamma + np.log(self.half_pm))
             else:
                 # incomplete Gamma(0,x) = -Ei(-x) (exponential integral), turns out...
                 # return self.pre * (-np.euler_gamma - np.log(u) -0.5*gammainc(0, (u*self.half_pm)**2))
-                return self.pre * (-np.euler_gamma - np.log(u) + 0.5*expi(-(u*self.half_pm)**2))
+                return self.pre * (-np.euler_gamma - np.log(u) + 0.5 * expi(-(u * self.half_pm) ** 2))
 
 
 class GFCrystalcalc(object):
@@ -86,7 +86,7 @@ class GFCrystalcalc(object):
     a corresponding jumpnetwork for that vacancy.
     """
 
-    def __init__(self, crys, chem, sitelist, jumpnetwork, Nmax=4, kptwt = None):
+    def __init__(self, crys, chem, sitelist, jumpnetwork, Nmax=4, kptwt=None):
         """
         Initializes our calculator with the appropriate topology / connectivity. Doesn't
         require, at this point, the site probabilities or transition rates to be known.
@@ -139,6 +139,15 @@ class GFCrystalcalc(object):
                                for jumplist in jumpnetwork)
         self.D, self.eta = 0, 0  # we don't yet know the diffusivity
 
+        Taylor = T3D()
+        self.indlist_2 = []
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    if i + j + k > 2:
+                        continue
+                    self.indlist_2.append(Taylor.pow2ind[i, j, k])
+
     @staticmethod
     def networkcount(jumpnetwork, N):
         """Return a count of how many separate connected networks there are
@@ -148,10 +157,10 @@ class GFCrystalcalc(object):
         jngraph = np.zeros((N, N), dtype=bool)
         for jlist in jumpnetwork:
             for (i, j), dx in jlist:
-                jngraph[i,j] = True
+                jngraph[i, j] = True
         connectivity = 0  # had been a list... if we want to return the list of sets
-        disconnected = {i for i in range(N)}#this is a set object.
-        while len(disconnected)>0:
+        disconnected = {i for i in range(N)}  # this is a set object.
+        while len(disconnected) > 0:
             # take the "first" element out, and find everything it's connected to:
             i = min(disconnected)
             cset = {i}
@@ -160,7 +169,7 @@ class GFCrystalcalc(object):
                 clen = len(cset)
                 for n in cset.copy():
                     for m in disconnected.copy():
-                        if jngraph[n,m]:
+                        if jngraph[n, m]:
                             cset.add(m)
                             disconnected.remove(m)
                 # check if we've stopped adding new members:
@@ -250,10 +259,10 @@ class GFCrystalcalc(object):
         SEjumps = np.zeros((N, len(jumpnetwork)), dtype=int)
         for J, jumplist in enumerate(jumpnetwork):
             for (i, j), dx in jumplist:
-                FTjumps[J, :, i, j] += np.exp(1.j * np.dot(kpts, dx)) #this is an array of exponentials
+                FTjumps[J, :, i, j] += np.exp(1.j * np.dot(kpts, dx))  # this is an array of exponentials
                 SEjumps[i, J] += 1
-                #How many jumps of each type come out of site j
-                #in case of dumbbell -> point to the (i,or) index
+                # How many jumps of each type come out of site j
+                # in case of dumbbell -> point to the (i,or) index
         return FTjumps, SEjumps
 
     def TaylorExpandJumps(self, jumpnetwork, N):
@@ -264,18 +273,18 @@ class GFCrystalcalc(object):
         :param N: number of sites
         :return T3Djumps: list of Taylor3D expansions of the jump network
         """
-        #Soham - any change required? -> see the Fourier equation in my case
+        # Soham - any change required? -> see the Fourier equation in my case
         Taylor = T3D if self.crys.dim == 3 else T2D
         Taylor()  # need to do just to initialize the class; if already initialized, won't do anything
         # Taylor expansion coefficients for exp(1j*x) = (1j)^n/n!
         pre = np.array([(1j) ** n / factorial(n, True) for n in range(Taylor.Lmax + 1)])
-        #The prefactors for the jumps in the Taylor expansion of e^(-iq.dx)
+        # The prefactors for the jumps in the Taylor expansion of e^(-iq.dx)
         Taylorjumps = []
         for jumplist in jumpnetwork:
             # coefficients; we use tuples because we'll be successively adding to the coefficients in place
             c = [(n, n, np.zeros((Taylor.powlrange[n], N, N), dtype=complex)) for n in range(Taylor.Lmax + 1)]
             for (i, j), dx in jumplist:
-                pexp = Taylor.powexp(dx, normalize=False) #make the powerexpansion for the components of dx
+                pexp = Taylor.powexp(dx, normalize=False)  # make the powerexpansion for the components of dx
                 for n in range(Taylor.Lmax + 1):
                     (c[n][2])[:, i, j] += pre[n] * (Taylor.powercoeff[n] * pexp)[:Taylor.powlrange[n]]
             Taylorjumps.append(Taylor(c))
@@ -288,7 +297,7 @@ class GFCrystalcalc(object):
         :return grouparray: array[NG][3][3] of the NG group operations
         :return indexpair: array[N][N][NG][2] of the index pair for each group operation
         """
-        #Soham - no changes required to this
+        # Soham - no changes required to this
         grouparray = np.zeros((self.NG, self.crys.dim, self.crys.dim))
         indexpair = np.zeros((self.N, self.N, self.NG, 2), dtype=int)
         for ng, g in enumerate(self.crys.G):
@@ -318,50 +327,49 @@ class GFCrystalcalc(object):
         """
         self.symmrate = self.SymmRates(pre, betaene, preT, betaeneT)
         self.maxrate = self.symmrate.max()
-        self.symmrate /= self.maxrate #make all rates relative to maxrate
+        self.symmrate /= self.maxrate  # make all rates relative to maxrate
         self.escape = -np.diag([sum(self.SEjumps[i, J] * pretrans / pre[wi] * np.exp(betaene[wi] - BET)
                                     for J, pretrans, BET in zip(itertools.count(), preT, betaeneT))
                                 for i, wi in enumerate(self.invmap)]) / self.maxrate
         self.omega_qij = np.tensordot(self.symmrate, self.FTjumps, axes=(0, 0))
-        #omega_qij shape - (Nkpts,N,N) -> what does this represent - see GFcalc module notebook
+        # omega_qij shape - (Nkpts,N,N) -> what does this represent - see GFcalc module notebook
         self.omega_qij[:] += self.escape  # adds it to every point
-        #lines 325-327 implement equation 37 in the 2017 paper, wihtout the eigenvector terms.
-        #NxN self.escape matrix  is added to each NxN matrix in omega_qij.
+        # lines 325-327 implement equation 37 in the 2017 paper, wihtout the eigenvector terms.
+        # NxN self.escape matrix  is added to each NxN matrix in omega_qij.
 
         self.omega_Taylor = sum(symmrate * expansion
                                 for symmrate, expansion in zip(self.symmrate, self.Taylorjumps))
-        #here, "expansion" is a Taylor3D object, symmrate is a number. see __rmul__ in Taylor3D.
-        #Multiplies all the matrix elements in the Cs corresponding to each jump with the rate.
-        #Then does an element-wise addition of the matrix elements in c[2]s for each jumptype.
-        #The final result is the Taylor expansion terms of omega_q stored in matrix form.
+        # here, "expansion" is a Taylor3D object, symmrate is a number. see __rmul__ in Taylor3D.
+        # Multiplies all the matrix elements in the Cs corresponding to each jump with the rate.
+        # Then does an element-wise addition of the matrix elements in c[2]s for each jumptype.
+        # The final result is the Taylor expansion terms of omega_q stored in matrix form.
         self.omega_Taylor += self.escape
-        #Add in the rates of the diagonal rates.
+        # Add in the rates of the diagonal rates.
         Taylor = T3D if self.crys.dim == 3 else T2D
 
         # 1. Diagonalize gamma point value; use to rotate to diffusive / relaxive, and reduce
-        self.r, self.vr = self.DiagGamma()#eigenvalues and vectors at q=0.
+        self.r, self.vr = self.DiagGamma()  # eigenvalues and vectors at q=0.
         if not np.allclose(self.r[:self.Ndiff], 0):
-            #Why should there be as many zeros as there are disconnected pieces of the jumpnetwork?
-            #Work this out
             raise ArithmeticError("Did not find {} equilibrium solution to rates?".format(self.Ndiff))
         # Project the Taylor jumps on to the eigenbasis
         self.omega_Taylor_rotate = (self.omega_Taylor.ldot(self.vr.T)).rdot(self.vr)
         # Get the Taylor expansions of different blocks of omega(q)
         oT_dd, oT_dr, oT_rd, oT_rr, oT_D, etav = self.BlockRotateOmegaTaylor(self.omega_Taylor_rotate)
         # print(oT_D.coefflist[0][1])
-        #dd(q),dr(q),rd(q),rr(q),D(p or q?)
+        # dd(q),dr(q),rd(q),rr(q),D(p or q?)
         # 2. Calculate D and eta
         self.D = self.Diffusivity(oT_D)
-        #Recall before looking into the function that oT_D = q.D.q + O(q^4)
+        # Recall before looking into the function that oT_D = q.D.q + O(q^4)
         self.eta = self.biascorrection(etav)
         # 3. Spatially rotate the Taylor expansion
         self.d, self.e = LA.eigh(self.D / self.maxrate)
-        #eigenvalues and vectors of the diffusivity matrix, with which we must scale and change basis
+        # eigenvalues and vectors of the diffusivity matrix, with which we must scale and change basis
         # had been 1e-11; changed to 1e-7 to reflect likely integration accuracy of k-point grids
-        self.pmax = np.sqrt(min([np.dot(G, np.dot(G, self.D / self.maxrate)) for G in self.crys.BZG]) / -np.log(pmaxerror))
-        self.qptrans = self.e.copy() #coefficients of q in terms of p (eq 54a)
-        self.pqtrans = self.e.T.copy() #coefficients of p in terms of q (eq 53a)
-        self.uxtrans = self.e.T.copy() #coefficients of u in terms of x (eq 53b)
+        self.pmax = np.sqrt(
+            min([np.dot(G, np.dot(G, self.D / self.maxrate)) for G in self.crys.BZG]) / -np.log(pmaxerror))
+        self.qptrans = self.e.copy()  # coefficients of q in terms of p (eq 54a)
+        self.pqtrans = self.e.T.copy()  # coefficients of p in terms of q (eq 53a)
+        self.uxtrans = self.e.T.copy()  # coefficients of u in terms of x (eq 53b)
         for i in range(self.crys.dim):
             self.qptrans[:, i] /= np.sqrt(self.d[i])
             self.pqtrans[i, :] *= np.sqrt(self.d[i])
@@ -371,10 +379,15 @@ class GFCrystalcalc(object):
             t.irotate(powtrans)  # rotate in place
             t.reduce()
         if oT_D.coefflist[0][1] != 0:
-            raise ArithmeticError("Problem isotropizing D?")
+            # Maybe we need to check here if the TRACE of the Ndiff x Ndiff tensors for the contributions of the
+            # directionally dependent terms of second order are zero.
+            # Because we know that trace(D(q)) = -q.D.q + O(q^4)
+            for ind in self.indlist_2[1:]:
+                if not np.allclose(np.trace(oT_D.coefflist[0][2][ind]), 0)  :
+                    raise ArithmeticError("Problem isotropizing D?")
         # 4. Invert Taylor expansion using block inversion formula, and truncate at n=0
         gT_rotate = self.BlockInvertOmegaTaylor(oT_dd, oT_dr, oT_rd, oT_rr, oT_D)
-        self.g_Taylor = (gT_rotate.ldot(self.vr)).rdot(self.vr.T)
+        self.g_Taylor = (gT_rotate.ldot(self.vr)).rdot(self.vr.T) # Bring back to state space from eigenspace
         self.g_Taylor.separate()
         g_Taylor_fnlp = {(n, l): Fnl_p(n, self.pmax) for (n, l) in self.g_Taylor.nl()}
         prefactor = self.crys.volume / np.sqrt(np.product(self.d))
@@ -392,11 +405,13 @@ class GFCrystalcalc(object):
                 # invert, subtract off Taylor expansion to leave semicontinuum piece
                 try:
                     gsc_qij[qind] = np.linalg.inv(self.omega_qij[qind, :, :]) \
-                                - self.g_Taylor(np.dot(self.pqtrans, q), g_Taylor_fnlp)
-                except:
-                    gsc_qij[qind] = pinv2(self.omega_qij[qind, :, :])\
                                     - self.g_Taylor(np.dot(self.pqtrans, q), g_Taylor_fnlp)
-
+                except:
+                    print(qind)
+                    print(q)
+                    print(self.omega_qij[qind, :, :])
+                    gsc_qij[qind] = pinv2(self.omega_qij[qind, :, :]) \
+                                    - self.g_Taylor(np.dot(self.pqtrans, q), g_Taylor_fnlp)
 
         # 6. Slice the pieces we want for fast(er) evaluation (since we specify i and j in evaluation)
         self.gsc_ijq = np.zeros((self.N, self.N, self.Nkpt), dtype=complex)
@@ -456,17 +471,17 @@ class GFCrystalcalc(object):
             if n == 0:
                 if l != 0: raise ValueError("n=0 term has angular dependence? l != 0")
                 gammacoeff = -coeff[0]
-                #Work through the math by referring to the diagram of coeff in the GFcalc module notes.
-                #Note that in omega_Taylor, for a given (i,j), the elements are the sums -> sum over R(omega(0i,Rj)*Taylor terms
-                #This is nothing but omega_q at q=0, i.e, the Gamma point.
+                # Work through the math by referring to the diagram of coeff in the GFcalc module notes.
+                # Note that in omega_Taylor, for a given (i,j), the elements are the sums -> sum over R(omega(0i,Rj)*Taylor terms
+                # This is nothing but omega_q at q=0, i.e, the Gamma point.
                 break
         if gammacoeff is None:
             # missing onsite term--indicates that it's been reduced to 0
             # should ONLY happen if we have a Bravais lattice, e.g.
             gammacoeff = np.zeros((self.N, self.N), dtype=complex)
         r, vr = LA.eigh(gammacoeff)
-        #eigh assumes that the matrix is symmetric (works on the LT part, assuming UT is given by symmetry)
-        #It also returns the eigenvalues in sorted order.
+        # eigh assumes that the matrix is symmetric (works on the LT part, assuming UT is given by symmetry)
+        # It also returns the eigenvalues in sorted order.
         return -r, vr
 
     def Diffusivity(self, omega_Taylor_D=None):
@@ -483,7 +498,7 @@ class GFCrystalcalc(object):
         D = np.zeros((self.crys.dim, self.crys.dim))
         for (n, l, c) in omega_Taylor_D.coefflist:
             if n < 2: raise ValueError("Reduced Taylor expansion for D doesn't begin with n==2")
-            DTr = np.trace(c.real, axis1=1, axis2=2)/self.Ndiff
+            DTr = np.trace(c.real, axis1=1, axis2=2) / self.Ndiff
             if n == 2:
                 # first up: constant term (if present)
                 D += np.eye(self.crys.dim) * DTr[0]
@@ -507,8 +522,8 @@ class GFCrystalcalc(object):
         """
         if etav is None: return self.eta
         Taylor = T3D if self.crys.dim == 3 else T2D
-        d_ind_list = [(d, Taylor.pow2ind[(0,)*d + (1,) + (0,)*(self.crys.dim-1-d)])
-                       for d in range(self.crys.dim)]
+        d_ind_list = [(d, Taylor.pow2ind[(0,) * d + (1,) + (0,) * (self.crys.dim - 1 - d)])
+                      for d in range(self.crys.dim)]
         eta = np.zeros((self.N, self.crys.dim))
         if etav == 0: return eta
         for (n, l, c) in etav.coefflist:
@@ -517,7 +532,7 @@ class GFCrystalcalc(object):
                 if l >= 1:
                     for d, ind in d_ind_list:
                         eta[:, d] += sum(np.dot(self.vr[:, self.Ndiff:], c[ind, :])[:, n].imag
-                                         for n in range(self.Ndiff))/self.Ndiff
+                                         for n in range(self.Ndiff)) / self.Ndiff
         return eta
 
     def BlockRotateOmegaTaylor(self, omega_Taylor_rotate):
