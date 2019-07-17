@@ -1153,7 +1153,7 @@ class dumbbellMediated(VacancyMediated):
         (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.bareExpansion(self.eta0total_solute,
                                                                               self.eta0total_solvent)
 
-        print("time for uncorrelated term = {}".format(time.time()-start))
+        # print("time for uncorrelated term = {}".format(time.time()-start))
         L_uc_aa = np.dot(D1expansion_aa, prob_om1) + np.dot(D2expansion_aa, prob_om2) +\
                   np.dot(D3expansion_aa, prob_om3) + np.dot(D4expansion_aa, prob_om4)
 
