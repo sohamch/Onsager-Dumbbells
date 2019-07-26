@@ -1082,6 +1082,7 @@ class dumbbellMediated(VacancyMediated):
         # omega1 has total rates. So, to get the non-local change in the rates, we must subtract out the corresponding
         # non-local rates.
         # This gives us only the change in the rates within the kinetic shell due to solute interactions.
+        # The effect of the non-local rates has been cancelled out by subtracting off the eta vectors.
         # For solvents out of complex states, both omega1 and omega4 jumps contribute to the local bias.
 
         self.del_W1 = np.zeros_like(omega1escape)
@@ -1113,7 +1114,6 @@ class dumbbellMediated(VacancyMediated):
         # Next, we get to the bare or uncorrelated terms
         # First, we have to generate the probability arrays and multiply them with the ratelists. This will
         # Give the probability-square-root multiplied rates in the uncorrelated terms.
-
         # For the complex states, weed out the origin state probabilities
         for stateind, prob in enumerate(complex_prob):
             if self.vkinetic.starset.complexStates[stateind].is_zero(self.vkinetic.starset.pdbcontainer):
@@ -1146,7 +1146,7 @@ class dumbbellMediated(VacancyMediated):
         probs = (prob_om1, prob_om2, prob_om4, prob_om3)
 
         start = time.time()
-        # Generate the bare expansions
+        # Generate the bare expansions with modified displacements
         (D1expansion_aa, D1expansion_bb, D1expansion_ab),\
         (D2expansion_aa, D2expansion_bb, D2expansion_ab),\
         (D3expansion_aa, D3expansion_bb, D3expansion_ab),\
@@ -1163,4 +1163,5 @@ class dumbbellMediated(VacancyMediated):
         L_uc_ab = np.dot(D1expansion_ab, prob_om1) + np.dot(D2expansion_ab, prob_om2) + \
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
-        return (L_uc_aa,L_c_aa), (L_uc_bb,L_c_bb), (L_uc_ab,L_c_ab), GF_total, GF02, del_om, part_func, probs, omegas, stateprobs
+        return (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF02, del_om, part_func, probs,\
+               omegas, stateprobs
