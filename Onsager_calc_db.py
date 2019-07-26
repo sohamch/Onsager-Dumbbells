@@ -58,13 +58,13 @@ class BareDumbbell(Interstitial):
         self.container = container
         self.jumpnetwork = jumpnetwork
         self.N = sum([len(lst) for lst in container.symorlist])
-        self.VB, self.VV = self.FullVectorBasis(mixed)
-        self.NV = len(self.VB)
+        # self.VB, self.VV = self.FullVectorBasis(mixed)
+        # self.NV = len(self.VB)
 
         # Need to check if this portion is still necessary
-        self.omega_invertible = True
-        if self.NV > 0:
-            self.omega_invertible = any(np.allclose(g.cartrot, -np.eye(3)) for g in self.container.crys.G)
+        # self.omega_invertible = True
+        # if self.NV > 0:
+        #     self.omega_invertible = any(np.allclose(g.cartrot, -np.eye(3)) for g in self.container.crys.G)
 
         # #What is this for though?
         # if self.omega_invertible:
@@ -154,32 +154,6 @@ class BareDumbbell(Interstitial):
                                 lis.append(g)
             glist.append(lis)
         return glist
-
-    # def stateprob(self, pre, betaene):
-    #     """Returns our (i,or) probabilities, normalized, as a vector.
-    #        Straightforward extension from vacancy case.
-    #     """
-    #     # be careful to make sure that we don't under-/over-flow on beta*ene
-    #     minbetaene = min(betaene)
-    #     rho = np.array([pre[w] * np.exp(minbetaene - betaene[w]) for w in self.container.invmap])
-    #     return rho / sum(rho)
-    #
-    # #make a static method and reuse later for solute case?
-    # def ratelist(self, pre, betaene, preT, betaeneT):
-    #     """Returns a list of lists of rates, matched to jumpnetwork"""
-    #     stateene = np.array([betaene[w] for w in self.container.invmap])
-    #     statepre = np.array([pre[w] for w in self.container.invmap])
-    #     return [[pT * np.exp(stateene[i] - beT) / statepre[i]
-    #              for i, j, dx, c1, c2 in t]
-    #             for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
-    #
-    # def symmratelist(self, pre, betaene, preT, betaeneT):
-    #     """Returns a list of lists of symmetrized rates, matched to jumpnetwork"""
-    #     stateene = np.array([betaene[w] for w in self.container.invmap])
-    #     statepre = np.array([pre[w] for w in self.container.invmap])
-    #     return [[pT * np.exp(0.5 * stateene[i] + 0.5 * stateene[j] - beT) / np.sqrt(statepre[i] * statepre[j])
-    #              for i, j, dx, c1, c2 in t]
-    #             for t, pT, beT in zip(self.jumpnetwork, preT, betaeneT)]
 
     def diffusivity(self, pre, betaene, preT, betaeneT):
         """
