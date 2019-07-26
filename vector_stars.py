@@ -579,6 +579,11 @@ class vectorStars(VectorStarSet):
                (zeroclean(rate4expansion), zeroclean(rate4escape))
 
     def outer(self):
+        """
+        computes the outer product tensor to perform 'bias *outer* gamma', i.e., the uncorrelated part in the vector
+        star basis.
+        :return: outerprod, 3x3xNvstarsxNvstars outer product tensor.
+        """
         outerprod = np.zeros((3, 3, self.Nvstars, self.Nvstars))
         for i in range(self.Nvstars_pure):
             for j in range(self.Nvstars_pure):
@@ -586,7 +591,7 @@ class vectorStars(VectorStarSet):
                     for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
                         if si == sj:
                             outerprod[:, :, i, j] += np.outer(vi, vj)
-
+        # There should be no non-zero outer product tensors between the pure and mixed dumbbells.
         for i in range(self.Nvstars_pure, self.Nvstars):
             for j in range(self.Nvstars_pure, self.Nvstars):
                 for si, vi in zip(self.vecpos[i], self.vecvec[i]):
