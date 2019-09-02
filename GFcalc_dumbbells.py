@@ -1,5 +1,5 @@
 import numpy as np
-import PowerExpansion as PE
+import onsager.PowerExpansion as PE
 
 from onsager.GFcalc import GFCrystalcalc
 # import GFcalc
