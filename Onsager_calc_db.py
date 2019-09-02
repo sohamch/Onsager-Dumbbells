@@ -674,7 +674,7 @@ class dumbbellMediated(VacancyMediated):
 
 
         """
-        beta = 1/kT
+        beta = 1./kT
         bFdb0 = beta * enedb0 - np.log(predb0)
         bFdb2 = beta * enedb2 - np.log(predb2)
         bFS = beta * eneS - np.log(preS)
@@ -948,32 +948,36 @@ class dumbbellMediated(VacancyMediated):
         bFSdb_total = np.zeros(self.vkinetic.starset.mixedstartindex)
         bFSdb_total_shift = np.zeros(self.vkinetic.starset.mixedstartindex)
 
-        # first, just add up the solute and dumbbell energies. We will add in the corrections to the thermo shell states
-        # later.
+        # first, just add up the solute and dumbbell energies.
+        # Now adding changes to states to both within and outside the thermodynamics shell. This is because on
+        # changing the energy reference, the "interaction energy" might not be zero in the kinetic shell.
+        # The kinetic shell is defined as that outside which the omega1 rates are the same as the omega0 rates.
+        # THAT is the definition that needs to be satisfied.
         for starind, star in enumerate(self.vkinetic.starset.stars[:self.vkinetic.starset.mixedstartindex]):
             # For origin complex states, do nothing - leave them as zero.
             if star[0].is_zero(self.vkinetic.starset.pdbcontainer):
                 continue
             symindex = self.vkinetic.starset.star2symlist[starind]
             # First, get the unshifted value
-            bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]]
+            bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]] + bFSdb[starind]
             bFSdb_total_shift[starind] = bFSdb_total[starind] - (bFdb0_min + bFS_min)
 
-        # Now add in the changes for the complexes inside the thermodynamic shell.
-        # Note that we are still not making any changes to the origin states.
-        # We always keep them as zero.
-        for starind, star in enumerate(self.thermo.stars[:self.thermo.mixedstartindex]):
-            # Get the symorlist index for the representative state of the star
-            if star[0].is_zero(self.thermo.pdbcontainer):
-                continue
-            # keep the total energies zero for origin states.
-            kinStarind = self.thermo2kin[starind]  # Get the index of the thermo star in the kinetic starset
-            bFSdb_total[kinStarind] += bFSdb[starind]  # add in the interaction energy to the appropriate index
-            bFSdb_total_shift[kinStarind] += bFSdb[starind]
+        # # Now add in the changes for the complexes inside the thermodynamic shell.
+        # # Note that we are still not making any changes to the origin states.
+        # # We always keep them as zero.
+        # for starind, star in enumerate(self.thermo.stars[:self.thermo.mixedstartindex]):
+        #     # Get the symorlist index for the representative state of the star
+        #     if star[0].is_zero(self.thermo.pdbcontainer):
+        #         continue
+        #     # keep the total energies zero for origin states.
+        #     kinStarind = self.thermo2kin[starind]  # Get the index of the thermo star in the kinetic starset
+        #     bFSdb_total[kinStarind] += bFSdb[starind]  # add in the interaction energy to the appropriate index
+        #     bFSdb_total_shift[kinStarind] += bFSdb[starind]
 
         # 3b. Get the rates and escapes
         # We incorporate a separate "shift" array so that even after shifting, the origin state energies remain
         # zero.
+        betaFs = [bFdb0, bFdb2, bFS, bFSdb, bFSdb_total, bFSdb_total_shift, bFT0, bFT1, bFT2, bFT3, bFT4]
         (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
         (omega4, omega4escape) = self.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFSdb_total_shift, bFT0, bFT1,
                                                    bFT2, bFT3, bFT4)
@@ -1137,5 +1141,5 @@ class dumbbellMediated(VacancyMediated):
         L_uc_ab = np.dot(D1expansion_ab, prob_om1) + np.dot(D2expansion_ab, prob_om2) + \
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
-        return (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF02, del_om, part_func, probs,\
+        return (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF02, betaFs, del_om, part_func, probs,\
                omegas, stateprobs
