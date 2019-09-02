@@ -917,8 +917,11 @@ class dumbbellMediated(VacancyMediated):
         Return:
             L_aa, L_bb, L_ab - needs to be multiplied by c_db/KT
         """
-        if not len(bFSdb) == self.thermo.mixedstartindex:
-            raise TypeError("Interaction energies must be present for all and only all thermodynamic shell states.")
+        # if not len(bFSdb) == self.thermo.mixedstartindex:
+        #     raise TypeError("Interaction energies must be present for all and only all thermodynamic shell states.")
+        for en in bFSdb[self.thermo.mixedstartindex+2:]:
+            if not en == bFSdb[self.thermo.mixedstartindex+1]:
+                raise ValueError("States in kinetic shell have difference reference interaction energy")
 
         # 1. Get the minimum free energies of solutes, pure dumbbells and mixed dumbbells
         bFdb0_min = np.min(bFdb0)
@@ -1012,11 +1015,14 @@ class dumbbellMediated(VacancyMediated):
             mixed_prob[siteind] = np.exp(-bFdb2[wyckind])
 
         # 5c. Form the partition function
+        # get the "reference energy" for non-interacting complexes. This is just the value of bFSdb (interaction)
+        # for any state in the kinetic shell
+        del_en = bFSdb[self.thermo.mixedstartindex + 1]
         part_func = 0.
         # Now add in the non-interactive complex contribution to the partition function
         for dbsiteind, dbwyckind in enumerate(self.vkinetic.starset.pdbcontainer.invmap):
             for solsiteind, solwyckind in enumerate(self.invmap_solute):
-                part_func += np.exp(-(bFdb0[dbwyckind] + bFS[solwyckind]))
+                part_func += np.exp(-(bFdb0[dbwyckind] + bFS[solwyckind] + del_en))
 
         # 5d. Normalize - division by the partition function ensures effects of shifting go away.
         complex_prob *= 1. / part_func
