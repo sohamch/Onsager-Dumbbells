@@ -285,8 +285,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         rate1_forward = np.random.rand(len(self.onsagercalculator.jnet_1))
         rate1_backward = np.random.rand(len(self.onsagercalculator.jnet_1))
         rate10_forward = np.array([rate0_forward[jt] for jt in self.onsagercalculator.om1types])
-        rate10_backward = np.array([rate0_backward[jt] for jt in self.onsagercalculator.om1types]
-                                   )
+        rate10_backward = np.array([rate0_backward[jt] for jt in self.onsagercalculator.om1types])
+
         rate10_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure, len(self.onsagercalculator.jnet_1)))
         rate1_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure, len(self.onsagercalculator.jnet_1)))
 
@@ -991,6 +991,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         complex_prob, mixed_prob = stateprobs
         for vp in self.onsagercalculator.vkinetic.vecpos[:Nvstars_pure]:
             prob0 = complex_prob[self.onsagercalculator.kinetic.complexIndexdict[vp[0]][0]]
+            # check that all the other states have the same energy
             for state in vp:
                 stateind = self.onsagercalculator.kinetic.complexIndexdict[state][0]
                 self.assertEqual(complex_prob[stateind], prob0)
