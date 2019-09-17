@@ -108,10 +108,16 @@ class dbStates(object):
             return any(np.allclose(o + tup[1], 0, atol=1e-8) for tup in lis)
 
         sitelist = self.crys.sitelist(self.chem)
+        if not len(self.family) == len(sitelist):
+            raise TypeError("Orientations must be given for every Wyckoff set. Enter [0,0,0] for Wyckoff sets that "
+                            "don't have a dumbbell")
         # Get the Wyckoff sets
         iorlist = []
         for wyckind, wycksites in enumerate(sitelist):
             orlist = self.family[wyckind]  # Get the orientations allowed on the given Wyckoff set.
+            if np.allclose(orlist[0], np.zeros(3)):
+                # If zero vector is entered, then that means this set does not have dumbbells.
+                continue
             site = wycksites[0]  # Get the representative site of the Wyckoff set.
             newlist = []
             for o in orlist:
