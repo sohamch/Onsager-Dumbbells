@@ -193,16 +193,16 @@ class BareDumbbell(Interstitial):
                 # for domega and dbias - read up section 2.2 in the paper.
                 # These are to evaluate the derivative of D wrt to beta. Read later.
                 D0 += 0.5 * np.outer(dx, dx) * rho[i] * rate
-                Db += 0.5 * np.outer(dx, dx) * rho[i] * rate * (bET - Eave)
+                # Db += 0.5 * np.outer(dx, dx) * rho[i] * rate * (bET - Eave)
                 # Db - derivative with respect to beta
         # gamma_i = np.zeros((self.N, 3))
-        gamma_i = np.tensordot(pinv2(omega_ij), bias_i, axes=(1, 0))
 
+        gamma_i = np.tensordot(pinv2(omega_ij), bias_i, axes=(1, 0))
         Dcorr = np.zeros((3, 3))
         for i in range(self.N):
             Dcorr += np.outer(bias_i[i], gamma_i[i])
 
-        return D0 + Dcorr
+        return D0, Dcorr, omega_ij, pinv2(omega_ij)
 
 
 class dumbbellMediated(VacancyMediated):
@@ -217,7 +217,7 @@ class dumbbellMediated(VacancyMediated):
     """
 
     def __init__(self, pdbcontainer, mdbcontainer, jnet0data, jnet2data, cutoff, solt_solv_cut, solv_solv_cut,
-                 closestdistance, NGFmax=4, Nthermo=0):
+                 closestdistance, NGFmax=4, Nthermo=0, omega43_dats=None):
         """
 
         :param pdbcontainer: The container object for pure dumbbells - instance of dbStates
@@ -237,19 +237,22 @@ class dumbbellMediated(VacancyMediated):
         :param closestdistance: The closest distance allowable to all other atoms in the crystal.
         :param NGFmax: Parameter controlling k-point density (cf - GFcalc.py from the vacancy version)
         :param Nthermo: The number of jump-nearest neighbor sites that are to be considered within the thermodynamic
+        :param self.omega43_dats - provides manual option to enter omega43 jump network data. Note - the necessary data
+        must be stored in the same way they are returned from the jumpnetwork_omega34 function in the "stars" module.
         shell.
         """
         # All the required quantities will be extracted from the containers as we move along
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
         (self.jnet0, self.jnet0_indexed), (self.jnet2, self.jnet2_indexed) = jnet0data, jnet2data
+        self.omega43_dats = omega43_dats
         self.crys = pdbcontainer.crys  # we assume this is the same in both containers
         self.chem = pdbcontainer.chem
 
         # Create the solute invmap
         sitelist_solute = self.crys.sitelist(self.chem)
-        self.invmap_solute = np.zeros(len(self.crys.basis[self.chem]),dtype=int)
-        for wyckind,ls in enumerate(sitelist_solute):
+        self.invmap_solute = np.zeros(len(self.crys.basis[self.chem]), dtype=int)
+        for wyckind, ls in enumerate(sitelist_solute):
             for site in ls:
                 self.invmap_solute[site] = wyckind
 
@@ -284,10 +287,17 @@ class dumbbellMediated(VacancyMediated):
         (self.jnet_1, self.jnet1_indexed, self.jtags1), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
 
         # next, omega3 and omega_4, indexed to pure and mixed states
-        (self.symjumplist_omega43_all, self.symjumplist_omega43_all_indexed), (
-            self.symjumplist_omega4, self.symjumplist_omega4_indexed, self.jtags4), \
-        (self.symjumplist_omega3, self.symjumplist_omega3_indexed,
-         self.jtags3) = self.vkinetic.starset.jumpnetwork_omega34(cutoff, solv_solv_cut, solt_solv_cut, closestdistance)
+        # If data already provided, use those
+        if self.omega43_dats is None:
+            (self.symjumplist_omega43_all, self.symjumplist_omega43_all_indexed), (
+                self.symjumplist_omega4, self.symjumplist_omega4_indexed, self.jtags4), \
+            (self.symjumplist_omega3, self.symjumplist_omega3_indexed,
+             self.jtags3) = self.vkinetic.starset.jumpnetwork_omega34(cutoff, solv_solv_cut, solt_solv_cut,
+                                                                      closestdistance)
+        else:
+            (self.symjumplist_omega43_all, self.symjumplist_omega43_all_indexed) = self.omega43_dats[0]
+            (self.symjumplist_omega4, self.symjumplist_omega4_indexed, self.jtags4) = self.omega43_dats[1]
+            (self.symjumplist_omega3, self.symjumplist_omega3_indexed, self.jtags3) = self.omega43_dats[1]
 
     def generate(self, Nthermo, cutoff, solt_solv_cut, solv_solv_cut, closestdistance):
 
@@ -326,8 +336,8 @@ class dumbbellMediated(VacancyMediated):
         # generate the rate expansions
         self.rateExps = self.vkinetic.rateexpansion(self.jnet_1, self.om1types, self.symjumplist_omega43_all)
 
-        #generate the outer products of the vector stars
-        self.kinouter =  self.vkinetic.outer()
+        # generate the outer products of the vector stars
+        self.kinouter = self.vkinetic.outer()
         # self.clearcache()
 
     def calc_eta(self, rate0list, omega0escape, rate2list, omega2escape):
@@ -437,10 +447,12 @@ class dumbbellMediated(VacancyMediated):
             indlist = self.vkinetic.stateToVecStar_mixed[st]
             if len(indlist) != 0:
                 self.NlsolventVel_mixed[self.vkinetic.starset.mixedindexdict[st][0]][:] = \
-                    sum([velocity2SolventTotNonLoc[tup[0] - Nvstars_pure] * self.vkinetic.vecvec[tup[0]][tup[1]] for tup in
+                    sum([velocity2SolventTotNonLoc[tup[0] - Nvstars_pure] * self.vkinetic.vecvec[tup[0]][tup[1]] for tup
+                         in
                          indlist])
                 self.NlsoluteVel_mixed[self.vkinetic.starset.mixedindexdict[st][0]][:] = \
-                    sum([velocity2SoluteTotNonLoc[tup[0] - Nvstars_pure] * self.vkinetic.vecvec[tup[0]][tup[1]] for tup in
+                    sum([velocity2SoluteTotNonLoc[tup[0] - Nvstars_pure] * self.vkinetic.vecvec[tup[0]][tup[1]] for tup
+                         in
                          indlist])
 
         # Then, we use G2 to get the eta2 vectors. The second 2 in eta02 indicates omega2 space.
@@ -526,10 +538,10 @@ class dumbbellMediated(VacancyMediated):
                 # see if there's an array corresponding to the initial state
                 if not st0 in initindexdict:
                     continue
-                self.delbias2expansion_solute[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) *\
+                self.delbias2expansion_solute[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) * \
                                                         np.sum(np.dot(initindexdict[st0], eta_proj_solute))
 
-                self.delbias2expansion_solvent[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) *\
+                self.delbias2expansion_solvent[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) * \
                                                          np.sum(np.dot(initindexdict[st0], eta_proj_solvent))
 
             # However, need to update for omega3 because the solvent shift vector in the complex space is not zero.
@@ -539,9 +551,9 @@ class dumbbellMediated(VacancyMediated):
                 # see if there's an array corresponding to the initial state
                 if not st0 in initindexdict:
                     continue
-                self.delbias3expansion_solute[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) *\
+                self.delbias3expansion_solute[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) * \
                                                         np.sum(np.dot(initindexdict[st0], eta_proj_solute))
-                self.delbias3expansion_solvent[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) *\
+                self.delbias3expansion_solvent[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) * \
                                                          np.sum(np.dot(initindexdict[st0], eta_proj_solvent))
 
     def update_bias_expansions(self, rate0list, omega0escape, rate2list, omega2escape):
@@ -564,7 +576,7 @@ class dumbbellMediated(VacancyMediated):
         Returns the contributions to the terms of the uncorrelated diffusivity term,
         grouped separately for each type of jump. Intended to be called after displacements have been applied to the displacements.
 
-        Params:
+        Params: The eta vectors in each state.
 
 
         In mixed dumbbell space, both solute and solvent will have uncorrelated contributions.
@@ -573,17 +585,19 @@ class dumbbellMediated(VacancyMediated):
         # a = solute, b = solvent
         # eta0_solute, eta0_solvent = self.eta0total_solute, self.eta0total_solvent
         # Stores biases out of complex states, followed by mixed dumbbell states.
-        jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4 =\
-            self.jnet1_indexed, self.om1types, self.jnet2_indexed, self.symjumplist_omega3_indexed,\
+        jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4 = \
+            self.jnet1_indexed, self.om1types, self.jnet2_indexed, self.symjumplist_omega3_indexed, \
             self.symjumplist_omega4_indexed
 
         Ncomp = len(self.vkinetic.starset.complexStates)
 
+        # We need the D0expansion to evaluate the modified dispalcement jumps
+        # outside the kinetic shell. See the notebook for more details.
         # D0expansion_aa = np.zeros((3, 3, len(self.jnet0)))
         # D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
-        # D0expansion_ab = np.zeros((3, 3, len(sel
+        # D0expansion_ab = np.zeros((3, 3, len(self.jnet0)))
 
-        # Since omega1 contains the total rate and not just the change, we don't need a separate D0 expansion.
+        # Omega1 contains the total rate and not just the change.
         D1expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega1)))
         D1expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega1)))
         D1expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega1)))
@@ -617,8 +631,8 @@ class dumbbellMediated(VacancyMediated):
             for (IS, FS), dx in jumplist:
                 o1 = iorlist_mixed[self.vkinetic.starset.mixedstates[IS].db.iorind][1]
                 o2 = iorlist_mixed[self.vkinetic.starset.mixedstates[FS].db.iorind][1]
-                dx_solute = dx + o2/2. - o1/2. + eta0_solute[Ncomp + IS] - eta0_solute[Ncomp + FS]
-                dx_solvent = dx - o2/2. + o1/2. + eta0_solvent[Ncomp + IS] - eta0_solvent[Ncomp + FS]
+                dx_solute = dx + o2 / 2. - o1 / 2. + eta0_solute[Ncomp + IS] - eta0_solute[Ncomp + FS]
+                dx_solvent = dx - o2 / 2. + o1 / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[Ncomp + FS]
                 D2expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D2expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D2expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
@@ -626,8 +640,8 @@ class dumbbellMediated(VacancyMediated):
         for jt, jumplist in enumerate(jumpnetwork_omega3):
             for (IS, FS), dx in jumplist:
                 o1 = iorlist_mixed[self.vkinetic.starset.mixedstates[IS].db.iorind][1]
-                dx_solute = -o1/2. + eta0_solute[Ncomp + IS] - eta0_solute[FS]
-                dx_solvent = dx + o1/ 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[FS]
+                dx_solute = -o1 / 2. + eta0_solute[Ncomp + IS] - eta0_solute[FS]
+                dx_solvent = dx + o1 / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[FS]
                 D3expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D3expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D3expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
@@ -641,9 +655,9 @@ class dumbbellMediated(VacancyMediated):
                 D4expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D4expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
 
-        return (zeroclean(D1expansion_aa), zeroclean(D1expansion_bb), zeroclean(D1expansion_ab)),\
-               (zeroclean(D2expansion_aa), zeroclean(D2expansion_bb), zeroclean(D2expansion_ab)),\
-               (zeroclean(D3expansion_aa), zeroclean(D3expansion_bb), zeroclean(D3expansion_ab)),\
+        return (zeroclean(D1expansion_aa), zeroclean(D1expansion_bb), zeroclean(D1expansion_ab)), \
+               (zeroclean(D2expansion_aa), zeroclean(D2expansion_bb), zeroclean(D2expansion_ab)), \
+               (zeroclean(D3expansion_aa), zeroclean(D3expansion_bb), zeroclean(D3expansion_ab)), \
                (zeroclean(D4expansion_aa), zeroclean(D4expansion_bb), zeroclean(D4expansion_ab))
 
     # noinspection SpellCheckingInspection
@@ -674,7 +688,7 @@ class dumbbellMediated(VacancyMediated):
 
 
         """
-        beta = 1./kT
+        beta = 1. / kT
         bFdb0 = beta * enedb0 - np.log(predb0)
         bFdb2 = beta * enedb2 - np.log(predb2)
         bFS = beta * eneS - np.log(preS)
@@ -735,7 +749,6 @@ class dumbbellMediated(VacancyMediated):
 
         # build the omega0 lists
         for jt, jlist in enumerate(self.jnet0):
-
             # Get the bare dumbbells between which jumps are occurring
             st1 = jlist[0].state1 - jlist[0].state1.R
             st2 = jlist[0].state2 - jlist[0].state2.R
@@ -820,7 +833,7 @@ class dumbbellMediated(VacancyMediated):
             for (v2, in_v2) in v2list:
                 omega3escape[v2 - self.vkinetic.Nvstars_pure, jt] = fin2TS
 
-        return (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
+        return (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape), \
                (omega4, omega4escape)
 
     def makeGF(self, bFdb0, bFT0, omegas, mixed_prob):
@@ -836,7 +849,7 @@ class dumbbellMediated(VacancyMediated):
         (rate3expansion, rate3escape), (rate4expansion, rate4escape) = self.rateExps
 
         # omega2 and omega2escape will not be needed here, but we still need them to calculate the uncorrelated part.
-        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
+        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape), \
         (omega4, omega4escape) = omegas
 
         GF02 = np.zeros((self.vkinetic.Nvstars, self.vkinetic.Nvstars))
@@ -850,7 +863,7 @@ class dumbbellMediated(VacancyMediated):
 
         # First, form the probability matrix
         P0mixedSqrt = np.diag(np.sqrt(mixed_prob))
-        P0mixedSqrt_inv = np.diag(1./np.sqrt(mixed_prob))
+        P0mixedSqrt_inv = np.diag(1. / np.sqrt(mixed_prob))
 
         self.g2 = np.dot(np.dot(P0mixedSqrt, self.G2), P0mixedSqrt_inv)
 
@@ -879,8 +892,8 @@ class dumbbellMediated(VacancyMediated):
             #######
             symindex = self.vkinetic.starset.star2symlist[starind]
             delta_om[i, i] += \
-                np.dot(rate1escape[i, :], omega1escape[i, :])-\
-                np.dot(rate0escape[i, :], omega0escape[symindex, :])+\
+                np.dot(rate1escape[i, :], omega1escape[i, :]) - \
+                np.dot(rate0escape[i, :], omega0escape[symindex, :]) + \
                 np.dot(rate4escape[i, :], omega4escape[i, :])
 
         # omega3 terms
@@ -915,12 +928,15 @@ class dumbbellMediated(VacancyMediated):
         bFT4[i] = beta*eneT4[i] - len(preT4[i]) -> i = 1,2..,N_omega4 - Shifted
         # See the preene2betaene function to see what the shifts are.
         Return:
-            L_aa, L_bb, L_ab - needs to be multiplied by c_db/KT
+            L_aa, L_bb, L_ab - needs to be multiplied by Cs*C_db/KT
+            Note - L_bb contains local jumps and contribution from mixed dumbbell space.
+            L0bb - contains non-local contribution to solvent diffusion. Needs to be multiplied by C_db/KT.
+            Note the net solvent transport coefficient is (C_db*L0bb/kT + Cs*C_db*L_bb/kT)
         """
-        # if not len(bFSdb) == self.thermo.mixedstartindex:
-        #     raise TypeError("Interaction energies must be present for all and only all thermodynamic shell states.")
-        for en in bFSdb[self.thermo.mixedstartindex+2:]:
-            if not en == bFSdb[self.thermo.mixedstartindex+1]:
+        if not len(bFSdb) == self.thermo.mixedstartindex:
+            raise TypeError("Interaction energies must be present for all and only all thermodynamic shell states.")
+        for en in bFSdb[self.thermo.mixedstartindex + 2:]:
+            if not en == bFSdb[self.thermo.mixedstartindex + 1]:
                 raise ValueError("States in kinetic shell have difference reference interaction energy")
 
         # 1. Get the minimum free energies of solutes, pure dumbbells and mixed dumbbells
@@ -962,26 +978,26 @@ class dumbbellMediated(VacancyMediated):
                 continue
             symindex = self.vkinetic.starset.star2symlist[starind]
             # First, get the unshifted value
-            bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]] + bFSdb[starind]
+            bFSdb_total[starind] = bFdb0[symindex] + bFS[self.invmap_solute[star[0].i_s]]
             bFSdb_total_shift[starind] = bFSdb_total[starind] - (bFdb0_min + bFS_min)
 
-        # # Now add in the changes for the complexes inside the thermodynamic shell.
-        # # Note that we are still not making any changes to the origin states.
-        # # We always keep them as zero.
-        # for starind, star in enumerate(self.thermo.stars[:self.thermo.mixedstartindex]):
-        #     # Get the symorlist index for the representative state of the star
-        #     if star[0].is_zero(self.thermo.pdbcontainer):
-        #         continue
-        #     # keep the total energies zero for origin states.
-        #     kinStarind = self.thermo2kin[starind]  # Get the index of the thermo star in the kinetic starset
-        #     bFSdb_total[kinStarind] += bFSdb[starind]  # add in the interaction energy to the appropriate index
-        #     bFSdb_total_shift[kinStarind] += bFSdb[starind]
+        # Now add in the changes for the complexes inside the thermodynamic shell.
+        # Note that we are still not making any changes to the origin states.
+        # We always keep them as zero.
+        for starind, star in enumerate(self.thermo.stars[:self.thermo.mixedstartindex]):
+            # Get the symorlist index for the representative state of the star
+            if star[0].is_zero(self.thermo.pdbcontainer):
+                continue
+            # keep the total energies zero for origin states.
+            kinStarind = self.thermo2kin[starind]  # Get the index of the thermo star in the kinetic starset
+            bFSdb_total[kinStarind] += bFSdb[starind]  # add in the interaction energy to the appropriate index
+            bFSdb_total_shift[kinStarind] += bFSdb[starind]
 
         # 3b. Get the rates and escapes
         # We incorporate a separate "shift" array so that even after shifting, the origin state energies remain
         # zero.
         betaFs = [bFdb0, bFdb2, bFS, bFSdb, bFSdb_total, bFSdb_total_shift, bFT0, bFT1, bFT2, bFT3, bFT4]
-        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
+        (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape), \
         (omega4, omega4escape) = self.getsymmrates(bFdb0 - bFdb0_min, bFdb2 - bFdb2_min, bFSdb_total_shift, bFT0, bFT1,
                                                    bFT2, bFT3, bFT4)
 
@@ -1017,24 +1033,25 @@ class dumbbellMediated(VacancyMediated):
         # 5c. Form the partition function
         # get the "reference energy" for non-interacting complexes. This is just the value of bFSdb (interaction)
         # for any state in the kinetic shell
-        del_en = bFSdb[self.thermo.mixedstartindex + 1]
+        # del_en = bFSdb[self.thermo.mixedstartindex + 1]
         part_func = 0.
         # Now add in the non-interactive complex contribution to the partition function
         for dbsiteind, dbwyckind in enumerate(self.vkinetic.starset.pdbcontainer.invmap):
             for solsiteind, solwyckind in enumerate(self.invmap_solute):
-                part_func += np.exp(-(bFdb0[dbwyckind] + bFS[solwyckind] + del_en))
+                part_func += np.exp(-(bFdb0[dbwyckind] + bFS[solwyckind]))
 
         # 5d. Normalize - division by the partition function ensures effects of shifting go away.
         complex_prob *= 1. / part_func
         mixed_prob *= 1. / part_func
 
-        # 6. Get the symmetrized Green's function in the basis of the vector stars.
+        # 6. Get the symmetrized Green's function in the basis of the vector stars and the non-local contribution
+        # to solvent (Fe dumbbell) diffusivity.
         # arguments for makeGF - bFdb0 (shifted), bFT0(shifted), omegas, mixed_prob
         # Note about mixed prob: g2_ij = p_mixed(i)^0.5 * G2_ij * p_mixed(j)^-0.5
         # So, at the end of the end the day, it only depends on boltzmann factors of the mixed states.
         # All other factors cancel out (including partition function).
         GF_total, GF02, del_om = self.makeGF(bFdb0 - bFdb0_min, bFT0, omegas, mixed_prob)
-
+        L0bb = self.GFcalc_pure.Diffusivity()
         # 7. Once the GF is built, make the correlated part of the transport coefficient
         # 7a. First we make the projection of the bias vector
         self.biases_solute_vs = np.zeros(self.vkinetic.Nvstars)
@@ -1072,11 +1089,12 @@ class dumbbellMediated(VacancyMediated):
         self.del_W1 = np.zeros_like(omega1escape)
         for i in range(Nvstars_pure):
             for jt in range(len(self.jnet_1)):
-                self.del_W1[i, jt] = omega1escape[i, jt] -\
-                                omega0escape[self.kinetic.star2symlist[self.vkinetic.vstar2star[i]], self.om1types[jt]]
+                self.del_W1[i, jt] = omega1escape[i, jt] - \
+                                     omega0escape[
+                                         self.kinetic.star2symlist[self.vkinetic.vstar2star[i]], self.om1types[jt]]
 
         self.biases_solvent_vs[:Nvstars_pure] = np.array([(np.dot(self.bias1_solvent_new[i, :], self.del_W1[i, :]) +
-                                                          np.dot(self.bias4_solvent_new[i, :], omega4escape[i, :])) *
+                                                           np.dot(self.bias4_solvent_new[i, :], omega4escape[i, :])) *
                                                           prob_sqrt_complex_vs[i] for i in range(Nvstars_pure)])
 
         self.biases_solvent_vs[Nvstars_pure:] = np.array([np.dot(self.bias3_solvent_new[i - Nvstars_pure, :],
@@ -1113,32 +1131,31 @@ class dumbbellMediated(VacancyMediated):
         # TODO Is there a way to combine all of the next four loops?
         prob_om1 = np.zeros(len(self.jnet_1))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet1_indexed]):
-            prob_om1[jt] = np.sqrt(complex_prob[IS]*complex_prob[FS])*omega1[jt]
+            prob_om1[jt] = np.sqrt(complex_prob[IS] * complex_prob[FS]) * omega1[jt]
 
         prob_om2 = np.zeros(len(self.jnet2))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet2_indexed]):
-            prob_om2[jt] = np.sqrt(mixed_prob[IS]*mixed_prob[FS])*omega2[jt]
+            prob_om2[jt] = np.sqrt(mixed_prob[IS] * mixed_prob[FS]) * omega2[jt]
 
         prob_om4 = np.zeros(len(self.symjumplist_omega4))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.symjumplist_omega4_indexed]):
-            prob_om4[jt] = np.sqrt(complex_prob[IS]*mixed_prob[FS])*omega4[jt]
+            prob_om4[jt] = np.sqrt(complex_prob[IS] * mixed_prob[FS]) * omega4[jt]
 
         prob_om3 = np.zeros(len(self.symjumplist_omega3))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.symjumplist_omega3_indexed]):
-            prob_om3[jt] = np.sqrt(mixed_prob[IS]*complex_prob[FS])*omega3[jt]
+            prob_om3[jt] = np.sqrt(mixed_prob[IS] * complex_prob[FS]) * omega3[jt]
 
         probs = (prob_om1, prob_om2, prob_om4, prob_om3)
 
         start = time.time()
         # Generate the bare expansions with modified displacements
-        (D1expansion_aa, D1expansion_bb, D1expansion_ab),\
-        (D2expansion_aa, D2expansion_bb, D2expansion_ab),\
-        (D3expansion_aa, D3expansion_bb, D3expansion_ab),\
+        (D1expansion_aa, D1expansion_bb, D1expansion_ab), \
+        (D2expansion_aa, D2expansion_bb, D2expansion_ab), \
+        (D3expansion_aa, D3expansion_bb, D3expansion_ab), \
         (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.bareExpansion(self.eta0total_solute,
                                                                               self.eta0total_solvent)
 
-        # print("time for uncorrelated term = {}".format(time.time()-start))
-        L_uc_aa = np.dot(D1expansion_aa, prob_om1) + np.dot(D2expansion_aa, prob_om2) +\
+        L_uc_aa = np.dot(D1expansion_aa, prob_om1) + np.dot(D2expansion_aa, prob_om2) + \
                   np.dot(D3expansion_aa, prob_om3) + np.dot(D4expansion_aa, prob_om4)
 
         L_uc_bb = np.dot(D1expansion_bb, prob_om1) + np.dot(D2expansion_bb, prob_om2) + \
@@ -1147,5 +1164,5 @@ class dumbbellMediated(VacancyMediated):
         L_uc_ab = np.dot(D1expansion_ab, prob_om1) + np.dot(D2expansion_ab, prob_om2) + \
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
-        return (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF02, betaFs, del_om, part_func, probs,\
-               omegas, stateprobs
+        return L0bb, (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF02, betaFs, del_om, \
+               part_func, probs, omegas, stateprobs
