@@ -297,7 +297,7 @@ class dumbbellMediated(VacancyMediated):
         else:
             (self.symjumplist_omega43_all, self.symjumplist_omega43_all_indexed) = self.omega43_dats[0]
             (self.symjumplist_omega4, self.symjumplist_omega4_indexed, self.jtags4) = self.omega43_dats[1]
-            (self.symjumplist_omega3, self.symjumplist_omega3_indexed, self.jtags3) = self.omega43_dats[1]
+            (self.symjumplist_omega3, self.symjumplist_omega3_indexed, self.jtags3) = self.omega43_dats[2]
 
     def generate(self, Nthermo, cutoff, solt_solv_cut, solv_solv_cut, closestdistance):
 
@@ -591,10 +591,10 @@ class dumbbellMediated(VacancyMediated):
 
         Ncomp = len(self.vkinetic.starset.complexStates)
 
-        # We need the D0expansion to evaluate the modified dispalcement jumps
+        # We need the D0expansion to evaluate the modified non-local contribution
         # outside the kinetic shell. See the notebook for more details.
         # D0expansion_aa = np.zeros((3, 3, len(self.jnet0)))
-        # D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
+        D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
         # D0expansion_ab = np.zeros((3, 3, len(self.jnet0)))
 
         # Omega1 contains the total rate and not just the change.
@@ -621,7 +621,7 @@ class dumbbellMediated(VacancyMediated):
             d0 = np.sum(
                 0.5 * np.outer(dx + eta0_solvent[i] - eta0_solvent[j], dx + eta0_solvent[i] - eta0_solvent[j]) for
                 (i, j), dx in jumplist)
-            # D0expansion_bb[:, :, jt] += d0
+            D0expansion_bb[:, :, jt] += d0
             D1expansion_bb[:, :, k] += d0
             # For solutes, don't need to do anything for omega1 and omega0 - solute does not move anyway
             # and therefore, their non-local eta corrections are also zero.
@@ -655,7 +655,8 @@ class dumbbellMediated(VacancyMediated):
                 D4expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D4expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
 
-        return (zeroclean(D1expansion_aa), zeroclean(D1expansion_bb), zeroclean(D1expansion_ab)), \
+        return zeroclean(D0expansion_bb), \
+               (zeroclean(D1expansion_aa), zeroclean(D1expansion_bb), zeroclean(D1expansion_ab)), \
                (zeroclean(D2expansion_aa), zeroclean(D2expansion_bb), zeroclean(D2expansion_ab)), \
                (zeroclean(D3expansion_aa), zeroclean(D3expansion_bb), zeroclean(D3expansion_ab)), \
                (zeroclean(D4expansion_aa), zeroclean(D4expansion_bb), zeroclean(D4expansion_ab))
@@ -1121,14 +1122,21 @@ class dumbbellMediated(VacancyMediated):
             if self.vkinetic.starset.complexStates[stateind].is_zero(self.vkinetic.starset.pdbcontainer):
                 complex_prob[stateind] = 0.
 
-        stateprobs = (complex_prob, mixed_prob)  # For testing
-
+        pr_states = (complex_prob, mixed_prob)  # For testing
+        # Next, we need the bare dumbbell probabilities for the non-local part of the solvent-solvent transport
+        # coefficients
+        bareprobs = stateprob(pre0, bFdb0 - bFdb0_min, self.pdbcontainer.invmap)
         # This ensured that summing over all complex + mixed states gives a probability of 1.
         # Note that this is why the bFdb0, bFS and bFdb2 values have to be entered unshifted.
         # The complex and mixed dumbbell energies need to be with respect to the same reference.
 
         # First, make the square root prob * rate lists to multiply with the rates
         # TODO Is there a way to combine all of the next four loops?
+
+        prob_om0 = np.zeros(len(self.jnet0))
+        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet0_indexed]):
+            prob_om0[jt] = np.sqrt(bareprobs[IS] * bareprobs[FS]) * omega0[jt]
+
         prob_om1 = np.zeros(len(self.jnet_1))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet1_indexed]):
             prob_om1[jt] = np.sqrt(complex_prob[IS] * complex_prob[FS]) * omega1[jt]
@@ -1149,7 +1157,7 @@ class dumbbellMediated(VacancyMediated):
 
         start = time.time()
         # Generate the bare expansions with modified displacements
-        (D1expansion_aa, D1expansion_bb, D1expansion_ab), \
+        D0expansion_bb, (D1expansion_aa, D1expansion_bb, D1expansion_ab), \
         (D2expansion_aa, D2expansion_bb, D2expansion_ab), \
         (D3expansion_aa, D3expansion_bb, D3expansion_ab), \
         (D4expansion_aa, D4expansion_bb, D4expansion_ab) = self.bareExpansion(self.eta0total_solute,
@@ -1158,11 +1166,11 @@ class dumbbellMediated(VacancyMediated):
         L_uc_aa = np.dot(D1expansion_aa, prob_om1) + np.dot(D2expansion_aa, prob_om2) + \
                   np.dot(D3expansion_aa, prob_om3) + np.dot(D4expansion_aa, prob_om4)
 
-        L_uc_bb = np.dot(D1expansion_bb, prob_om1) + np.dot(D2expansion_bb, prob_om2) + \
-                  np.dot(D3expansion_bb, prob_om3) + np.dot(D4expansion_bb, prob_om4)
+        L_uc_bb = np.dot(D1expansion_bb, prob_om1) - np.dot(D0expansion_bb, prob_om0) + \
+                  np.dot(D2expansion_bb, prob_om2) + np.dot(D3expansion_bb, prob_om3) + np.dot(D4expansion_bb, prob_om4)
 
         L_uc_ab = np.dot(D1expansion_ab, prob_om1) + np.dot(D2expansion_ab, prob_om2) + \
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
         return L0bb, (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF02, betaFs, del_om, \
-               part_func, probs, omegas, stateprobs
+               part_func, probs, omegas, pr_states
