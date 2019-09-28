@@ -110,12 +110,16 @@ class SdPair(namedtuple('SdPair', "i_s R_s db")):
             raise TypeError("Only pair -> pair transitions can be added to mixed dumbbells")
 
         if not mixed:
+            if isinstance(j.state1, self.__class__):
+                raise TypeError("Only dumbbell -> dumbbell transitions can be added to complexes")
             if not self.db.iorind == j.state1.iorind:
                 raise ArithmeticError("Incompatible starting dumbbell configurations")
             db2 = dumbbell(j.state2.iorind, self.db.R + j.state2.R - j.state1.R)
             return self.__class__(self.i_s, self.R_s, db2)
 
         if mixed:
+            if not isinstance(j.state1, SdPair):
+                raise TypeError("Only pair -> pair transitions can be added to mixed dumbbells")
             if not self.db.iorind == j.state1.db.iorind:
                 raise ArithmeticError("Incompatible starting dumbbell configurations")
             db2 = dumbbell(j.state2.db.iorind, self.db.R + j.state2.db.R - j.state1.db.R)

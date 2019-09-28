@@ -14,8 +14,7 @@ class StarSet(object):
     The minimum shell (Nshells=0) is composed of dumbbells situated atleast one jump away.
     """
 
-    def __init__(self, pdbcontainer, mdbcontainer, jnetwrk0, jnetwrk2,
-                 Nshells=None):
+    def __init__(self, pdbcontainer, mdbcontainer, jnetwrk0, jnetwrk2, Nshells=None):
         """
         Parameters:
         pdbcontainer,mdbcontainer:
@@ -113,19 +112,28 @@ class StarSet(object):
         stateset = set([])
         if Nshells >= 1:
             # build the starting shell
+            # Build the first shell from the jump network
+            # One by one, keeping the solute at the basis sites of the origin unit cell, put all possible dumbbell
+            # states at one jump distance away.
+            # The idea is that a valid jump must be able to bring a dumbbell to a solute site - this is wrong.
+            # We won't put in origin states just yet.
+            # In many unsymmetric cases, there may not be any on site rotation possible.
+            # So, it is best to add in the origin states later on.
             for j in self.jumplist:
-                # Build the first shell from the jump network
-                # One by one, keeping the solute at the basis sites of the origin unit cell, put those dumbbell states
-                # at those positions, as are dictated by the the jumps.
-                # The idea is that a valid jump must be able to bring a dumbbell to a solute site.
-                # We won't put in origin states just yet.
-                # In many unsymmetric cases, there may not be any on site rotation possible.
-                # So, it is best to add in the origin states later on.
                 dx = disp(self.pdbcontainer, j.state1, j.state2)
                 if np.allclose(dx, np.zeros(3, dtype=int), atol=self.pdbcontainer.crys.threshold):
                     continue
-                pair = SdPair(self.pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, j.state2)
-                stateset.add(pair)
+                # Previously:
+                # pair = SdPair(self.pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, j.state2)
+                # stateset.add(pair)
+                # Now go through the all the dumbbell states in the (i,or) list:
+                for idx, (i, o) in enumerate(self.pdbcontainer.iorlist):
+                    # One thing to check - are omega0 networks closed in sites,
+                    # We are considering a jump shell. That is, however far a jump takes me, and to whatever site,
+                    # that is where I need to build my complex states.
+                    dbstate = dumbbell(idx, j.state2.R)
+                    pair = SdPair(self.pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, dbstate)
+                    stateset.add(pair)
 
             # Now, we add in the origin states
             for ind, tup in enumerate(self.pdbcontainer.iorlist):
