@@ -468,6 +468,8 @@ class vectorStars(VectorStarSet):
                 for j in jumplist[1::2]:  # start from the second element, skip every other
                     if not j.state1.is_zero(self.starset.mdbcontainer):
                         # check if initial state is not a mixed state -> skip if not mixed
+                        print(self.starset.mdbcontainer.iorlist)
+                        print(j.state1)
                         raise TypeError("initial state not origin in mdbcontainer")
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if mixedstar[0] == j.state1:
