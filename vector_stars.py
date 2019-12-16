@@ -213,15 +213,16 @@ class vectorStars(VectorStarSet):
         """
         complexStates = self.starset.complexStates
         mixedstates = self.starset.mixedstates
-        # Connect the states
+        # Connect the states - major bottleneck
         connectset= set([])
-        for st1 in complexStates:
-            for st2 in complexStates:
+        for i, st1 in enumerate(complexStates):
+            for j, st2 in enumerate(complexStates[:i]):
                 try:
                     s = st1 ^ st2
                 except:
                     continue
                 connectset.add(s)
+                connectset.add(-s)
 
         # Now group the connections
         GFstarset_pure=[]
