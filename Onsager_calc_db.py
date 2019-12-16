@@ -257,14 +257,20 @@ class dumbbellMediated(VacancyMediated):
                 self.invmap_solute[site] = wyckind
 
         # self.jnet2_indexed = self.kinetic.starset.jnet2_indexed
+        print("initializing thermo")
         self.thermo = stars.StarSet(pdbcontainer, mdbcontainer, (self.jnet0, self.jnet0_indexed),
                                     (self.jnet2, self.jnet2_indexed))
+
+        print("initializing kin")
         self.kinetic = stars.StarSet(pdbcontainer, mdbcontainer, (self.jnet0, self.jnet0_indexed),
                                      (self.jnet2, self.jnet2_indexed))
 
+        print("initializing NN")
+        start = time.time()
         # Note - even if empty, our starsets go out to atleast the NNstar - later we'll have to keep this in mind
         self.NNstar = stars.StarSet(pdbcontainer, mdbcontainer, (self.jnet0, self.jnet0_indexed),
                                     (self.jnet2, self.jnet2_indexed), 2)
+        print("2NN Shell initialization time: {}\n".format(time.time() - start))
         self.vkinetic = vector_stars.vectorStars()
 
         # Make GF calculators.
@@ -303,11 +309,20 @@ class dumbbellMediated(VacancyMediated):
 
         if Nthermo == getattr(self, "Nthermo", 0): return
         self.Nthermo = Nthermo
+        print("generating thermodynamic shell")
+        start = time.time()
         self.thermo.generate(Nthermo)
+        print("thermodynamic shell generated: {}".format(time.time() - start))
+        print("generating kinetic shell")
+        start = time.time()
         self.kinetic.generate(Nthermo + 1)
+        print("Kinetic shell generated: {}".format(time.time() - start))
         # self.Nmixedstates = len(self.kinetic.mixedstates)
         # self.NcomplexStates = len(self.kinetic.complexStates)
+        print("generating kinetic shell vector starset")
+        start = time.time()
         self.vkinetic.generate(self.kinetic)  # we generate the vector star out of the kinetic shell
+        print("Kinetic shell vector starset generated: {}".format(time.time()-start))
         # Now generate the pure and mixed dumbbell Green functions expnsions - internalized within vkinetic.
 
         # Generate and indexing that takes from a star in the thermodynamic shell
@@ -322,22 +337,32 @@ class dumbbellMediated(VacancyMediated):
                     self.thermo2kin[th_ind] = k_ind
             if count != 1:
                 raise TypeError("thermodynamic and kinetic shells not consistent.")
-
+        print("Generating Jump networks")
+        start = time.time()
         self.generate_jnets(cutoff, solt_solv_cut, solv_solv_cut, closestdistance)
+        print("Jump networks generated: {}".format(time.time() - start))
 
         # Generate the GF expansions
+        start = time.time()
         (self.GFstarset_pure, self.GFPureStarInd, self.GFexpansion_pure), \
         (self.GFstarset_mixed, self.GFMixedStarInd, self.GFexpansion_mixed) \
             = self.vkinetic.GFexpansion()
-
-        # Generate the bias expansions
-        self.biases = self.vkinetic.biasexpansion(self.jnet_1, self.jnet2, self.om1types, self.symjumplist_omega43_all)
+        print("built GFstarsets: {}".format(time.time() - start))
 
         # generate the rate expansions
+        start = time.time()
         self.rateExps = self.vkinetic.rateexpansion(self.jnet_1, self.om1types, self.symjumplist_omega43_all)
+        print("built rate expansions: {}".format(time.time() - start))
+
+        # Generate the bias expansions
+        start = time.time()
+        self.biases = self.vkinetic.biasexpansion(self.jnet_1, self.jnet2, self.om1types, self.symjumplist_omega43_all)
+        print("built bias expansions: {}".format(time.time() - start))
 
         # generate the outer products of the vector stars
+        start = time.time()
         self.kinouter = self.vkinetic.outer()
+        print("built outer product tensor:{}".format(time.time() - start))
         # self.clearcache()
 
     def calc_eta(self, rate0list, omega0escape, rate2list, omega2escape):
@@ -370,8 +395,7 @@ class dumbbellMediated(VacancyMediated):
             for jnum, ((i, j), dx) in enumerate(jlist):
                 W2[i, j] += rate2list[jt][jnum]  # The unsymmetrized rate for that jump.
                 W2[i, i] -= rate2list[jt][jnum]  # Add the same to the diagonal
-        # Here, G0 = sum(x_s')G0(x_s') - and we have [sum(x_s')G0(x_s')][sum(x_s')W0(x_s')] = identity
-        # The equation can be derived from the Fourier space inverse relations at q=0 for their symmetrized versions.
+
         self.G2 = pinv2(W2)
 
         self.biasBareExpansion = self.biases[-1]

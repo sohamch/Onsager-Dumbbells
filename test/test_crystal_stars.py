@@ -26,7 +26,6 @@ class test_StarSet(unittest.TestCase):
         self.assertEqual(tot_st, len(self.crys_stars.stateset))
 
         o = np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126
-
         dbInd = self.pdbcontainer.getIndex((0, o))
         db = dumbbell(dbInd, np.array([1, 0, 0], dtype=int))
         pair_test = SdPair(0, np.zeros(3, dtype=int), db)

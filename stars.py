@@ -5,7 +5,7 @@ from states import *
 import itertools
 from collections import defaultdict
 from representations import *
-
+import time
 
 class StarSet(object):
     """
@@ -110,6 +110,7 @@ class StarSet(object):
             Nshells = 0
         startshell = set([])
         stateset = set([])
+        start = time.time()
         if Nshells >= 1:
             # build the starting shell
             # Build the first shell from the jump network
@@ -139,10 +140,11 @@ class StarSet(object):
             for ind, tup in enumerate(self.pdbcontainer.iorlist):
                 pair = SdPair(tup[0], np.zeros(3, dtype=int), dumbbell(ind,np.zeros(3, dtype=int)))
                 stateset.add(pair)
-
+        print("built shell {}: time - {}".format(1, time.time() - start))
         lastshell = stateset.copy()
         # Now build the next shells:
         for step in range(Nshells - 1):
+            start = time.time()
             nextshell = set([])
             for j in self.jumplist:
                 for pair in lastshell:
@@ -157,25 +159,38 @@ class StarSet(object):
                         raise ArithmeticError("Solute shifted from a complex!(?)")
                     nextshell.add(pairnew)
                     stateset.add(pairnew)
+            # Group this shell by symmetry
             lastshell = nextshell.copy()
+            print("built shell {}: time - {}".format(step+2, time.time()-start))
 
         self.stateset = stateset
         # group the states by symmetry - form the stars
+        self.complexStates = sorted(list(self.stateset), key=self._sortkey)
+        self.bareStates = [dumbbell(idx, z) for idx in range(len(self.pdbcontainer.iorlist))]
         stars = []
+        self.complexIndexdict = {}
+        starindexed=[]
         allset = set([])
+        start = time.time()
         for state in self.stateset:
             if not (state in allset):
                 newstar = []
+                newstar_index = []
                 for gdumb in self.pdbcontainer.G:
                     newstate = state.gop(self.pdbcontainer, gdumb)[0]
                     newstate = newstate - newstate.R_s  # Shift the solute back to the origin unit cell.
                     if newstate in self.stateset:  # Check if this state is allowed to be present.
                         if not newstate in allset:  # Check if this state has already been considered.
+                            newstateind = self.complexStates.index(newstate)
                             newstar.append(newstate)
+                            newstar_index.append(newstateind)
+                            self.complexIndexdict[newstate] = (newstateind, len(stars))
                             allset.add(newstate)
                 if len(newstar) == 0:
                     raise ValueError("A star must have at least one state.")
                 stars.append(newstar)
+                starindexed.append(newstar_index)
+        print("grouped states by symmetry: {}".format(time.time() - start))
         self.stars = stars
         self.sortstars()
 
@@ -185,6 +200,7 @@ class StarSet(object):
             if star[0].is_zero(self.pdbcontainer):
                 self.originstates.append(starind)
 
+        start = time.time()
         self.mixedstartindex = len(self.stars)
         # Now add in the mixed states
         self.mixedstates = []
@@ -204,10 +220,10 @@ class StarSet(object):
                 newlist.append(mdb)
             self.stars.append(newlist)
 
-        self.complexStates = sorted(list(self.stateset), key=self._sortkey)
-        self.bareStates = [dumbbell(idx, z) for idx in range(len(self.pdbcontainer.iorlist))]
+        print("built mixed dumbbell stars: {}".format(time.time() - start))
 
         # Next, we build up the jtags for omega2 (see Onsager_calc_db module).
+        start = time.time()
         j2initlist = []
         for jt, jlist in enumerate(self.jnet2_ind):
             initindices = defaultdict(list)
@@ -230,17 +246,21 @@ class StarSet(object):
                     jarr[idx][FS + len(self.complexStates)] -= 1
                 jtagdict[IS] = jarr.copy()
             self.jtags2.append(jtagdict)
-
+        print("built jtags2: {}".format(time.time() - start))
         # generate an indexed version of the starset to the iorlists in the container objects
-        starindexed = []
-        for star in self.stars[:self.mixedstartindex]:
-            indlist = []
-            for state in star:
-                for j, st in enumerate(self.complexStates):
-                    if st == state:
-                        indlist.append(j)
-            starindexed.append(indlist)
-
+        # self.starindexed2 = []
+        # for star in self.stars[:self.mixedstartindex]:
+        #     indlist = []
+        #     for state in star:
+        #         try:
+        #             indlist.append(self.complexStates.index(state))
+        #         except:
+        #             raise ValueError("state not found")
+        #         # for j, st in enumerate(self.complexStates):
+        #         #     if st == state:
+        #         #         indlist.append(j)
+        #     self.starindexed2.append(indlist)
+        start = time.time()
         for star in self.stars[self.mixedstartindex:]:
             indlist = []
             for state in star:
@@ -248,12 +268,13 @@ class StarSet(object):
                     if st == state:
                         indlist.append(j)
             starindexed.append(indlist)
-
+        print("built mixed indexed star: {}".format(time.time() - start))
         self.starindexed = starindexed
 
         self.star2symlist = np.zeros(len(self.stars), dtype=int)
         # The i_th element of this index list gives the corresponding symorlist from which the dumbbell of the
         # representative state of the i_th star comes from.
+        start = time.time()
         for starind, star in enumerate(self.stars[:self.mixedstartindex]):
             # get the dumbbell of the representative state of the star
             db = star[0].db - star[0].db.R
@@ -267,17 +288,16 @@ class StarSet(object):
             # now get the symorlist index in which the dumbbell belongs
             symind = self.mdbcontainer.invmap[db.iorind]
             self.star2symlist[starind + self.mixedstartindex] = symind
-
+        print("building star2symlist : {}".format(time.time() - start))
         # self.starindexed -> gives the indices into the complexStates and mixedstates, of the states stored in the
         # starset, i.e, an indexed version of the starset. now generate the index dicts
         # --indexdict -> tell us given a pair state, what is its index in the states list and which star in the starset
         # it belongs to.
-
-        self.complexIndexdict = {}
-        for si, star, starind in zip(itertools.count(), self.stars[:self.mixedstartindex],
-                                     self.starindexed[:self.mixedstartindex]):
-            for state, ind in zip(star, starind):
-                self.complexIndexdict[state] = (ind, si)
+        # self.complexIndexdict2 = {}
+        # for si, star, starind in zip(itertools.count(), self.stars[:self.mixedstartindex],
+        #                              self.starindexed[:self.mixedstartindex]):
+        #     for state, ind in zip(star, starind):
+        #         self.complexIndexdict2[state] = (ind, si)
 
         self.mixedindexdict = {}
         for si, star, starind in zip(itertools.count(), self.stars[self.mixedstartindex:],
@@ -290,18 +310,12 @@ class StarSet(object):
                                   self.pdbcontainer.symIndlist]
 
         self.bareStarindexed = self.pdbcontainer.symIndlist.copy()
-        # for star in self.barePeriodicStars:
-        #     indlist = []
-        #     for state in star:
-        #         for j, st in enumerate(self.bareStates):
-        #             if st == state:
-        #                 indlist.append(j)
-        #     self.bareStarindexed.append(indlist)
 
         self.bareindexdict = {}
         for si, star, starind in zip(itertools.count(), self.barePeriodicStars, self.bareStarindexed):
             for state, ind in zip(star, starind):
                 self.bareindexdict[state] = (ind, si)
+        print("building bare, mixed index dicts : {}".format(time.time() - start))
 
     def sortstars(self):
         """sorts the solute-dumbbell complex crystal stars in order of increasing solute-dumbbell separation distance.
@@ -326,6 +340,8 @@ class StarSet(object):
         jumptype = []
         starpair = []
         jumpset = set([])  # set where newly produced jumps will be stored
+        print("building omega1")
+        start = time.time()
         for jt, jlist in enumerate(self.jnet0):
             for jnum, j0 in enumerate(jlist):
                 # these contain dumbell->dumbell jumps
@@ -399,7 +415,7 @@ class StarSet(object):
                         # initdict contains all the initial states as keys, and the values as the lists final states
                         # from the initial states for the given jump type.
                         jumptype.append(jt)
-
+        print("built omega1 : time - {}".format(time.time()-start))
         jtags = []
         for initdict in initstates:
             arrdict = {}
@@ -430,7 +446,8 @@ class StarSet(object):
         symjumplist_omega43_all = []
         symjumplist_omega43_all_indexed = []
         alljumpset_omega43_all = set([])
-
+        start = time.time()
+        print("building omega43")
         for p_pure in self.complexStates:
             if p_pure.is_zero(self.pdbcontainer):  # Spectator rotating into mixed dumbbell does not make sense.
                 continue
@@ -524,6 +541,7 @@ class StarSet(object):
                             symjumplist_omega43_all_indexed.append(newallindex)
 
         # Now build the jtags
+        print("built omega43 : time {}".format(time.time()-start))
         jtags4 = []
         jtags3 = []
 

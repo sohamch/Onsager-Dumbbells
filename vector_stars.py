@@ -85,7 +85,7 @@ class vectorStars(VectorStarSet):
 
         self.Nvstars_pure = len(self.vecpos)
 
-        # Now do it for the mixed dumbbells - all negative checks dissappear
+        # Now do it for the mixed dumbbells - all negative checks disappear
         for star, indstar in zip(starset.stars[starset.mixedstartindex:],
                                  starset.starindexed[starset.mixedstartindex:]):
             pair0 = star[0]
