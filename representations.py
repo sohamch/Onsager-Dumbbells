@@ -248,6 +248,9 @@ class connector(namedtuple('connector', 'state1 state2')):
     def __hash__(self):
         return hash((self.state1, self.state2))
 
+    def __neg__(self):
+        return self.__class__(self.state2 - self.state2.R, self.state1 - self.state2.R)
+
     def gop(self, container, gdumb, pure=True):
 
         state1new = self.state1.gop(container, gdumb, pure=pure)
