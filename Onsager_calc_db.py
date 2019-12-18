@@ -313,10 +313,14 @@ class dumbbellMediated(VacancyMediated):
         start = time.time()
         self.thermo.generate(Nthermo)
         print("thermodynamic shell generated: {}".format(time.time() - start))
+        print("Total number of states in Thermodynamic Shell - {}, {}".format(len(self.thermo.complexStates),
+                                                                              len(self.thermo.mixedstates)))
         print("generating kinetic shell")
         start = time.time()
         self.kinetic.generate(Nthermo + 1)
         print("Kinetic shell generated: {}".format(time.time() - start))
+        print("Total number of states in Kinetic Shell - {}, {}".format(len(self.kinetic.complexStates),
+                                                                        len(self.kinetic.mixedstates)))
         # self.Nmixedstates = len(self.kinetic.mixedstates)
         # self.NcomplexStates = len(self.kinetic.complexStates)
         print("generating kinetic shell vector starset")
@@ -354,12 +358,12 @@ class dumbbellMediated(VacancyMediated):
         self.rateExps = self.vkinetic.rateexpansion(self.jnet_1, self.om1types, self.symjumplist_omega43_all)
         print("built rate expansions: {}".format(time.time() - start))
 
-        # Generate the bias expansions
+        # # Generate the bias expansions
         start = time.time()
         self.biases = self.vkinetic.biasexpansion(self.jnet_1, self.jnet2, self.om1types, self.symjumplist_omega43_all)
         print("built bias expansions: {}".format(time.time() - start))
-
-        # generate the outer products of the vector stars
+        #
+        # # generate the outer products of the vector stars
         start = time.time()
         self.kinouter = self.vkinetic.outer()
         print("built outer product tensor:{}".format(time.time() - start))
