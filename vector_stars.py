@@ -5,6 +5,7 @@ import onsager.crystal as crystal
 from onsager.crystalStars import zeroclean, VectorStarSet, PairState
 from states import *
 from representations import *
+from collections import defaultdict
 from stars import *
 from functools import reduce
 import itertools
@@ -153,33 +154,30 @@ class vectorStars(VectorStarSet):
                     self.vecvec_bare.append(veclist)
 
         # index the states into the vector stars - required in OnsagerCalc
-        self.stateToVecStar_pure = {}
-        for st in self.starset.complexStates:
-            indlist = []
-            for IndOfStar, crStar in enumerate(self.vecpos[:self.Nvstars_pure]):
-                for IndOfState, state in enumerate(crStar):
-                    if state == st:
-                        indlist.append((IndOfStar, IndOfState))
-            self.stateToVecStar_pure[st] = indlist
 
-        self.stateToVecStar_mixed = {}
-        for st in self.starset.mixedstates:
-            indlist = []
-            for IndOfStar, crStar in enumerate(self.vecpos[self.Nvstars_pure:]):
-                for IndOfState, state in enumerate(crStar):
-                    if state == st:
-                        indlist.append((IndOfStar + self.Nvstars_pure, IndOfState))
-            self.stateToVecStar_mixed[st] = indlist
+        # for st in self.starset.complexStates:
+        #     indlist = []
+        #     for IndOfStar, crStar in enumerate(self.vecpos[:self.Nvstars_pure]):
+        #         for IndOfState, state in enumerate(crStar):
+        #             if state == st:
+        #                 indlist.append((IndOfStar, IndOfState))
+        #     self.stateToVecStar_pure[st] = indlist
+
+        self.stateToVecStar_pure = defaultdict(list)
+        for IndofStar, crStar in enumerate(self.vecpos[:self.Nvstars_pure]):
+            for IndofState, state in enumerate(crStar):
+                self.stateToVecStar_pure[state].append((IndofStar, IndofState))
+
+        self.stateToVecStar_mixed = defaultdict(list)
+        for IndOfStar, crStar in enumerate(self.vecpos[self.Nvstars_pure:]):
+            for IndOfState, state in enumerate(crStar):
+                self.stateToVecStar_mixed[state].append((IndOfStar + self.Nvstars_pure, IndOfState))
 
         self.stateToVecStar_bare = {}
         if len(self.vecpos_bare) > 0:
-            for st in self.starset.bareStates:
-                indlist = []
-                for IndOfStar, crStar in enumerate(self.vecpos_bare):
-                    for IndOfState, state in enumerate(crStar):
-                        if state == st:
-                            indlist.append((IndOfStar, IndOfState))
-                self.stateToVecStar_bare[st] = indlist
+            for IndOfStar, crStar in enumerate(self.vecpos_bare):
+                for IndOfState, state in enumerate(crStar):
+                    self.stateToVecStar_bare[state].append((IndOfStar, IndOfState))
 
         # We must produce two expansions. One for pure dumbbell states pointing to pure dumbbell state
         # and the other from mixed dumbbell states to mixed states.
@@ -215,7 +213,7 @@ class vectorStars(VectorStarSet):
         mixedstates = self.starset.mixedstates
         # Connect the states - major bottleneck
         connectset= set([])
-        connect_statepair = {}
+        self.connect_ComplexPair = {}
         start = time.time()
         for i, st1 in enumerate(complexStates):
             for j, st2 in enumerate(complexStates[:i+1]):
@@ -225,11 +223,12 @@ class vectorStars(VectorStarSet):
                     continue
                 connectset.add(s)
                 connectset.add(-s)
-                if i==j and not s==-s:
-                    raise ValueError("Same state connection producing different connector")
-                connect_statepair[(i, j)] = s
-                connect_statepair[(j, i)] = -s
+                # if i==j and not s==-s:
+                #     raise ValueError("Same state connection producing different connector")
+                self.connect_ComplexPair[(st1, st2)] = s
+                self.connect_ComplexPair[(st2, st1)] = -s
         print("\tComplex connections creation time: {}".format(time.time() - start))
+
         # Now group the connections
         GFstarset_pure=[]
         GFPureStarInd = {}
@@ -262,11 +261,15 @@ class vectorStars(VectorStarSet):
         GFstarset_mixed = []
         GFMixedStarInd = {}
         connectset_mixed = set([])
+        self.connect_MixedPair = {}
         # For the mixed dumbbells, we need only the states in the initial unit cell.
-        for state1 in mixedstates:
-            for state2 in self.starset.mixedstates:
+        for i, state1 in enumerate(mixedstates):
+            for j, state2 in enumerate(mixedstates[:i+1]):
                 s = connector(state1.db, state2.db)
                 connectset_mixed.add(s)
+                connectset_mixed.add(-s)
+                self.connect_MixedPair[(state1, state2)] = s
+                self.connect_MixedPair[(state2, state1)] = -s
 
         # Now, group them symmetrically
         for s in connectset_mixed:
@@ -303,7 +306,7 @@ class vectorStars(VectorStarSet):
             # GFstarset_mixed_snewlist.append(slist)
         print("No. of pure dumbbell connections: {}".format(len(connectset)))
         print("No. of mixed dumbbell connections: {}".format(len(connectset_mixed)))
-        return GFstarset_pure, GFPureStarInd, connect_statepair, GFstarset_mixed, GFMixedStarInd
+        return GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd
 
     def GFexpansion(self):
         """
@@ -311,57 +314,72 @@ class vectorStars(VectorStarSet):
         """
         print("building GF starsets")
         start = time.time()
-        GFstarset_pure, GFPureStarInd, connect_statepair, GFstarset_mixed, GFMixedStarInd = self.genGFstarset()
+        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.genGFstarset()
         print("GF star sets built: {}".format(time.time() - start))
 
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
-        GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
         GFexpansion_mixed = np.zeros((Nvstars_mixed, Nvstars_mixed, len(GFstarset_mixed)))
-        self.GFexpansion_pure_old = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
-        print("building GF expansions:")
+        # self.GFexpansion_pure_old = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
+        # print("building GF expansions:")
+        # start = time.time()
+        # for i in range(Nvstars_pure):
+        #     for si, vi in zip(self.vecpos[i], self.vecvec[i]):
+        #         for j in range(Nvstars_pure):
+        #             for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
+        #                 try:
+        #                     ds = si ^ sj
+        #                 except:
+        #                     continue
+        #                 k = GFPureStarInd[ds]
+        #                 # if k is None:
+        #                 #     raise ArithmeticError(
+        #                 #         "complex GF starset not big enough to accomodate state pair {}".format(ds))
+        #                 self.GFexpansion_pure_old[i, j, k] += np.dot(vi, vj)
+        # print("\tOld method: {}".format(time.time()-start))
+        # start = time.time()
+
+        GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
         start = time.time()
-        for i in range(Nvstars_pure):
-            for si, vi in zip(self.vecpos[i], self.vecvec[i]):
-                for j in range(Nvstars_pure):
-                    for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
-                        try:
-                            ds = si ^ sj
-                        except:
-                            continue
-                        ind1 = self.starset.pdbcontainer.db2ind(ds.state1)
-                        ind2 = self.starset.pdbcontainer.db2ind(ds.state2)
-                        if ind1 == None or ind2 == None:
-                            raise KeyError("enpoint subtraction within starset not found in iorlist")
-                        k = GFPureStarInd[ds]
-                        if k is None:
-                            raise ArithmeticError(
-                                "complex GF starset not big enough to accomodate state pair {}".format(ds))
-                        self.GFexpansion_pure_old[i, j, k] += np.dot(vi, vj)
-        print("\tOld method: {}".format(time.time()-start))
-        start = time.time()
-        for (ij, s) in connect_statepair.items():
+        for ((st1, st2), s) in self.connect_ComplexPair.items():
             # get the vector stars in which the initial state belongs
-            i = self.stateToVecStar_pure[self.starset.complexStates[ij[0]]]
+            i = self.stateToVecStar_pure[st1]
             # get the vector stars in which the final state belongs
-            j = self.stateToVecStar_pure[self.starset.complexStates[ij[1]]]
+            j = self.stateToVecStar_pure[st2]
+            k = GFPureStarInd[s]
             for (indOfStar_i, indOfState_i) in i:
                 for (indOfStar_j, indOfState_j) in j:
-                    GFexpansion_pure[indOfStar_i, indOfStar_j, GFPureStarInd[s]] += \
+                    GFexpansion_pure[indOfStar_i, indOfStar_j, k] += \
                         np.dot(self.vecvec[indOfStar_i][indOfState_i], self.vecvec[indOfStar_j][indOfState_j])
-        print("New method: {}".format(time.time() - start))
 
+
+        print("Built Complex GF expansions: {}".format(time.time() - start))
+        # print(np.allclose(GFexpansion_pure, self.GFexpansion_pure_old))
         # Build up the mixed GF expansion
-        for i in range(self.Nvstars_pure, self.Nvstars):
-            for si, vi in zip(self.vecpos[i], self.vecvec[i]):
-                for j in range(self.Nvstars_pure, self.Nvstars):
-                    for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
-                        ds = connector(si.db, sj.db)
-                        k = GFMixedStarInd[ds]
-                        if k is None:
-                            raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}"
-                                                  .format((si, sj)))
-                        GFexpansion_mixed[i-self.Nvstars_pure, j-self.Nvstars_pure, k] += np.dot(vi, vj)
+
+        # for i in range(self.Nvstars_pure, self.Nvstars):
+        #     for si, vi in zip(self.vecpos[i], self.vecvec[i]):
+        #         for j in range(self.Nvstars_pure, self.Nvstars):
+        #             for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
+        #                 ds = connector(si.db, sj.db)
+        #                 k = GFMixedStarInd[ds]
+        #                 if k is None:
+        #                     raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}"
+        #                                           .format((si, sj)))
+        #                 GFexpansion_mixed_old[i-self.Nvstars_pure, j-self.Nvstars_pure, k] += np.dot(vi, vj)
+        
+        # Build using direct reference to vector stars instead of iterations.
+        start = time.time()
+        for ((st1, st2), s) in self.connect_MixedPair.items():
+            i = self.stateToVecStar_mixed[st1]
+            j = self.stateToVecStar_mixed[st2]
+            k = GFMixedStarInd[s]
+            for (indOfStar_i, indOfState_i) in i:
+                for (indOfStar_j, indOfState_j) in j:
+                    GFexpansion_mixed[indOfStar_i-self.Nvstars_pure, indOfStar_j-self.Nvstars_pure, k] += \
+                        np.dot(self.vecvec[indOfStar_i][indOfState_i], self.vecvec[indOfStar_j][indOfState_j])
+
+        print("Built Mixed GF expansions: {}".format(time.time() - start))
 
         # symmetrize
         for i in range(Nvstars_pure):
@@ -612,18 +630,41 @@ class vectorStars(VectorStarSet):
         star basis.
         :return: outerprod, 3x3xNvstarsxNvstars outer product tensor.
         """
+        # print("Building outer product tensor")
         outerprod = np.zeros((3, 3, self.Nvstars, self.Nvstars))
-        for i in range(self.Nvstars_pure):
-            for j in range(self.Nvstars_pure):
-                for si, vi in zip(self.vecpos[i], self.vecvec[i]):
-                    for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
-                        if si == sj:
-                            outerprod[:, :, i, j] += np.outer(vi, vj)
+        # start = time.time()
+        # for i in range(self.Nvstars_pure):
+        #     for j in range(self.Nvstars_pure):
+        #         for si, vi in zip(self.vecpos[i], self.vecvec[i]):
+        #             for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
+        #                 if si == sj:
+        #                     outerprod_old[:, :, i, j] += np.outer(vi, vj)
+        # print("\tOld method: {}".format(time.time()-start))
+
+        # start = time.time()
+        for st in self.starset.complexStates:
+            vecStarList = self.stateToVecStar_pure[st]
+            for (indStar1, indState1) in vecStarList:
+                for (indStar2, indState2) in vecStarList:
+                    outerprod[:, :, indStar1, indStar2] += np.outer(self.vecvec[indStar1][indState1],
+                                                                    self.vecvec[indStar2][indState2])
+        # print("\tNew method: {}".format(time.time() - start))
+        # print(np.allclose(outerprod, outerprod_old))
+
         # There should be no non-zero outer product tensors between the pure and mixed dumbbells.
-        for i in range(self.Nvstars_pure, self.Nvstars):
-            for j in range(self.Nvstars_pure, self.Nvstars):
-                for si, vi in zip(self.vecpos[i], self.vecvec[i]):
-                    for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
-                        if si == sj:
-                            outerprod[:, :, i, j] += np.outer(vi, vj)
+
+        for st in self.starset.mixedstates:
+            indlist = self.stateToVecStar_mixed[st]
+            for (IndofStar1, IndofState1) in indlist:
+                for (IndofStar2, IndofState2) in indlist:
+                    outerprod[:, :, IndofStar1, IndofStar2] += np.outer(self.vecvec[IndofStar1][IndofState1],
+                                                                      self.vecvec[IndofStar2][IndofState2])
+
+        # for i in range(self.Nvstars_pure, self.Nvstars):
+        #     for j in range(self.Nvstars_pure, self.Nvstars):
+        #         for si, vi in zip(self.vecpos[i], self.vecvec[i]):
+        #             for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
+        #                 if si == sj:
+        #                     outerprod[:, :, i, j] += np.outer(vi, vj)
+
         return zeroclean(outerprod)
