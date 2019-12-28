@@ -173,32 +173,36 @@ class StarSet(object):
         allset = set([])
         start = time.time()
         for state in self.stateset:
-            if not (state in allset):
-                newstar = []
-                newstar_index = []
-                for gdumb in self.pdbcontainer.G:
-                    newstate = state.gop(self.pdbcontainer, gdumb)[0]
-                    newstate = newstate - newstate.R_s  # Shift the solute back to the origin unit cell.
-                    if newstate in self.stateset:  # Check if this state is allowed to be present.
-                        if not newstate in allset:  # Check if this state has already been considered.
-                            newstateind = self.complexStates.index(newstate)
-                            newstar.append(newstate)
-                            newstar_index.append(newstateind)
-                            self.complexIndexdict[newstate] = (newstateind, len(stars))
-                            allset.add(newstate)
-                if len(newstar) == 0:
-                    raise ValueError("A star must have at least one state.")
-                stars.append(newstar)
-                starindexed.append(newstar_index)
+            if state in allset:  # see if already considered before.
+                continue
+            newstar = []
+            newstar_index = []
+            for gdumb in self.pdbcontainer.G:
+                newstate = state.gop(self.pdbcontainer, gdumb)[0]
+                newstate = newstate - newstate.R_s  # Shift the solute back to the origin unit cell.
+                if newstate in self.stateset:  # Check if this state is allowed to be present.
+                    if not newstate in allset:  # Check if this state has already been considered.
+                        newstateind = self.complexStates.index(newstate)
+                        newstar.append(newstate)
+                        newstar_index.append(newstateind)
+                        allset.add(newstate)
+            if len(newstar) == 0:
+                raise ValueError("A star must have at least one state.")
+            stars.append(newstar)
+            starindexed.append(newstar_index)
         print("grouped states by symmetry: {}".format(time.time() - start))
         self.stars = stars
         self.sortstars()
 
-        # Keep the indices of the origin states. May be necessary when dealing with their rates and probabilities
-        self.originstates = []
         for starind, star in enumerate(self.stars):
-            if star[0].is_zero(self.pdbcontainer):
-                self.originstates.append(starind)
+            for state in star:
+                self.complexIndexdict[state] = (self.complexStates.index(state), starind)
+
+        # Keep the indices of the origin states. May be necessary when dealing with their rates and probabilities
+        # self.originstates = []
+        # for starind, star in enumerate(self.stars):
+        #     if star[0].is_zero(self.pdbcontainer):
+        #         self.originstates.append(starind)
 
         start = time.time()
         self.mixedstartindex = len(self.stars)
