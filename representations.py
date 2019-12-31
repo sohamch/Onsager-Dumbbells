@@ -212,7 +212,7 @@ class jump(namedtuple('jump', 'state1 state2 c1 c2')):
 
             strrep += "dumbbell : (i, or) index = {}, lattice vector = {}\n".format(self.state2.db.iorind,
                                                                                     self.state2.db.R)
-            strrep += "Jumping from c = {} to c= {}".format(self.c1, self.c2)
+            strrep += "Jumping from c1 = {} to c2 = {}".format(self.c1, self.c2)
 
         if isinstance(self.state1, dumbbell):
             strrep = "Jump object:\nInitial state:\n\t"
