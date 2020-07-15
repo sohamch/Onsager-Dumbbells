@@ -290,20 +290,18 @@ class dumbbellMediated(VacancyMediated):
         # self.omeg2types = self.vkinetic.starset.jnet2_types
         self.jtags2 = self.vkinetic.starset.jtags2
         # Next - omega1 - indexed to complexStates
-        (self.jnet_1, self.jnet1_indexed, self.jtags1), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
+        (self.jnet1, self.jnet1_indexed, self.jtags1), self.om1types = self.vkinetic.starset.jumpnetwork_omega1()
 
         # next, omega3 and omega_4, indexed to pure and mixed states
         # If data already provided, use those
         if self.omega43_dats is None:
-            (self.symjumplist_omega43_all, self.symjumplist_omega43_all_indexed), (
-                self.symjumplist_omega4, self.symjumplist_omega4_indexed, self.jtags4), \
-            (self.symjumplist_omega3, self.symjumplist_omega3_indexed,
-             self.jtags3) = self.vkinetic.starset.jumpnetwork_omega34(cutoff, solv_solv_cut, solt_solv_cut,
-                                                                      closestdistance)
+            (self.jnet43, self.jnet43_indexed), (self.jnet4, self.jnet4_indexed, self.jtags4), \
+            (self.jnet3, self.jnet3_indexed, self.jtags3) = self.vkinetic.starset.jumpnetwork_omega34(cutoff, solv_solv_cut,
+                                                                                                      solt_solv_cut, closestdistance)
         else:
-            (self.symjumplist_omega43_all, self.symjumplist_omega43_all_indexed) = self.omega43_dats[0]
-            (self.symjumplist_omega4, self.symjumplist_omega4_indexed, self.jtags4) = self.omega43_dats[1]
-            (self.symjumplist_omega3, self.symjumplist_omega3_indexed, self.jtags3) = self.omega43_dats[2]
+            (self.jnet43, self.jnet43_indexed) = self.omega43_dats[0]
+            (self.jnet4, self.jnet4_indexed, self.jtags4) = self.omega43_dats[1]
+            (self.jnet3, self.jnet3_indexed, self.jtags3) = self.omega43_dats[2]
 
     def generate(self, Nthermo, cutoff, solt_solv_cut, solv_solv_cut, closestdistance):
 
@@ -355,12 +353,12 @@ class dumbbellMediated(VacancyMediated):
 
         # generate the rate expansions
         start = time.time()
-        self.rateExps = self.vkinetic.rateexpansion(self.jnet_1, self.om1types, self.symjumplist_omega43_all)
+        self.rateExps = self.vkinetic.rateexpansion(self.jnet1, self.om1types, self.jnet43)
         print("built rate expansions: {}".format(time.time() - start))
 
         # # Generate the bias expansions
         start = time.time()
-        self.biases = self.vkinetic.biasexpansion(self.jnet_1, self.jnet2, self.om1types, self.symjumplist_omega43_all)
+        self.biases = self.vkinetic.biasexpansion(self.jnet1, self.jnet2, self.om1types, self.jnet43)
         print("built bias expansions: {}".format(time.time() - start))
         #
         # # generate the outer products of the vector stars
@@ -614,8 +612,8 @@ class dumbbellMediated(VacancyMediated):
         # eta0_solute, eta0_solvent = self.eta0total_solute, self.eta0total_solvent
         # Stores biases out of complex states, followed by mixed dumbbell states.
         jumpnetwork_omega1, jumptype, jumpnetwork_omega2, jumpnetwork_omega3, jumpnetwork_omega4 = \
-            self.jnet1_indexed, self.om1types, self.jnet2_indexed, self.symjumplist_omega3_indexed, \
-            self.symjumplist_omega4_indexed
+            self.jnet1_indexed, self.om1types, self.jnet2_indexed, self.jnet3_indexed, \
+            self.jnet4_indexed
 
         Ncomp = len(self.vkinetic.starset.complexStates)
 
@@ -767,14 +765,14 @@ class dumbbellMediated(VacancyMediated):
         omega2 = np.zeros(len(self.jnet2))
         omega2escape = np.zeros((len(self.mdbcontainer.symorlist), len(self.jnet2)))
 
-        omega1 = np.zeros(len(self.jnet_1))
-        omega1escape = np.zeros((self.vkinetic.Nvstars_pure, len(self.jnet_1)))
+        omega1 = np.zeros(len(self.jnet1))
+        omega1escape = np.zeros((self.vkinetic.Nvstars_pure, len(self.jnet1)))
 
-        omega3 = np.zeros(len(self.symjumplist_omega3))
-        omega3escape = np.zeros((Nvstars_mixed, len(self.symjumplist_omega3)))
+        omega3 = np.zeros(len(self.jnet3))
+        omega3escape = np.zeros((Nvstars_mixed, len(self.jnet3)))
 
-        omega4 = np.zeros(len(self.symjumplist_omega4))
-        omega4escape = np.zeros((self.vkinetic.Nvstars_pure, len(self.symjumplist_omega4)))
+        omega4 = np.zeros(len(self.jnet4))
+        omega4escape = np.zeros((self.vkinetic.Nvstars_pure, len(self.jnet4)))
 
         # build the omega0 lists
         for jt, jlist in enumerate(self.jnet0):
@@ -803,7 +801,7 @@ class dumbbellMediated(VacancyMediated):
             omega2[jt] = np.sqrt(omega2escape[w1, jt] * omega2escape[w2, jt])
 
         # build the omega1 lists
-        for jt, jlist in enumerate(self.jnet_1):
+        for jt, jlist in enumerate(self.jnet1):
 
             st1 = jlist[0].state1
             st2 = jlist[0].state2
@@ -831,7 +829,7 @@ class dumbbellMediated(VacancyMediated):
                 omega1escape[v2, jt] = fin2TS
 
         # Next, we need to build the lists for omega3 and omega4 lists
-        for jt, jlist in enumerate(self.symjumplist_omega43_all):
+        for jt, jlist in enumerate(self.jnet43):
 
             # The first state is a complex state, the second state is a mixed state.
             # This has been checked in test_crystal stars - look it up
@@ -1117,7 +1115,7 @@ class dumbbellMediated(VacancyMediated):
 
         self.del_W1 = np.zeros_like(omega1escape)
         for i in range(Nvstars_pure):
-            for jt in range(len(self.jnet_1)):
+            for jt in range(len(self.jnet1)):
                 self.del_W1[i, jt] = omega1escape[i, jt] - \
                                      omega0escape[
                                          self.kinetic.star2symlist[self.vkinetic.vstar2star[i]], self.om1types[jt]]
@@ -1165,7 +1163,7 @@ class dumbbellMediated(VacancyMediated):
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet0_indexed]):
             prob_om0[jt] = np.sqrt(bareprobs[IS] * bareprobs[FS]) * omega0[jt]
 
-        prob_om1 = np.zeros(len(self.jnet_1))
+        prob_om1 = np.zeros(len(self.jnet1))
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet1_indexed]):
             prob_om1[jt] = np.sqrt(complex_prob[IS] * complex_prob[FS]) * omega1[jt]
 
@@ -1173,12 +1171,12 @@ class dumbbellMediated(VacancyMediated):
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet2_indexed]):
             prob_om2[jt] = np.sqrt(mixed_prob[IS] * mixed_prob[FS]) * omega2[jt]
 
-        prob_om4 = np.zeros(len(self.symjumplist_omega4))
-        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.symjumplist_omega4_indexed]):
+        prob_om4 = np.zeros(len(self.jnet4))
+        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet4_indexed]):
             prob_om4[jt] = np.sqrt(complex_prob[IS] * mixed_prob[FS]) * omega4[jt]
 
-        prob_om3 = np.zeros(len(self.symjumplist_omega3))
-        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.symjumplist_omega3_indexed]):
+        prob_om3 = np.zeros(len(self.jnet3))
+        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.jnet3_indexed]):
             prob_om3[jt] = np.sqrt(mixed_prob[IS] * complex_prob[FS]) * omega3[jt]
 
         probs = (prob_om1, prob_om2, prob_om4, prob_om3)

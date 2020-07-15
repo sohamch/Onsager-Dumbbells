@@ -37,14 +37,14 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                   0.3, 0.01, 0.01, 0.01, NGFmax=4, Nthermo=1)
         # generate all the bias expansions - will separate out later
         self.biases = \
-            self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1, self.onsagercalculator.jnet2,
+            self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet1, self.onsagercalculator.jnet2,
                                                           self.onsagercalculator.om1types,
-                                                          self.onsagercalculator.symjumplist_omega43_all)
+                                                          self.onsagercalculator.jnet43)
 
-        self.W1list = np.random.rand(len(self.onsagercalculator.jnet_1))
+        self.W1list = np.random.rand(len(self.onsagercalculator.jnet1))
         self.W2list = np.random.rand(len(self.onsagercalculator.jnet0))
-        self.W3list = np.random.rand(len(self.onsagercalculator.symjumplist_omega3))
-        self.W4list = np.random.rand(len(self.onsagercalculator.symjumplist_omega4))
+        self.W3list = np.random.rand(len(self.onsagercalculator.jnet3))
+        self.W4list = np.random.rand(len(self.onsagercalculator.jnet4))
         print("Initiated")
 
     def test_thermo2kin(self):
@@ -282,16 +282,16 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         # Now, local corrections (randomized)
         # randomize the forward and backward rates for every jump type./
-        rate1_forward = np.random.rand(len(self.onsagercalculator.jnet_1))
-        rate1_backward = np.random.rand(len(self.onsagercalculator.jnet_1))
+        rate1_forward = np.random.rand(len(self.onsagercalculator.jnet1))
+        rate1_backward = np.random.rand(len(self.onsagercalculator.jnet1))
         rate10_forward = np.array([rate0_forward[jt] for jt in self.onsagercalculator.om1types])
         rate10_backward = np.array([rate0_backward[jt] for jt in self.onsagercalculator.om1types])
 
-        rate10_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure, len(self.onsagercalculator.jnet_1)))
-        rate1_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure, len(self.onsagercalculator.jnet_1)))
+        rate10_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure, len(self.onsagercalculator.jnet1)))
+        rate1_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure, len(self.onsagercalculator.jnet1)))
 
         rate1list = []
-        for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet1):
 
             st1 = jlist[0].state1
             st2 = jlist[0].state2
@@ -315,20 +315,20 @@ class test_dumbbell_mediated(unittest.TestCase):
 
             rate1list.append(newlist)
 
-        rate43_forward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
-        rate43_backward = np.random.rand((len(self.onsagercalculator.symjumplist_omega43_all)))
+        rate43_forward = np.random.rand((len(self.onsagercalculator.jnet43)))
+        rate43_backward = np.random.rand((len(self.onsagercalculator.jnet43)))
 
         Nvstars_mixed = self.onsagercalculator.vkinetic.Nvstars - self.onsagercalculator.vkinetic.Nvstars_pure
 
-        rate3_stars = np.zeros((Nvstars_mixed, len(self.onsagercalculator.symjumplist_omega43_all)))
+        rate3_stars = np.zeros((Nvstars_mixed, len(self.onsagercalculator.jnet43)))
 
         rate4_stars = np.zeros((self.onsagercalculator.vkinetic.Nvstars_pure,
-                                len(self.onsagercalculator.symjumplist_omega43_all)))
+                                len(self.onsagercalculator.jnet43)))
 
         rate3list = []
         rate4list = []
 
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega43_all):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet43):
             st1 = jlist[0].state1
             st2 = jlist[0].state2
 
@@ -453,7 +453,7 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         # Get the non-local rates corresponding to a omega1 jump
         rate10list = []
-        for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet1):
             newlist = []
             for jnum, jmp in enumerate(jlist):
                 ISdb, FSdb = jmp.state1.db.iorind, jmp.state2.db.iorind
@@ -503,13 +503,13 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         # Calculate the updated bias explicitly
         vel10solvent = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
-        for jt, jlist, jindlist in zip(itertools.count(), self.onsagercalculator.jnet_1,
+        for jt, jlist, jindlist in zip(itertools.count(), self.onsagercalculator.jnet1,
                                        self.onsagercalculator.jnet1_indexed):
             for jnum, ((IS, FS), dx), jmp in zip(itertools.count(), jindlist, jlist):
                 vel10solvent[IS, :] += rate10list[jt][jnum]*dx
 
         # Now, update with eta vectors
-        for jt, jlist, jindlist in zip(itertools.count(), self.onsagercalculator.jnet_1,
+        for jt, jlist, jindlist in zip(itertools.count(), self.onsagercalculator.jnet1,
                                      self.onsagercalculator.jnet1_indexed):
             for jnum, ((IS, FS), dx), jmp in zip(itertools.count(), jindlist, jlist):
                 vel10solvent[IS, :] += rate10list[jt][jnum]*(self.onsagercalculator.eta00_solvent[IS]-
@@ -609,7 +609,7 @@ class test_dumbbell_mediated(unittest.TestCase):
             solvent_vel_3[i, :] = sum([vel3_solvent_vs[tup[0] - Nvstars_pure] *
                                        self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
         # Next, manually update with the eta0 vectors
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3_indexed):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet3_indexed):
             for jnum, ((IS, FS), dx) in enumerate(jlist):
                 # if i = =IS:
                 solute_vel_3[IS, :] += rate3list[jt][jnum] * (self.onsagercalculator.eta02_solute[IS] -
@@ -660,7 +660,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         # check against explicit evaluation
         solute_vel_4_direct = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
         solvent_vel_4_direct = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4_indexed):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet4_indexed):
             for jnum, ((IS, FS), dx) in enumerate(jlist):
                 or2 = self.onsagercalculator.mdbcontainer.iorlist[FS][1]
                 dx_solute = or2/2.
@@ -670,7 +670,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         self.assertTrue(np.allclose(solute_vel_4_direct, solute_vel_4))
         self.assertTrue(np.allclose(solvent_vel_4_direct, solvent_vel_4))
         # Next, manually update with the eta0 vectors
-        for jt,jlist in enumerate(self.onsagercalculator.symjumplist_omega4_indexed):
+        for jt,jlist in enumerate(self.onsagercalculator.jnet4_indexed):
             for jnum, ((IS, FS), dx) in enumerate(jlist):
                 solute_vel_4[IS, :] += rate4list[jt][jnum] * (self.onsagercalculator.eta00_solute[IS] -
                                                               self.onsagercalculator.eta02_solute[FS])
@@ -725,10 +725,10 @@ class test_dumbbell_mediated(unittest.TestCase):
             len(self.onsagercalculator.vkinetic.starset.jnet0))
         preT2, eneT2 = np.ones(len(self.onsagercalculator.vkinetic.starset.jnet2)), np.random.rand(
             len(self.onsagercalculator.vkinetic.starset.jnet2))
-        preT1, eneT1 = np.ones(len(self.onsagercalculator.jnet_1)), np.random.rand(len(self.onsagercalculator.jnet_1))
+        preT1, eneT1 = np.ones(len(self.onsagercalculator.jnet1)), np.random.rand(len(self.onsagercalculator.jnet1))
 
-        preT43, eneT43 = np.ones(len(self.onsagercalculator.symjumplist_omega43_all)), \
-                         np.random.rand(len(self.onsagercalculator.symjumplist_omega43_all))
+        preT43, eneT43 = np.ones(len(self.onsagercalculator.jnet43)), \
+                         np.random.rand(len(self.onsagercalculator.jnet43))
 
         # Now get the beta*free energy values.
         bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4 =\
@@ -743,8 +743,8 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         # First, check the omega1 rates coming out of origin states are zero
         for jt, rate in enumerate(omega1):
-            if self.onsagercalculator.jnet_1[jt][0].state1.is_zero(self.onsagercalculator.pdbcontainer) \
-                    or self.onsagercalculator.jnet_1[jt][0].state2.is_zero(self.onsagercalculator.pdbcontainer):
+            if self.onsagercalculator.jnet1[jt][0].state1.is_zero(self.onsagercalculator.pdbcontainer) \
+                    or self.onsagercalculator.jnet1[jt][0].state2.is_zero(self.onsagercalculator.pdbcontainer):
                 self.assertEqual(rate, 0.)
 
         eta0total_solute = self.onsagercalculator.eta0total_solute
@@ -768,12 +768,12 @@ class test_dumbbell_mediated(unittest.TestCase):
         for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.onsagercalculator.jnet2_indexed]):
             prob_om2[jt] = np.sqrt(mixed_prob[IS] * mixed_prob[FS]) * omega2[jt]
 
-        prob_om4 = np.zeros(len(self.onsagercalculator.symjumplist_omega4))
-        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.onsagercalculator.symjumplist_omega4_indexed]):
+        prob_om4 = np.zeros(len(self.onsagercalculator.jnet4))
+        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.onsagercalculator.jnet4_indexed]):
             prob_om4[jt] = np.sqrt(complex_prob[IS] * mixed_prob[FS]) * omega4[jt]
 
-        prob_om3 = np.zeros(len(self.onsagercalculator.symjumplist_omega3))
-        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.onsagercalculator.symjumplist_omega3_indexed]):
+        prob_om3 = np.zeros(len(self.onsagercalculator.jnet3))
+        for jt, ((IS, FS), dx) in enumerate([jlist[0] for jlist in self.onsagercalculator.jnet3_indexed]):
             prob_om3[jt] = np.sqrt(mixed_prob[IS] * complex_prob[FS]) * omega3[jt]
 
         # Now, let's compute the contribution by omega1 jumps
@@ -820,7 +820,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         L_uc_om3_test_bb = np.zeros((3, 3))
         L_uc_om3_test_ab = np.zeros((3, 3))
 
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3_indexed):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet3_indexed):
             # The initial state is a  mixed dumbbell and the final is a pure dumbbell
             sm_aa = np.zeros((3, 3))
             sm_bb = np.zeros((3, 3))
@@ -851,7 +851,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         L_uc_om4_test_bb = np.zeros((3, 3))
         L_uc_om4_test_ab = np.zeros((3, 3))
 
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4_indexed):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet4_indexed):
             # The initial state is a  pure dumbbell and the final is a mixed dumbbell
             for (IS, FS), dx in jlist:
                 o1 = self.onsagercalculator.pdbcontainer.iorlist[
@@ -899,10 +899,10 @@ class test_dumbbell_mediated(unittest.TestCase):
             len(self.onsagercalculator.vkinetic.starset.jnet0))
         preT2, eneT2 = np.ones(len(self.onsagercalculator.vkinetic.starset.jnet2)), np.random.rand(
             len(self.onsagercalculator.vkinetic.starset.jnet2))
-        preT1, eneT1 = np.ones(len(self.onsagercalculator.jnet_1)), np.random.rand(len(self.onsagercalculator.jnet_1))
+        preT1, eneT1 = np.ones(len(self.onsagercalculator.jnet1)), np.random.rand(len(self.onsagercalculator.jnet1))
 
-        preT43, eneT43 = np.ones(len(self.onsagercalculator.symjumplist_omega43_all)), \
-                         np.random.rand(len(self.onsagercalculator.symjumplist_omega43_all))
+        preT43, eneT43 = np.ones(len(self.onsagercalculator.jnet43)), \
+                         np.random.rand(len(self.onsagercalculator.jnet43))
 
         # 1c. Now get the beta*free energy values.
         bFdb0, bFdb2, bFS, bFSdb, bFT0, bFT1, bFT2, bFT3, bFT4 = \
@@ -966,7 +966,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
         (omega4, omega4escape) = omegas
         # 2a.1 - check equivalence of symmetrized omega3 and 4 rates
-        for jt in range(len(self.onsagercalculator.symjumplist_omega43_all)):
+        for jt in range(len(self.onsagercalculator.jnet43)):
             self.assertEqual(omega4[jt], omega3[jt])
 
         # 2a.2 - check consistency of non-local rates
@@ -1013,7 +1013,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         # 3a. First, we do the non-diagonal parts
         delta_om_test = np.zeros((Nvstars, Nvstars))
         # 3a.1 - First, we concentrate on the complex-complex block and the omega1 jumps
-        for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet1):
             delom1 = omega1[jt] - omega0[self.onsagercalculator.om1types[jt]]
             for jmp in jlist:
                 indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state1]
@@ -1025,7 +1025,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                                             self.onsagercalculator.vkinetic.vecvec[vj][invj])
 
         # 3a.2 - Next, we consider the contribution by omega3 jumps - mixed to complex
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet3):
             for jmp in jlist:
                 indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_mixed[jmp.state1]
                 indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state2]
@@ -1036,7 +1036,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                 self.onsagercalculator.vkinetic.vecvec[vj][invj])
 
         # 3a.3 - Next, we consider the contribution by only the omega4 jumps - complex to mixed
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet4):
             for jmp in jlist:
                 indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state1]
                 indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_mixed[jmp.state2]
@@ -1049,7 +1049,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         # 3b - Now, we do the off diagonal parts
         # 3b.1 - contribution by omega1
         diags = np.zeros(Nvstars)
-        for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet1):
             for jmp in jlist:
                 si = jmp.state1
 
@@ -1078,7 +1078,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                          dbwyck_i] - bFdb0_min) * vdot
 
         # 3b.2 - contribution by omega4
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet4):
             for jmp in jlist:
                 si = jmp.state1
 
@@ -1093,7 +1093,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                     diags[vi] -= np.exp(-bFT4[jt] + bFSdb_total_shift[star_i]) * vdot
 
         # 3b.3 - contribution by omega3
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet3):
             for jmp in jlist:
                 si = jmp.state1
 
@@ -1195,7 +1195,7 @@ class test_dumbbell_mediated(unittest.TestCase):
             self.assertTrue(np.allclose(np.exp(-bFdb2[wyckind]), mixed_prob[i] * part_func))
 
         # 5a. Test consistency with omega1 rates
-        for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet1):
             for jmp in jlist:
                 st1 = jmp.state1
                 st2 = jmp.state2
@@ -1229,7 +1229,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 self.assertTrue(np.allclose(symrate, omega2[jt]))
 
         # 5c. Test consistency of omega3 and omega4 rates
-        for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3):
+        for jt, jlist in enumerate(self.onsagercalculator.jnet3):
             for jmp in jlist:
                 st1 = jmp.state1
                 st2 = jmp.state2
@@ -1280,12 +1280,12 @@ class test_dumbbell_mediated(unittest.TestCase):
                 # self.assertTrue(np.allclose(self.onsagercalculator.eta0total_solvent[i], np.zeros(3)))
                 # self.assertTrue(np.allclose(self.onsagercalculator.eta0total_solute[i], np.zeros(3)))
                 self.assertTrue(np.allclose(complex_prob[i], 0.))
-                for jt in range(len(self.onsagercalculator.jnet_1)):
+                for jt in range(len(self.onsagercalculator.jnet1)):
                     for tup in vstar_indlist:
                         self.assertTrue(np.allclose(omega1escape[tup[0], jt], 0.))
                 continue
 
-            for jt, jlist in enumerate(self.onsagercalculator.jnet_1):
+            for jt, jlist in enumerate(self.onsagercalculator.jnet1):
                 for jnum, jmp in enumerate(jlist):
                     jt0 = self.onsagercalculator.om1types[jt]
                     rate0 = np.exp(- bFT0[jt0] + bFdb0[dbwyckind] - bFdb0_min)
@@ -1319,12 +1319,12 @@ class test_dumbbell_mediated(unittest.TestCase):
                                 self.assertTrue(np.allclose(self.onsagercalculator.del_W1[tup[0], jt], rate))
 
             # Now, update with omega4 contributions
-            for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega4):
+            for jt, jlist in enumerate(self.onsagercalculator.jnet4):
                 for jnum, jmp in enumerate(jlist):
                     if jmp.state1 == comp_state:
                         # get the jump rate
                         rate = np.exp(- bFT4[jt] + bFSdb_total_shift[starind])
-                        (IS, FS), dx = self.onsagercalculator.symjumplist_omega4_indexed[jt][jnum]
+                        (IS, FS), dx = self.onsagercalculator.jnet4_indexed[jt][jnum]
                         self.assertEqual(FS, jmp.state2.db.iorind)
                         or2 = self.onsagercalculator.mdbcontainer.iorlist[jmp.state2.db.iorind][1]
                         dx_solute = or2/2.
@@ -1348,12 +1348,12 @@ class test_dumbbell_mediated(unittest.TestCase):
             mdbwyckind = self.onsagercalculator.kinetic.star2symlist[starind]
 
             # Now, update with omega3 contributions
-            for jt, jlist in enumerate(self.onsagercalculator.symjumplist_omega3):
+            for jt, jlist in enumerate(self.onsagercalculator.jnet3):
                 for jnum, jmp in enumerate(jlist):
                     if jmp.state1 == mixstate:
                         # get the jump rate
                         rate = np.exp(- bFT3[jt] + bFdb2[mdbwyckind] - bFdb2_min)
-                        (IS, FS), dx = self.onsagercalculator.symjumplist_omega3_indexed[jt][jnum]
+                        (IS, FS), dx = self.onsagercalculator.jnet3_indexed[jt][jnum]
                         or1 = self.onsagercalculator.mdbcontainer.iorlist[jmp.state1.db.iorind][1]
                         dx_solute = - or1 / 2.
                         dx_solvent = dx + or1 / 2.
@@ -1425,11 +1425,11 @@ class test_distorted(test_dumbbell_mediated):
                                                   0.3, 0.01, 0.01, 0.01, NGFmax=4, Nthermo=1)
         # generate all the bias expansions - will separate out later
         self.biases = \
-            self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet_1, self.onsagercalculator.jnet2,
+            self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet1, self.onsagercalculator.jnet2,
                                                           self.onsagercalculator.om1types,
-                                                          self.onsagercalculator.symjumplist_omega43_all)
+                                                          self.onsagercalculator.jnet43)
 
-        self.W1list = np.random.rand(len(self.onsagercalculator.jnet_1))
+        self.W1list = np.random.rand(len(self.onsagercalculator.jnet1))
         self.W2list = np.random.rand(len(self.onsagercalculator.jnet0))
-        self.W3list = np.random.rand(len(self.onsagercalculator.symjumplist_omega3))
-        self.W4list = np.random.rand(len(self.onsagercalculator.symjumplist_omega4))
+        self.W3list = np.random.rand(len(self.onsagercalculator.jnet3))
+        self.W4list = np.random.rand(len(self.onsagercalculator.jnet4))
