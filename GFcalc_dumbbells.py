@@ -1,7 +1,8 @@
 import numpy as np
 import onsager.PowerExpansion as PE
 
-from onsager.GFcalc import GFCrystalcalc
+# from onsager.GFcalc import GFCrystalcalc
+from GFcalc_local import GFCrystalcalc
 # import GFcalc
 import itertools
 from scipy.special import hyp1f1, gamma, expi, factorial
