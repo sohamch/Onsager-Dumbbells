@@ -299,9 +299,14 @@ class dumbbellMediated(VacancyMediated):
             (self.jnet3, self.jnet3_indexed, self.jtags3) = self.vkinetic.starset.jumpnetwork_omega34(cutoff, solv_solv_cut,
                                                                                                       solt_solv_cut, closestdistance)
         else:
-            (self.jnet43, self.jnet43_indexed) = self.omega43_dats[0]
-            (self.jnet4, self.jnet4_indexed, self.jtags4) = self.omega43_dats[1]
-            (self.jnet3, self.jnet3_indexed, self.jtags3) = self.omega43_dats[2]
+            self.jnet43 = self.omega43_dats[0]
+            self.jnet4 = self.omega43_dats[1]
+            self.jnet3 = self.omega43_dats[2]
+
+            # re-index omega4, omega3 and build the jtags - since we are using the same containers to build the passed in jumps,
+            # the states won't change, but their indices might.
+            self.jnet43_indexed, (self.jnet4_indexed, self.jtags4), (self.jnet3_indexed, self.jtags3) =\
+                self.vkinetic.starset.reIndex43(self.jnet4, self.jnet3)
 
     def generate(self, Nthermo, cutoff, solt_solv_cut, solv_solv_cut, closestdistance):
 
