@@ -623,10 +623,8 @@ class dumbbellMediated(VacancyMediated):
         Ncomp = len(self.vkinetic.starset.complexStates)
 
         # We need the D0expansion to evaluate the modified non-local contribution
-        # outside the kinetic shell. See the notebook for more details.
-        # D0expansion_aa = np.zeros((3, 3, len(self.jnet0)))
+        # outside the kinetic shell.
         D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
-        # D0expansion_ab = np.zeros((3, 3, len(self.jnet0)))
 
         # Omega1 contains the total rate and not just the change.
         D1expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega1)))
