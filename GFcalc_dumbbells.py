@@ -7,7 +7,7 @@ from GFcalc_local import GFCrystalcalc
 import itertools
 from scipy.special import hyp1f1, gamma, expi, factorial
 
-# from copy import deepcopy
+from copy import deepcopy
 # from numpy import linalg as LA
 # from scipy.special import hyp1f1, gamma, expi #, gammainc
 """
