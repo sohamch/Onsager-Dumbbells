@@ -7,7 +7,7 @@ from GFcalc_dumbbells import GF_dumbbells
 import stars
 import vector_stars
 from functools import reduce
-from scipy.linalg import pinv2
+from scipy.linalg import pinv
 from onsager.OnsagerCalc import Interstitial, VacancyMediated
 import itertools
 import time
@@ -71,7 +71,7 @@ class BareDumbbell(Interstitial):
         #     self.bias_solver = lambda omega,b : -la.solve(-omega,b,sym_pos=True)
         # else:
         #     # pseudoinverse required:
-        #     self.bias_solver = lambda omega, b: np.dot(pinv2(omega), b)
+        #     self.bias_solver = lambda omega, b: np.dot(pinv(omega), b)
 
         # self.sitegroupops = self.generateStateGroupOps()
         # self.jumpgroupops = self.generateJumpGroupOps()
@@ -197,12 +197,12 @@ class BareDumbbell(Interstitial):
                 # Db - derivative with respect to beta
         # gamma_i = np.zeros((self.N, 3))
 
-        gamma_i = np.tensordot(pinv2(omega_ij), bias_i, axes=(1, 0))
+        gamma_i = np.tensordot(pinv(omega_ij), bias_i, axes=(1, 0))
         Dcorr = np.zeros((3, 3))
         for i in range(self.N):
             Dcorr += np.outer(bias_i[i], gamma_i[i])
 
-        return D0, Dcorr, omega_ij, pinv2(omega_ij)
+        return D0, Dcorr, omega_ij, pinv(omega_ij)
 
 
 class dumbbellMediated(VacancyMediated):
@@ -393,7 +393,7 @@ class dumbbellMediated(VacancyMediated):
                 W0[i, i] -= rate0list[jt][jnum]  # Add the same to the diagonal
         # Here, G0 = sum(x_s')G0(x_s') - and we have [sum(x_s')G0(x_s')][sum(x_s')W0(x_s')] = identity
         # The equation can be derived from the Fourier space inverse relations at q=0 for their symmetrized versions.
-        self.G0 = pinv2(W0)
+        self.G0 = pinv(W0)
 
         W2 = np.zeros((len(self.kinetic.mixedstates),
                        len(self.kinetic.mixedstates)))
@@ -403,7 +403,7 @@ class dumbbellMediated(VacancyMediated):
                 W2[i, j] += rate2list[jt][jnum]  # The unsymmetrized rate for that jump.
                 W2[i, i] -= rate2list[jt][jnum]  # Add the same to the diagonal
 
-        self.G2 = pinv2(W2)
+        self.G2 = pinv(W2)
 
         self.biasBareExpansion = self.biases[-1]
 
