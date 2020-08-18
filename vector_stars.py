@@ -320,24 +320,7 @@ class vectorStars(VectorStarSet):
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
         GFexpansion_mixed = np.zeros((Nvstars_mixed, Nvstars_mixed, len(GFstarset_mixed)))
-        # self.GFexpansion_pure_old = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
-        # print("building GF expansions:")
-        # start = time.time()
-        # for i in range(Nvstars_pure):
-        #     for si, vi in zip(self.vecpos[i], self.vecvec[i]):
-        #         for j in range(Nvstars_pure):
-        #             for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
-        #                 try:
-        #                     ds = si ^ sj
-        #                 except:
-        #                     continue
-        #                 k = GFPureStarInd[ds]
-        #                 # if k is None:
-        #                 #     raise ArithmeticError(
-        #                 #         "complex GF starset not big enough to accomodate state pair {}".format(ds))
-        #                 self.GFexpansion_pure_old[i, j, k] += np.dot(vi, vj)
-        # print("\tOld method: {}".format(time.time()-start))
-        # start = time.time()
+
 
         GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
         start = time.time()
@@ -354,21 +337,7 @@ class vectorStars(VectorStarSet):
 
 
         print("Built Complex GF expansions: {}".format(time.time() - start))
-        # print(np.allclose(GFexpansion_pure, self.GFexpansion_pure_old))
-        # Build up the mixed GF expansion
 
-        # for i in range(self.Nvstars_pure, self.Nvstars):
-        #     for si, vi in zip(self.vecpos[i], self.vecvec[i]):
-        #         for j in range(self.Nvstars_pure, self.Nvstars):
-        #             for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
-        #                 ds = connector(si.db, sj.db)
-        #                 k = GFMixedStarInd[ds]
-        #                 if k is None:
-        #                     raise ArithmeticError("mixed GF starset not big enough to accomodate state pair {}"
-        #                                           .format((si, sj)))
-        #                 GFexpansion_mixed_old[i-self.Nvstars_pure, j-self.Nvstars_pure, k] += np.dot(vi, vj)
-        
-        # Build using direct reference to vector stars instead of iterations.
         start = time.time()
         for ((st1, st2), s) in self.connect_MixedPair.items():
             i = self.stateToVecStar_mixed[st1]
@@ -589,10 +558,7 @@ class vectorStars(VectorStarSet):
                                                                           self.vecvec[tup2[0]][tup2[1]])
 
                 for tup1 in indlist1:
-                    # rate4escape[tup1[0], k] -= np.dot(self.vecvec[tup1[0]][tup1[1]], self.vecvec[tup1[0]][tup1[1]])
                     for tup2 in indlist2:
-                        # rate3escape[tup2[0] - self.Nvstars_pure, k] -= np.dot(self.vecvec[tup2[0]][tup2[1]],
-                        #                                                       self.vecvec[tup2[0]][tup2[1]])
 
                         rate4expansion[tup1[0], tup2[0] - self.Nvstars_pure, k] += np.dot(self.vecvec[tup1[0]][tup1[1]],
                                                                                           self.vecvec[tup2[0]][tup2[1]])
@@ -659,12 +625,5 @@ class vectorStars(VectorStarSet):
                 for (IndofStar2, IndofState2) in indlist:
                     outerprod[:, :, IndofStar1, IndofStar2] += np.outer(self.vecvec[IndofStar1][IndofState1],
                                                                       self.vecvec[IndofStar2][IndofState2])
-
-        # for i in range(self.Nvstars_pure, self.Nvstars):
-        #     for j in range(self.Nvstars_pure, self.Nvstars):
-        #         for si, vi in zip(self.vecpos[i], self.vecvec[i]):
-        #             for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
-        #                 if si == sj:
-        #                     outerprod[:, :, i, j] += np.outer(vi, vj)
 
         return zeroclean(outerprod)
