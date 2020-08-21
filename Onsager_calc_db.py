@@ -643,8 +643,8 @@ class dumbbellMediated(VacancyMediated):
         D4expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega4)))
         D4expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega4)))
 
-        iorlist_pure = self.pdbcontainer.iorlist
-        iorlist_mixed = self.mdbcontainer.iorlist
+        # iorlist_pure = self.pdbcontainer.iorlist
+        # iorlist_mixed = self.mdbcontainer.iorlist
         # Need versions for solute and solvent - solute dusplacements are zero anyway
         for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork_omega1):
             d0 = np.sum(
@@ -658,28 +658,28 @@ class dumbbellMediated(VacancyMediated):
         for jt, jumplist in enumerate(jumpnetwork_omega2):
             # Build the expansions directly
             for (IS, FS), dx in jumplist:
-                o1 = iorlist_mixed[self.vkinetic.starset.mixedstates[IS].db.iorind][1]
-                o2 = iorlist_mixed[self.vkinetic.starset.mixedstates[FS].db.iorind][1]
-                dx_solute = dx + o2 / 2. - o1 / 2. + eta0_solute[Ncomp + IS] - eta0_solute[Ncomp + FS]
-                dx_solvent = dx - o2 / 2. + o1 / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[Ncomp + FS]
+                # o1 = iorlist_mixed[self.vkinetic.starset.mixedstates[IS].db.iorind][1]
+                # o2 = iorlist_mixed[self.vkinetic.starset.mixedstates[FS].db.iorind][1]
+                dx_solute = dx + eta0_solute[Ncomp + IS] - eta0_solute[Ncomp + FS]  # + o2 / 2. - o1 / 2.
+                dx_solvent = dx + eta0_solvent[Ncomp + IS] - eta0_solvent[Ncomp + FS]  # - o2 / 2. + o1 / 2.
                 D2expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D2expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D2expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
 
         for jt, jumplist in enumerate(jumpnetwork_omega3):
             for (IS, FS), dx in jumplist:
-                o1 = iorlist_mixed[self.vkinetic.starset.mixedstates[IS].db.iorind][1]
-                dx_solute = -o1 / 2. + eta0_solute[Ncomp + IS] - eta0_solute[FS]
-                dx_solvent = dx + o1 / 2. + eta0_solvent[Ncomp + IS] - eta0_solvent[FS]
+                # o1 = iorlist_mixed[self.vkinetic.starset.mixedstates[IS].db.iorind][1]
+                dx_solute = eta0_solute[Ncomp + IS] - eta0_solute[FS]  # -o1 / 2.
+                dx_solvent = dx + eta0_solvent[Ncomp + IS] - eta0_solvent[FS]  # + o1 / 2.
                 D3expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D3expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D3expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
 
         for jt, jumplist in enumerate(jumpnetwork_omega4):
             for (IS, FS), dx in jumplist:
-                o2 = iorlist_mixed[self.vkinetic.starset.mixedstates[FS].db.iorind][1]
-                dx_solute = o2 / 2. + eta0_solute[IS] - eta0_solute[Ncomp + FS]
-                dx_solvent = dx - o2 / 2. + eta0_solvent[IS] - eta0_solvent[Ncomp + FS]
+                # o2 = iorlist_mixed[self.vkinetic.starset.mixedstates[FS].db.iorind][1]
+                dx_solute = eta0_solute[IS] - eta0_solute[Ncomp + FS]  # o2 / 2. +
+                dx_solvent = dx + eta0_solvent[IS] - eta0_solvent[Ncomp + FS]  # - o2 / 2.
                 D4expansion_aa[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solute)
                 D4expansion_bb[:, :, jt] += 0.5 * np.outer(dx_solvent, dx_solvent)
                 D4expansion_ab[:, :, jt] += 0.5 * np.outer(dx_solute, dx_solvent)
