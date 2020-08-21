@@ -934,7 +934,7 @@ class dumbbellMediated(VacancyMediated):
 
         return zeroclean(GF_total), GF02, delta_om
 
-    def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4):
+    def L_ij(self, bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4, eta2shift=False):
 
         """
         bFdb0[i] = beta*ene_pdb[i] - ln(pre_pdb[i]), i=1,2...,N_pdbcontainer.symorlist - pure dumbbell free energy
@@ -1088,6 +1088,7 @@ class dumbbellMediated(VacancyMediated):
         self.biases_solvent_vs = np.zeros(self.vkinetic.Nvstars)
 
         Nvstars_pure = self.vkinetic.Nvstars_pure
+        Nvstars = self.vkinetic.Nvstars
 
         # 7b. We need the square roots of the probabilities of the representative state of each vector star.
         prob_sqrt_complex_vs = np.array([np.sqrt(complex_prob[self.kinetic.complexIndexdict[vp[0]][0]])
@@ -1132,6 +1133,17 @@ class dumbbellMediated(VacancyMediated):
                                                           prob_sqrt_mixed_vs[i - Nvstars_pure]
                                                           for i in range(Nvstars_pure, self.vkinetic.Nvstars)])
         # In the mixed state space, the local bias comes due only to the omega3(dissociation) jumps.
+
+        if not eta2shift:
+            for i in range(Nvstars_pure, Nvstars):
+                st0 = self.vkinetic.vecpos[i][0]
+                dbwyck2 = self.mdbcontainer.invmap[st0.db.iorind]
+
+                self.biases_solute_vs[i] += np.dot(self.biases[2][0][i - Nvstars_pure, :], omega2escape[dbwyck2, :]) * \
+                                     prob_sqrt_mixed_vs[i - Nvstars_pure]
+
+                self.biases_solvent_vs[i] += np.dot(self.biases[2][1][i - Nvstars_pure, :], omega2escape[dbwyck2, :]) * \
+                                      prob_sqrt_mixed_vs[i - Nvstars_pure]
 
         # Next, we create the gamma vector, projected onto the vector stars
         self.gamma_solute_vs = np.dot(GF_total, self.biases_solute_vs)
