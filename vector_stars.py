@@ -446,8 +446,8 @@ class vectorStars(VectorStarSet):
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if purestar[0] == IS:
                         dx = disp4(self.starset.pdbcontainer, self.starset.mdbcontainer, j.state1, j.state2)
-                        dx_solute = self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
-                        dx_solvent = dx - self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                        dx_solute = np.zeros(3)  # self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                        dx_solvent = dx  # - self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute) * len(purestar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent) * len(purestar)
                         bias4expansion_solute[i, k] += geom_bias_solute
@@ -467,10 +467,10 @@ class vectorStars(VectorStarSet):
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if mixedstar[0] == IS:
                         dx = disp(self.starset.mdbcontainer, j.state1, j.state2)
-                        dx_solute = dx + self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. - \
-                                    self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
-                        dx_solvent = dx - self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. + \
-                                     self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solute = dx  # + self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. - \
+                                    # self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solvent = dx  #- self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. + \
+                                     #self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute) * len(mixedstar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent) * len(mixedstar)
                         bias2expansion_solute[i, k] += geom_bias_solute
@@ -492,8 +492,8 @@ class vectorStars(VectorStarSet):
                             print(len(self.starset.pdbcontainer.iorlist), len(self.starset.mdbcontainer.iorlist))
                             print(j.state2.db.iorind, j.state1.db.iorind)
                             raise IndexError("list index out of range")
-                        dx_solute = -self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
-                        dx_solvent = dx + self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solute = np.zeros(3)  # -self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solvent = dx  # + self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute) * len(mixedstar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent) * len(mixedstar)
                         bias3expansion_solute[i, k] += geom_bias_solute
