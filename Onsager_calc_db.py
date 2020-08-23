@@ -217,7 +217,7 @@ class dumbbellMediated(VacancyMediated):
     """
 
     def __init__(self, pdbcontainer, mdbcontainer, jnet0data, jnet2data, cutoff, solt_solv_cut, solv_solv_cut,
-                 closestdistance, NGFmax=4, Nthermo=0, omega43_dats=None):
+                 closestdistance, NGFmax=4, Nthermo=0, omega43_indices=None):
         """
 
         :param pdbcontainer: The container object for pure dumbbells - instance of dbStates
@@ -237,15 +237,13 @@ class dumbbellMediated(VacancyMediated):
         :param closestdistance: The closest distance allowable to all other atoms in the crystal.
         :param NGFmax: Parameter controlling k-point density (cf - GFcalc.py from the vacancy version)
         :param Nthermo: The number of jump-nearest neighbor sites that are to be considered within the thermodynamic
-        :param self.omega43_dats - provides manual option to enter omega43 jump network data. Note - the necessary data
-        must be stored in the same way they are returned from the jumpnetwork_omega34 function in the "stars" module.
-        shell.
+        :param self.omega43_indices - list of indices of omega43 jumps to keep.
         """
         # All the required quantities will be extracted from the containers as we move along
         self.pdbcontainer = pdbcontainer
         self.mdbcontainer = mdbcontainer
         (self.jnet0, self.jnet0_indexed), (self.jnet2, self.jnet2_indexed) = jnet0data, jnet2data
-        self.omega43_dats = omega43_dats
+        self.omega43_indices = omega43_indices
         self.crys = pdbcontainer.crys  # we assume this is the same in both containers
         self.chem = pdbcontainer.chem
 
@@ -294,19 +292,25 @@ class dumbbellMediated(VacancyMediated):
 
         # next, omega3 and omega_4, indexed to pure and mixed states
         # If data already provided, use those
-        if self.omega43_dats is None:
-            (self.jnet43, self.jnet43_indexed), (self.jnet4, self.jnet4_indexed, self.jtags4), \
-            (self.jnet3, self.jnet3_indexed, self.jtags3) = self.vkinetic.starset.jumpnetwork_omega34(cutoff, solv_solv_cut,
-                                                                                                      solt_solv_cut, closestdistance)
-        else:
-            self.jnet43 = self.omega43_dats[0]
-            self.jnet4 = self.omega43_dats[1]
-            self.jnet3 = self.omega43_dats[2]
+        (self.jnet43, self.jnet43_indexed), (self.jnet4, self.jnet4_indexed, self.jtags4), \
+        (self.jnet3, self.jnet3_indexed, self.jtags3) = self.vkinetic.starset.jumpnetwork_omega34(cutoff, solv_solv_cut,
+                                                                                                  solt_solv_cut, closestdistance)
 
-            # re-index omega4, omega3 and build the jtags - since we are using the same containers to build the passed in jumps,
-            # the states won't change, but their indices might.
-            self.jnet43_indexed, (self.jnet4_indexed, self.jtags4), (self.jnet3_indexed, self.jtags3) =\
-                self.vkinetic.starset.reIndex43(self.jnet4, self.jnet3)
+    def regenerate43(self, indices):
+        """
+        This will be used to extract a subset of omega43 jumps of interest
+        :param indices: indices - indices of jump lists to keep
+        """
+        self.jnet43 = [self.jnet43[i] for i in indices]
+        self.jnet43_indexed = [self.jnet43_indexed[i] for i in indices]
+
+        self.jnet4 = [self.jnet4[i] for i in indices]
+        self.jnet4_indexed = [self.jnet4_indexed[i] for i in indices]
+        self.jtags4 = [self.jtags4[i] for i in indices]
+
+        self.jnet3 = [self.jnet3[i] for i in indices]
+        self.jnet3_indexed = [self.jnet3_indexed[i] for i in indices]
+        self.jtags3 = [self.jtags3[i] for i in indices]
 
     def generate(self, Nthermo, cutoff, solt_solv_cut, solv_solv_cut, closestdistance):
 
