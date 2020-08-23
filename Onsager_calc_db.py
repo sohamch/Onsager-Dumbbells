@@ -1149,10 +1149,10 @@ class dumbbellMediated(VacancyMediated):
                 st0 = self.vkinetic.vecpos[i][0]
                 dbwyck2 = self.mdbcontainer.invmap[st0.db.iorind]
 
-                self.biases_solute_vs[i] += np.dot(self.bias2_solute_new[2][0][i - Nvstars_pure, :], omega2escape[dbwyck2, :]) * \
+                self.biases_solute_vs[i] += np.dot(self.bias2_solute_new[i - Nvstars_pure, :], omega2escape[dbwyck2, :]) * \
                                      prob_sqrt_mixed_vs[i - Nvstars_pure]
 
-                self.biases_solvent_vs[i] += np.dot(self.bias2_solvent_new[2][1][i - Nvstars_pure, :], omega2escape[dbwyck2, :]) * \
+                self.biases_solvent_vs[i] += np.dot(self.bias2_solvent_new[i - Nvstars_pure, :], omega2escape[dbwyck2, :]) * \
                                       prob_sqrt_mixed_vs[i - Nvstars_pure]
 
         # Next, we create the gamma vector, projected onto the vector stars
