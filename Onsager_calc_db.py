@@ -312,6 +312,11 @@ class dumbbellMediated(VacancyMediated):
         self.jnet3_indexed = [self.jnet3_indexed[i] for i in indices]
         self.jtags3 = [self.jtags3[i] for i in indices]
 
+        self.rateExps = self.vkinetic.rateexpansion(self.jnet1, self.om1types, self.jnet43)
+
+        # # Generate the bias expansions
+        self.biases = self.vkinetic.biasexpansion(self.jnet1, self.jnet2, self.om1types, self.jnet43)
+
     def generate(self, Nthermo, cutoff, solt_solv_cut, solv_solv_cut, closestdistance):
 
         if Nthermo == getattr(self, "Nthermo", 0): return
