@@ -47,7 +47,7 @@ class dumbbell(namedtuple('dumbbell', 'iorind R')):
     def __add__(self, other):
         if not isinstance(other, np.ndarray):
             raise TypeError("Can only add a lattice translation to a dumbbell")
-        if not len(other) == 3:
+        if not len(other) == len(self.R):
             raise TypeError("Can add only a lattice translation (vector) to a dumbbell")
         for x in other:
             if not isinstance(x, np.dtype(int).type):
@@ -135,7 +135,7 @@ class SdPair(namedtuple('SdPair', "i_s R_s db")):
         if not isinstance(other, np.ndarray):
             raise TypeError("Can only add a lattice translation to a dumbbell")
 
-        if not len(other) == 3:
+        if not len(other) == len(self.R_s):
             raise TypeError("Can add only a lattice translation (vector) to a dumbbell")
 
         for x in other:
@@ -239,7 +239,7 @@ class connector(namedtuple('connector', 'state1 state2')):
             raise TypeError("Incompatible Initial and final states. They must be of the dumbbell type.")
 
         # Check correctness
-        if not np.allclose(state1.R, np.zeros(3)):
+        if not np.allclose(state1.R, 0.):
             raise ValueError("The initial dumbbell in a connector must always be at the origin unit cell")
 
     def __eq__(self, other):
