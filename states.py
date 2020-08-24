@@ -115,14 +115,14 @@ class dbStates(object):
         iorlist = []
         for wyckind, wycksites in enumerate(sitelist):
             orlist = self.family[wyckind]  # Get the orientations allowed on the given Wyckoff set.
-            if np.allclose(orlist[0], np.zeros(3)):
+            if np.allclose(orlist[0], np.zeros(self.crys.dim)):
                 # If zero vector is entered, then that means this set does not have dumbbells.
                 continue
             site = wycksites[0]  # Get the representative site of the Wyckoff set.
             newlist = []
             for o in orlist:
                 for g in self.crys.G:
-                    R, (ch, i_new) = self.crys.g_pos(g, np.zeros(3), (self.chem, site))
+                    R, (ch, i_new) = self.crys.g_pos(g, np.zeros(self.crys.dim), (self.chem, site))
                     o_new = self.crys.g_direc(g, o)
                     if not (inlist((i_new, o_new), iorlist) or inlist((i_new, -o_new), iorlist)):
                         if negOrInList(o_new, iorlist):
@@ -138,7 +138,7 @@ class dbStates(object):
             indexmap = []
             for (i, o) in iorlist:
                 # Need the elements of indexmap
-                R, (ch, i_new) = crys.g_pos(g, np.zeros(3), (chem, i))
+                R, (ch, i_new) = crys.g_pos(g, np.zeros(self.crys.dim), (chem, i))
                 o_new = crys.g_direc(g, o)
                 count = 0
                 for idx2, (i2, o2) in enumerate(iorlist):
@@ -227,10 +227,10 @@ class dbStates(object):
                 db2newneg = dumbbell(jnew.state1.iorind, -jnew.state2.R)
                 jnewneg = jump(db1newneg, db2newneg, jnew.c2, jnew.c1)
 
-                if not np.allclose(db1newneg.R, np.zeros(3), atol=1e-8):
-                    raise RuntimeError("Intial state not at origin")
+                if not np.allclose(db1newneg.R, np.zeros(self.crys.dim), atol=1e-8):
+                    raise RuntimeError("Initial state not at origin")
 
-                if np.allclose(dx, np.zeros(3)):
+                if np.allclose(dx, np.zeros(self.crys.dim)):
                     # First, make the equivalent rotation jump
                     jnew_equiv = jump(db1new, db2new, -jnew.c1, -jnew.c2)
                     # Check if the rotation jump has also been taken into account.
@@ -261,7 +261,7 @@ class dbStates(object):
         jumpindices = []
         jumpset = set([])
         # dxcount=0
-        z = np.zeros(3).astype(int)
+        z = np.zeros(self.crys.dim).astype(int)
         for R in Rvects:
             for i, tup1 in enumerate(iorlist):
                 for f, tup2 in enumerate(iorlist):
@@ -274,9 +274,8 @@ class dbStates(object):
                         continue
                     for c1 in [-1, 1]:
                         # Check if the jump is a rotation - 180 degree rotations end up in the same state
-                        # They are also detected by collisions since the two atoms pass through each other and hence
-                        # are not considered.
-                        if np.allclose(np.dot(dx, dx), np.zeros(3), atol=crys.threshold):
+                        # they are not considered
+                        if np.allclose(np.dot(dx, dx), np.zeros(self.crys.dim), atol=crys.threshold):
                             j = jump(db1, db2, c1, 1)
                             j_equiv = jump(db1, db2, -c1, -1)
                             # Also check if the equivalent rotation has been considered.
@@ -380,7 +379,7 @@ class mStates(object):
             newlist = []
             for o in orlist:
                 for g in crys.G:
-                    R, (ch, i_new) = crys.g_pos(g, np.zeros(3), (chem, site))
+                    R, (ch, i_new) = crys.g_pos(g, np.zeros(self.crys.dim), (chem, site))
                     o_new = crys.g_direc(g, o)
                     if not inlist((i_new, o_new), pairlist):
                         pairlist.append((i_new, o_new))
@@ -394,7 +393,7 @@ class mStates(object):
             indexmap = []
             for (i, o) in iorlist:
                 # Need the elements of indexmap
-                R, (ch, i_new) = crys.g_pos(g, np.zeros(3), (chem, i))
+                R, (ch, i_new) = crys.g_pos(g, np.zeros(self.crys.dim), (chem, i))
                 o_new = crys.g_direc(g, o)
                 count = 0
                 for idx2, (i2, o2) in enumerate(iorlist):
@@ -476,9 +475,9 @@ class mStates(object):
 
                             jnew = jump(p1new, p2new, j.c1, j.c2)
                             # Place some sanity checks for safety, also helpful for tests
-                            if not np.allclose(jnew.state1.R_s, np.zeros(3), atol=self.crys.threshold):
+                            if not np.allclose(jnew.state1.R_s, np.zeros(self.crys.dim), atol=self.crys.threshold):
                                 raise ValueError("The initial state is not at the origin unit cell")
-                            if not np.allclose(jnew.state1.db.R, np.zeros(3), atol=self.crys.threshold):
+                            if not np.allclose(jnew.state1.db.R, np.zeros(self.crys.dim), atol=self.crys.threshold):
                                 raise ValueError("The solute is not at the same site as the dumbbell in mixed dumbbell")
                             if not np.allclose(jnew.state2.db.R, jnew.state2.R_s, atol=self.crys.threshold):
                                 raise ValueError("The solute is not at the same site as the dumbbell in mixed dumbbell")
