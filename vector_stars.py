@@ -600,7 +600,6 @@ class vectorStars(VectorStarSet):
         # print("Building outer product tensor")
         outerprod = np.zeros((self.crys.dim, self.crys.dim, self.Nvstars, self.Nvstars))
 
-        # start = time.time()
         for st in self.starset.complexStates:
             vecStarList = self.stateToVecStar_pure[st]
             for (indStar1, indState1) in vecStarList:
