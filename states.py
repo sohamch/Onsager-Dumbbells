@@ -185,7 +185,7 @@ class dbStates(object):
         from that of the destination index (gdumb.indexmap[0][idx]), +1 if not
         """
         inew, onew = self.iorlist[gdumb.indexmap[0][idx]]
-        if np.allclose(onew, -np.dot(gdumb.cartrot, self.iorlist[idx][1]), atol = self.crys.threshold):
+        if np.allclose(onew, -np.dot(gdumb.cartrot, self.iorlist[idx][1]), atol=self.crys.threshold):
             return -1
         return 1
 
@@ -260,7 +260,6 @@ class dbStates(object):
         jumplist = []
         jumpindices = []
         jumpset = set([])
-        # dxcount=0
         z = np.zeros(self.crys.dim).astype(int)
         for R in Rvects:
             for i, tup1 in enumerate(iorlist):
@@ -275,7 +274,7 @@ class dbStates(object):
                     for c1 in [-1, 1]:
                         # Check if the jump is a rotation - 180 degree rotations end up in the same state
                         # they are not considered
-                        if np.allclose(np.dot(dx, dx), np.zeros(self.crys.dim), atol=crys.threshold):
+                        if np.allclose(np.dot(dx, dx), 0., atol=crys.threshold):
                             j = jump(db1, db2, c1, 1)
                             j_equiv = jump(db1, db2, -c1, -1)
                             # Also check if the equivalent rotation has been considered.
@@ -441,10 +440,17 @@ class mStates(object):
         """
         crys, chem, mset = self.crys, self.chem, self.iorlist
 
-        nmax = [int(np.round(np.sqrt(cutoff ** 2 / crys.metric[i, i]))) + 1 for i in range(3)]
-        Rvects = [np.array([n0, n1, n2]) for n0 in range(-nmax[0], nmax[0] + 1)
-                  for n1 in range(-nmax[1], nmax[1] + 1)
-                  for n2 in range(-nmax[2], nmax[2] + 1)]
+        nmax = [int(np.round(np.sqrt(cutoff ** 2 / crys.metric[i, i]))) + 1 for i in range(crys.dim)]
+
+        if crys.dim == 2:
+            Rvects = [np.array([n0, n1]) for n0 in range(-nmax[0], nmax[0] + 1)
+                      for n1 in range(-nmax[1], nmax[1] + 1)]
+
+        else:
+            Rvects = [np.array([n0, n1, n2]) for n0 in range(-nmax[0], nmax[0] + 1)
+                      for n1 in range(-nmax[1], nmax[1] + 1)
+                      for n2 in range(-nmax[2], nmax[2] + 1)]
+
         jumplist = []
         jumpindices = []
         jumpset = set([])
@@ -505,7 +511,7 @@ class mStates(object):
         :return: idx (integer) - the index of (i, o) in the iorlist, if it exists.
         """
         for idx,tup in enumerate(self.iorlist):
-            if t[0]==tup[0] and np.allclose(t[1],tup[1],atol = 1e-8):
+            if t[0]==tup[0] and np.allclose(t[1], tup[1], atol = 1e-8):
                 return idx
         raise ValueError("The given site orientation pair {} is not present in the container".format(t))
 
