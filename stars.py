@@ -289,7 +289,7 @@ class StarSet(object):
                 self.mixedindexdict[state] = (ind, si + self.mixedstartindex)
 
         # create the starset for the bare dumbbell space
-        self.barePeriodicStars = [[dumbbell(idx, np.zeros(3, dtype=int)) for idx in idxlist] for idxlist in
+        self.barePeriodicStars = [[dumbbell(idx, np.zeros(self.crys.dim, dtype=int)) for idx in idxlist] for idxlist in
                                   self.pdbcontainer.symIndlist]
 
         self.bareStarindexed = self.pdbcontainer.symIndlist.copy()
@@ -368,7 +368,7 @@ class StarSet(object):
                                 jumpset.add(-jnew)
 
                         # remove redundant rotations.
-                        if np.allclose(disp(self.pdbcontainer, newlist[0].state1, newlist[0].state2), np.zeros(3),
+                        if np.allclose(disp(self.pdbcontainer, newlist[0].state1, newlist[0].state2), np.zeros(self.crys.dim),
                                        atol=self.pdbcontainer.crys.threshold)\
                                 and newlist[0].state1.i_s == newlist[0].state2.i_s:
                             for jind in range(len(newlist)-1, -1, -1):
