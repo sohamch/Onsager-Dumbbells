@@ -38,6 +38,7 @@ class vectorStars(VectorStarSet):
         under consideration unchanged.
         """
         self.starset = None
+        self.crys = self.starset.crys
         if starset.Nshells == 0: return
         if starset == self.starset: return
         self.starset = starset
@@ -283,13 +284,13 @@ class vectorStars(VectorStarSet):
                 # snew = snew.shift()
                 if snew not in connectset_mixed:
 
-                    if np.allclose(snew.state1.R, np.zeros(3)) and np.allclose(snew.state2.R, np.zeros(3)):
+                    if np.allclose(snew.state1.R, np.zeros(self.crys.dim)) and np.allclose(snew.state2.R, np.zeros(self.crys.dim)):
                         raise ValueError("origin cell connection not in mixed connectset")
 
                     # If a group operation takes a connection's end point outside the origin unit cell,
                     # we can ignore it, since the problem dictates that both initial and final states in a connection
                     # lie inside the origin unit cell.
-                    # The sum over the unit cells is implicit in the g2 calculation - see makeGF
+                    # The sum over the unit cells is implicit in the g2 calculation.
                     continue
                 if snew in GFMixedStarInd:
                     continue
@@ -376,7 +377,7 @@ class vectorStars(VectorStarSet):
             bias0, bias1, bias2, bias4 and bias3 expansions, one each for solute and solvent
             Note - bias0 for solute makes no sense, so we return only for solvent.
         """
-        z = np.zeros(3, dtype=float)
+        z = np.zeros(self.crys.dim, dtype=float)
 
         biasBareExpansion = np.zeros((len(self.vecpos_bare), len(self.starset.jnet0)))
         # Expansion of pure dumbbell initial state bias vectors and complex state bias vectors
@@ -446,7 +447,7 @@ class vectorStars(VectorStarSet):
                     # for i, states, vectors in zip(itertools.count(),self.vecpos,self.vecvec):
                     if purestar[0] == IS:
                         dx = disp4(self.starset.pdbcontainer, self.starset.mdbcontainer, j.state1, j.state2)
-                        dx_solute = np.zeros(3)  # self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                        dx_solute = z  # self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
                         dx_solvent = dx  # - self.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute) * len(purestar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent) * len(purestar)
@@ -492,7 +493,7 @@ class vectorStars(VectorStarSet):
                             print(len(self.starset.pdbcontainer.iorlist), len(self.starset.mdbcontainer.iorlist))
                             print(j.state2.db.iorind, j.state1.db.iorind)
                             raise IndexError("list index out of range")
-                        dx_solute = np.zeros(3)  # -self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solute = z  # -self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
                         dx_solvent = dx  # + self.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
                         geom_bias_solute = np.dot(vectors[0], dx_solute) * len(mixedstar)
                         geom_bias_solvent = np.dot(vectors[0], dx_solvent) * len(mixedstar)
@@ -597,15 +598,7 @@ class vectorStars(VectorStarSet):
         :return: outerprod, 3x3xNvstarsxNvstars outer product tensor.
         """
         # print("Building outer product tensor")
-        outerprod = np.zeros((3, 3, self.Nvstars, self.Nvstars))
-        # start = time.time()
-        # for i in range(self.Nvstars_pure):
-        #     for j in range(self.Nvstars_pure):
-        #         for si, vi in zip(self.vecpos[i], self.vecvec[i]):
-        #             for sj, vj in zip(self.vecpos[j], self.vecvec[j]):
-        #                 if si == sj:
-        #                     outerprod_old[:, :, i, j] += np.outer(vi, vj)
-        # print("\tOld method: {}".format(time.time()-start))
+        outerprod = np.zeros((self.crys.dim, self.crys.dim, self.Nvstars, self.Nvstars))
 
         # start = time.time()
         for st in self.starset.complexStates:
@@ -614,8 +607,6 @@ class vectorStars(VectorStarSet):
                 for (indStar2, indState2) in vecStarList:
                     outerprod[:, :, indStar1, indStar2] += np.outer(self.vecvec[indStar1][indState1],
                                                                     self.vecvec[indStar2][indState2])
-        # print("\tNew method: {}".format(time.time() - start))
-        # print(np.allclose(outerprod, outerprod_old))
 
         # There should be no non-zero outer product tensors between the pure and mixed dumbbells.
 
