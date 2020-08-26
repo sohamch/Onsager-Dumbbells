@@ -251,19 +251,7 @@ class StarSet(object):
                 jtagdict[IS] = jarr.copy()
             self.jtags2.append(jtagdict)
         print("built jtags2: {}".format(time.time() - start))
-        # generate an indexed version of the starset to the iorlists in the container objects
-        # self.starindexed2 = []
-        # for star in self.stars[:self.mixedstartindex]:
-        #     indlist = []
-        #     for state in star:
-        #         try:
-        #             indlist.append(self.complexStates.index(state))
-        #         except:
-        #             raise ValueError("state not found")
-        #         # for j, st in enumerate(self.complexStates):
-        #         #     if st == state:
-        #         #         indlist.append(j)
-        #     self.starindexed2.append(indlist)
+
         start = time.time()
         for star in self.stars[self.mixedstartindex:]:
             indlist = []
@@ -293,15 +281,6 @@ class StarSet(object):
             symind = self.mdbcontainer.invmap[db.iorind]
             self.star2symlist[starind + self.mixedstartindex] = symind
         print("building star2symlist : {}".format(time.time() - start))
-        # self.starindexed -> gives the indices into the complexStates and mixedstates, of the states stored in the
-        # starset, i.e, an indexed version of the starset. now generate the index dicts
-        # --indexdict -> tell us given a pair state, what is its index in the states list and which star in the starset
-        # it belongs to.
-        # self.complexIndexdict2 = {}
-        # for si, star, starind in zip(itertools.count(), self.stars[:self.mixedstartindex],
-        #                              self.starindexed[:self.mixedstartindex]):
-        #     for state, ind in zip(star, starind):
-        #         self.complexIndexdict2[state] = (ind, si)
 
         self.mixedindexdict = {}
         for si, star, starind in zip(itertools.count(), self.stars[self.mixedstartindex:],
