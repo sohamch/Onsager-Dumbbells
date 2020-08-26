@@ -593,9 +593,9 @@ class vectorStars(VectorStarSet):
 
     def outer(self):
         """
-        computes the outer product tensor to perform 'bias *outer* gamma', i.e., the uncorrelated part in the vector
+        computes the outer product tensor to perform 'bias *outer* gamma', i.e., the correlated part in the vector
         star basis.
-        :return: outerprod, 3x3xNvstarsxNvstars outer product tensor.
+        :return: outerprod, dimxdimxNvstarsxNvstars outer product tensor.
         """
         # print("Building outer product tensor")
         outerprod = np.zeros((self.crys.dim, self.crys.dim, self.Nvstars, self.Nvstars))
