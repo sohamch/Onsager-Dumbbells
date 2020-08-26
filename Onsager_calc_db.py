@@ -419,8 +419,8 @@ class dumbbellMediated(VacancyMediated):
         # First check if non-local biases should be zero anyway (as is the case
         # with highly symmetric lattices - in that case vecpos_bare should be zero sized)
         if len(self.vkinetic.vecpos_bare) == 0:
-            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), 3))
-            self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), 3))
+            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), self.crys.dim))
+            self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), self.crys.dim))
 
         # otherwise, we need to build the bare bias expansion
         else:
@@ -428,7 +428,7 @@ class dumbbellMediated(VacancyMediated):
 
             # We first get the bias vector in the basis of the vector stars.
             # Since we are using symmetrized rates, we only need to consider them
-            self.NlsolventVel_bare = np.zeros((len(self.vkinetic.starset.bareStates), 3))
+            self.NlsolventVel_bare = np.zeros((len(self.vkinetic.starset.bareStates), self.crys.dim))
 
             # We evaluate the velocity vectors in the basis of vector wyckoff sets.
             # Need omega0_escape.
@@ -449,9 +449,9 @@ class dumbbellMediated(VacancyMediated):
             self.eta00_solute_bare = np.zeros_like(self.eta00_solvent_bare)
 
             # Now match the non-local biases for complex states to the pure states
-            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), 3))
-            self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), 3))
-            self.NlsolventBias0 = np.zeros((len(self.vkinetic.starset.complexStates), 3))
+            self.eta00_solvent = np.zeros((len(self.vkinetic.starset.complexStates), self.crys.dim))
+            self.eta00_solute = np.zeros((len(self.vkinetic.starset.complexStates), self.crys.dim))
+            self.NlsolventBias0 = np.zeros((len(self.vkinetic.starset.complexStates), self.crys.dim))
 
             for i, state in enumerate(self.vkinetic.starset.complexStates):
                 dbstate_ind = state.db.iorind
