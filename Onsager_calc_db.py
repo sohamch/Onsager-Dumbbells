@@ -465,7 +465,7 @@ class dumbbellMediated(VacancyMediated):
         if eta2shift:
 
             bias2exp_solute, bias2exp_solvent = self.biases[2]
-            self.NlsoluteVel_mixed = np.zeros((len(self.vkinetic.starset.mixedstates), 3))
+            self.NlsoluteVel_mixed = np.zeros((len(self.vkinetic.starset.mixedstates), self.crys.dim))
             Nvstars_mixed = self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure
             Nvstars_pure = self.vkinetic.Nvstars_pure
 
@@ -482,8 +482,8 @@ class dumbbellMediated(VacancyMediated):
                                                         omega2escape[self.vkinetic.vstar2star[i] - mstart, :])
                                                  for i in range(Nvstars_pure, self.vkinetic.Nvstars)])
 
-            self.NlsolventVel_mixed = np.zeros((len(self.kinetic.mixedstates), 3))
-            self.NlsoluteVel_mixed = np.zeros((len(self.kinetic.mixedstates), 3))
+            self.NlsolventVel_mixed = np.zeros((len(self.kinetic.mixedstates), self.crys.dim))
+            self.NlsoluteVel_mixed = np.zeros((len(self.kinetic.mixedstates), self.crys.dim))
 
             # Then, we convert them to cartesian form for each state.
             for st in self.vkinetic.starset.mixedstates:
@@ -503,8 +503,8 @@ class dumbbellMediated(VacancyMediated):
             self.eta02_solute = np.tensordot(self.G2, self.NlsoluteVel_mixed, axes=(1, 0))
 
         else:
-            self.eta02_solvent = np.zeros((len(self.kinetic.mixedstates), 3))
-            self.eta02_solute = np.zeros((len(self.kinetic.mixedstates), 3))
+            self.eta02_solvent = np.zeros((len(self.kinetic.mixedstates), self.crys.dim))
+            self.eta02_solute = np.zeros((len(self.kinetic.mixedstates), self.crys.dim))
 
         # So what do we have up until now?
         # We have constructed the Nstates x 3 eta0 vectors for complex states
@@ -512,10 +512,10 @@ class dumbbellMediated(VacancyMediated):
 
         # Nothing called solute eta vector in bare dumbbell jumps.
         self.eta0total_solute = np.zeros((len(self.vkinetic.starset.complexStates) +
-                                          len(self.vkinetic.starset.mixedstates), 3))
+                                          len(self.vkinetic.starset.mixedstates), self.crys.dim))
         # noinspection PyAttributeOutsideInit
         self.eta0total_solvent = np.zeros((len(self.vkinetic.starset.complexStates) +
-                                           len(self.vkinetic.starset.mixedstates), 3))
+                                           len(self.vkinetic.starset.mixedstates), self.crys.dim))
 
         # Just copy the portion for the complex states, leave mixed dumbbell state space as zeros.
         self.eta0total_solvent[:len(self.vkinetic.starset.complexStates), :] = self.eta00_solvent.copy()
@@ -643,24 +643,27 @@ class dumbbellMediated(VacancyMediated):
 
         # We need the D0expansion to evaluate the modified non-local contribution
         # outside the kinetic shell.
-        D0expansion_bb = np.zeros((3, 3, len(self.jnet0)))
+
+        dim = self.crys.dim
+
+        D0expansion_bb = np.zeros((dim, dim, len(self.jnet0)))
 
         # Omega1 contains the total rate and not just the change.
-        D1expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega1)))
-        D1expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega1)))
-        D1expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega1)))
+        D1expansion_aa = np.zeros((dim, dim, len(jumpnetwork_omega1)))
+        D1expansion_bb = np.zeros((dim, dim, len(jumpnetwork_omega1)))
+        D1expansion_ab = np.zeros((dim, dim, len(jumpnetwork_omega1)))
 
-        D2expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega2)))
-        D2expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega2)))
-        D2expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega2)))
+        D2expansion_aa = np.zeros((dim, dim, len(jumpnetwork_omega2)))
+        D2expansion_bb = np.zeros((dim, dim, len(jumpnetwork_omega2)))
+        D2expansion_ab = np.zeros((dim, dim, len(jumpnetwork_omega2)))
 
-        D3expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega3)))
-        D3expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega3)))
-        D3expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega3)))
+        D3expansion_aa = np.zeros((dim, dim, len(jumpnetwork_omega3)))
+        D3expansion_bb = np.zeros((dim, dim, len(jumpnetwork_omega3)))
+        D3expansion_ab = np.zeros((dim, dim, len(jumpnetwork_omega3)))
 
-        D4expansion_aa = np.zeros((3, 3, len(jumpnetwork_omega4)))
-        D4expansion_bb = np.zeros((3, 3, len(jumpnetwork_omega4)))
-        D4expansion_ab = np.zeros((3, 3, len(jumpnetwork_omega4)))
+        D4expansion_aa = np.zeros((dim, dim, len(jumpnetwork_omega4)))
+        D4expansion_bb = np.zeros((dim, dim, len(jumpnetwork_omega4)))
+        D4expansion_ab = np.zeros((dim, dim, len(jumpnetwork_omega4)))
 
         # iorlist_pure = self.pdbcontainer.iorlist
         # iorlist_mixed = self.mdbcontainer.iorlist
