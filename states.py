@@ -253,18 +253,24 @@ class dbStates(object):
 
             return jlist, jindlist
 
-        nmax = [int(np.round(np.sqrt(cutoff ** 2 / crys.metric[i, i]))) + 1 for i in range(3)]
-        Rvects = [np.array([n0, n1, n2]) for n0 in range(-nmax[0], nmax[0] + 1)
-                  for n1 in range(-nmax[1], nmax[1] + 1)
-                  for n2 in range(-nmax[2], nmax[2] + 1)]
+        nmax = [int(np.round(np.sqrt(cutoff ** 2 / crys.metric[i, i]))) + 1 for i in range(self.crys.dim)]
+
+        if self.crys.dim == 2:
+            Rvects = [np.array([n0, n1]) for n0 in range(-nmax[0], nmax[0] + 1)
+                      for n1 in range(-nmax[1], nmax[1] + 1)]
+
+        else:
+            Rvects = [np.array([n0, n1, n2]) for n0 in range(-nmax[0], nmax[0] + 1)
+                      for n1 in range(-nmax[1], nmax[1] + 1)
+                      for n2 in range(-nmax[2], nmax[2] + 1)]
+
         jumplist = []
         jumpindices = []
         jumpset = set([])
-        z = np.zeros(self.crys.dim).astype(int)
         for R in Rvects:
             for i, tup1 in enumerate(iorlist):
                 for f, tup2 in enumerate(iorlist):
-                    db1 = dumbbell(i, np.array([0, 0, 0], dtype=int))
+                    db1 = dumbbell(i, np.zeros(self.crys.dim, dtype=int))
                     db2 = dumbbell(f, R)
                     if db1 == db2:  # catch the diagonal case
                         continue
@@ -458,8 +464,8 @@ class mStates(object):
         for R in Rvects:
             for i, st1 in enumerate(mset):
                 for f, st2 in enumerate(mset):
-                    db1 = dumbbell(i, np.array([0, 0, 0]))
-                    p1 = SdPair(st1[0], np.array([0, 0, 0]), db1)
+                    db1 = dumbbell(i, np.zeros(self.crys.dim, dtype=int))
+                    p1 = SdPair(st1[0], np.zeros(self.crys.dim, dtype=int), db1)
                     db2 = dumbbell(f, R)
                     p2 = SdPair(st2[0], R, db2)
                     if p1 == p2:  # Get the diagonal case
