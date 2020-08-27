@@ -38,10 +38,10 @@ class vectorStars(VectorStarSet):
         under consideration unchanged.
         """
         self.starset = None
-        self.crys = self.starset.crys
         if starset.Nshells == 0: return
         if starset == self.starset: return
         self.starset = starset
+        self.crys = self.starset.crys
         self.vecpos = []
         self.vecpos_indexed = []
         self.vecvec = []
