@@ -272,8 +272,8 @@ class dumbbellMediated(VacancyMediated):
         self.vkinetic = vector_stars.vectorStars()
 
         # Make GF calculators.
-        self.GFcalc_pure = GF_dumbbells(self.pdbcontainer, self.jnet0_indexed, Nmax=4, kptwt=None)
-        self.GFcalc_mixed = GF_dumbbells(self.mdbcontainer, self.jnet2_indexed, Nmax=4, kptwt=None)
+        self.GFcalc_pure = GF_dumbbells(self.pdbcontainer, self.jnet0_indexed, Nmax=NGFmax, kptwt=None)
+        # self.GFcalc_mixed = GF_dumbbells(self.mdbcontainer, self.jnet2_indexed, Nmax=4, kptwt=None)
 
         # Generate the initialized crystal and vector stars and the jumpnetworks with the kinetic shell
         self.generate(Nthermo, cutoff, solt_solv_cut, solv_solv_cut, closestdistance)
