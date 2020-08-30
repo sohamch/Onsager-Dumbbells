@@ -328,18 +328,14 @@ class test_vecstars(unittest.TestCase):
                     if st == j.state1:
                         count += 1
                         dx = disp(self.vec_stars.starset.mdbcontainer, j.state1, j.state2)
-                        dx_solute = dx + self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. - \
-                                    self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
-                        dx_solvent = dx - self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. + \
-                                     self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solute = dx
+                        dx_solvent = dx
                         bias_st_solute += self.W2list[jt] * dx_solute
                         bias_st_solvent += self.W2list[jt] * dx_solvent
                     if st2 == j.state1:
                         dx = disp(self.vec_stars.starset.mdbcontainer, j.state1, j.state2)
-                        dx_solute = dx + self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. - \
-                                    self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
-                        dx_solvent = dx - self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2. + \
-                                     self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                        dx_solute = dx
+                        dx_solvent = dx
                         bias_st_solute2 += self.W2list[jt] * dx_solute
                         bias_st_solvent2 += self.W2list[jt] * dx_solvent
 
@@ -417,18 +413,18 @@ class test_vecstars(unittest.TestCase):
                             count += 1
                             dx = disp4(self.vec_stars.starset.pdbcontainer, self.vec_stars.starset.mdbcontainer,
                                        j.state1, j.state2)
-                            dx_solute = self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                            dx_solute = np.zeros_like(dx)  # self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
                             # state2 is the mixed dumbbell.
-                            dx_solvent = dx - self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                            dx_solvent = dx  #- self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
                             bias4_st_solute += self.W4list[jt] * dx_solute
                             bias4_st_solvent += self.W4list[jt] * dx_solvent
 
                         if st2_pure == j.state1:
                             dx = disp4(self.vec_stars.starset.pdbcontainer, self.vec_stars.starset.mdbcontainer,
                                        j.state1, j.state2)
-                            dx_solute = self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                            dx_solute = np.zeros_like(dx)  # self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
                             # state2 is the mixed dumbbell.
-                            dx_solvent = dx - self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
+                            dx_solvent = dx   # - self.vec_stars.starset.mdbcontainer.iorlist[j.state2.db.iorind][1] / 2.
                             bias4_st_solute2 += self.W4list[jt] * dx_solute
                             bias4_st_solvent2 += self.W4list[jt] * dx_solvent
 
@@ -477,15 +473,15 @@ class test_vecstars(unittest.TestCase):
                             count += 1
                             dx = -disp4(self.vec_stars.starset.pdbcontainer, self.vec_stars.starset.mdbcontainer,
                                         j.state2, j.state1)
-                            dx_solute = -self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
-                            dx_solvent = dx + self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                            dx_solute = np.zeros_like(dx)  #-self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                            dx_solvent = dx   #+ self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
                             bias3_st_solute += self.W3list[jt] * dx_solute
                             bias3_st_solvent += self.W3list[jt] * dx_solvent
                         if st2_mixed == j.state1:
                             dx = -disp4(self.vec_stars.starset.pdbcontainer, self.vec_stars.starset.mdbcontainer,
                                         j.state2, j.state1)
-                            dx_solute = -self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
-                            dx_solvent = dx + self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                            dx_solute = np.zeros_like(dx)  #-self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
+                            dx_solvent = dx  #+ self.vec_stars.starset.mdbcontainer.iorlist[j.state1.db.iorind][1] / 2.
                             bias3_st_solute2 += self.W3list[jt] * dx_solute
                             bias3_st_solvent2 += self.W3list[jt] * dx_solvent
 
