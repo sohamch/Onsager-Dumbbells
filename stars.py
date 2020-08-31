@@ -105,10 +105,9 @@ class StarSet(object):
         if Nshells is None:
             return
         self.Nshells = Nshells
-        z = np.zeros(3, dtype=int)
+        z = np.zeros(self.crys.dim, dtype=int)
         if Nshells < 1:
             Nshells = 0
-        startshell = set([])
         stateset = set([])
         start = time.time()
         if Nshells >= 1:
@@ -119,7 +118,7 @@ class StarSet(object):
             # We won't put in origin states just yet.
             for j in self.jumplist:
                 dx = disp(self.pdbcontainer, j.state1, j.state2)
-                if np.allclose(dx, np.zeros(3, dtype=int), atol=self.pdbcontainer.crys.threshold):
+                if np.allclose(dx, np.zeros(self.crys.dim, dtype=int), atol=self.pdbcontainer.crys.threshold):
                     continue
                 # Now go through the all the dumbbell states in the (i,or) list:
                 for idx, (i, o) in enumerate(self.pdbcontainer.iorlist):
