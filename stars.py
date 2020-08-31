@@ -149,10 +149,15 @@ class StarSet(object):
                     if not (pair.i_s == pairnew.i_s and np.allclose(pairnew.R_s, pair.R_s, atol=self.crys.threshold)):
                         raise ArithmeticError("Solute shifted by a complex jump!(?)")
                     # Now, when we find a new dumbbell location, we have to consider all possible orientations in that location.
+                    # Let's get the dumbbell location
+                    site_db, Rdb = self.pdbcontainer.iorlist[pairnew.db.iorind][0], pairnew.db.R.copy()
+                    for idx, (site_db2, o) in enumerate(self.pdbcontainer.iorlist):
+                        if site_db2 == site_db:  # make sure we are making dumbbells at the correct site
+                            dbstateNew = dumbbell(idx, Rdb)
+                            pairnew = SdPair(pair.i_s, pair.R_s, dbstateNew)
+                            nextshell.add(pairnew)
+                            stateset.add(pairnew)
 
-
-                    nextshell.add(pairnew)
-                    stateset.add(pairnew)
             lastshell = nextshell.copy()
             print("built shell {}: time - {}".format(step+2, time.time()-start))
 
