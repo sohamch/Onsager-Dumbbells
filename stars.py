@@ -148,6 +148,9 @@ class StarSet(object):
                         continue
                     if not (pair.i_s == pairnew.i_s and np.allclose(pairnew.R_s, pair.R_s, atol=self.crys.threshold)):
                         raise ArithmeticError("Solute shifted by a complex jump!(?)")
+                    # Now, when we find a new dumbbell location, we have to consider all possible orientations in that location.
+
+
                     nextshell.add(pairnew)
                     stateset.add(pairnew)
             lastshell = nextshell.copy()

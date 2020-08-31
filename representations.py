@@ -104,11 +104,6 @@ class SdPair(namedtuple('SdPair', "i_s R_s db")):
 
     def addjump(self, j, mixed=False):
 
-        if not mixed and isinstance(j.state1, self.__class__):
-            raise TypeError("Only dumbbell -> dumbbell transitions can be added to complexes, not pair -> pair \n {}".format(j))
-        elif mixed and not isinstance(j.state1, SdPair):
-            raise TypeError("Only pair -> pair transitions can be added to mixed dumbbells")
-
         if not mixed:
             if isinstance(j.state1, self.__class__):
                 raise TypeError("Only dumbbell -> dumbbell transitions can be added to complexes")
