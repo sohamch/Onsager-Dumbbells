@@ -114,31 +114,22 @@ class StarSet(object):
         if Nshells >= 1:
             # build the starting shell
             # Build the first shell from the jump network
-            # One by one, keeping the solute at the basis sites of the origin unit cell, put all possible dumbbell
+            # One by one, keeping the solute at the origin unit cell, put all possible dumbbell
             # states at one jump distance away.
-            # The idea is that a valid jump must be able to bring a dumbbell to a solute site - this is wrong.
             # We won't put in origin states just yet.
-            # In many unsymmetric cases, there may not be any on site rotation possible.
-            # So, it is best to add in the origin states later on.
             for j in self.jumplist:
                 dx = disp(self.pdbcontainer, j.state1, j.state2)
                 if np.allclose(dx, np.zeros(3, dtype=int), atol=self.pdbcontainer.crys.threshold):
                     continue
-                # Previously:
-                # pair = SdPair(self.pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, j.state2)
-                # stateset.add(pair)
                 # Now go through the all the dumbbell states in the (i,or) list:
                 for idx, (i, o) in enumerate(self.pdbcontainer.iorlist):
-                    # One thing to check - are omega0 networks closed in sites,
-                    # We are considering a jump shell. That is, however far a jump takes me, and to whatever site,
-                    # that is where I need to build my complex states.
                     dbstate = dumbbell(idx, j.state2.R)
                     pair = SdPair(self.pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, dbstate)
                     stateset.add(pair)
 
             # Now, we add in the origin states
             for ind, tup in enumerate(self.pdbcontainer.iorlist):
-                pair = SdPair(tup[0], np.zeros(3, dtype=int), dumbbell(ind,np.zeros(3, dtype=int)))
+                pair = SdPair(tup[0], np.zeros(self.crys.dim, dtype=int), dumbbell(ind, np.zeros(self.crys.dim, dtype=int)))
                 stateset.add(pair)
         print("built shell {}: time - {}".format(1, time.time() - start))
         lastshell = stateset.copy()
@@ -149,17 +140,16 @@ class StarSet(object):
             for j in self.jumplist:
                 for pair in lastshell:
                     if not np.allclose(pair.R_s, 0, atol=self.crys.threshold):
-                        raise ValueError("The solute is not at the origin")
+                        raise ValueError("The solute is not at the origin in a complex state")
                     try:
                         pairnew = pair.addjump(j)
                     except ArithmeticError:
                         # If there is somehow a type error, we will get the message.
                         continue
                     if not (pair.i_s == pairnew.i_s and np.allclose(pairnew.R_s, pair.R_s, atol=self.crys.threshold)):
-                        raise ArithmeticError("Solute shifted from a complex!(?)")
+                        raise ArithmeticError("Solute shifted by a complex jump!(?)")
                     nextshell.add(pairnew)
                     stateset.add(pairnew)
-            # Group this shell by symmetry
             lastshell = nextshell.copy()
             print("built shell {}: time - {}".format(step+2, time.time()-start))
 
