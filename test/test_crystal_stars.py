@@ -46,20 +46,15 @@ class test_StarSet(unittest.TestCase):
         jset0 = pdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
         jset2 = mdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
         crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 1)
-        # Check that if a state is present in the stateset, it's symmetrically equivalent states are also present in the
-        # stateset
-        for st in crys_stars.stateset:
-            for gdumb in pdbcontainer.G:
-                stnew, flipind = st.gop(pdbcontainer, gdumb)
-                stnew -= stnew.R_s
-                self.assertTrue(stnew in crys_stars.stateset)
+        # In DC Si, with 1nn shell, should have 21*2 = 42 + 6(origin) = 48 total dumbbell states.
+        self.assertTrue(len(crys_stars.stateset), 48)
 
         # Check that the stars are properly generated
         count_origin_states = 0
         for star in crys_stars.stars[:crys_stars.mixedstartindex]:
             repr = star[0]
             if repr.is_zero(crys_stars.pdbcontainer):
-                count_origin_states += 1
+                count_origin_states += len(star)
             considered_already = set([])
             count = 0
             for gdumb in crys_stars.pdbcontainer.G:
@@ -71,7 +66,28 @@ class test_StarSet(unittest.TestCase):
             self.assertEqual(count, len(star))
 
         # Check that we have origin states
-        self.assertTrue(count_origin_states > 0)
+        self.assertTrue(count_origin_states, 6)
+
+        # put in FCC test
+        latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
+        FCC = crystal.Crystal(latt, [[np.array([0., 0., 0.])]], ["A"])
+        famp0 = [np.array([1., 0., 0.]) * 0.145]
+        family = [famp0]
+        pdbcontainer = dbStates(FCC, 0, family)
+        mdbcontainer = mStates(FCC, 0, family)
+        jset0 = pdbcontainer.jumpnetwork(0.4, 0.01, 0.01)
+        jset2 = mdbcontainer.jumpnetwork(0.4, 0.01, 0.01)
+        crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 1)
+
+        # check that starset is closed under symmetry
+        for st in crys_stars.stateset:
+            for gdumb in pdbcontainer.G:
+                stnew, flipind = st.gop(pdbcontainer, gdumb)
+                stnew -= stnew.R_s
+                self.assertTrue(stnew in crys_stars.stateset)
+        # for fcc we can count explicitly
+        self.assertEqual(len(crys_stars.stateset), 39)
+
 
     def test_indexing_stars(self):
         famp0 = [np.array([1., 0., 0.]) * 0.145]
