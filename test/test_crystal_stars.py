@@ -5,6 +5,7 @@ from test_structs import *
 from states import *
 # from gensets import *
 import unittest
+import collections
 
 
 class test_StarSet(unittest.TestCase):
@@ -88,6 +89,15 @@ class test_StarSet(unittest.TestCase):
         # for fcc we can count explicitly
         self.assertEqual(len(crys_stars.stateset), 39)
 
+        # Now let's do a 1nn2 shell
+        crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 2)
+        Rcounts = collections.defaultdict(int)
+        for state in crys_stars.stateset:
+            R = state.db.R
+            Rcounts[(R[0], R[1], R[2])] += 1
+
+        for (key, val) in Rcounts.items():
+            self.assertEqual(val, 3)  # check that all three orientations are present
 
     def test_indexing_stars(self):
         famp0 = [np.array([1., 0., 0.]) * 0.145]
