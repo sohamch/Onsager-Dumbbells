@@ -179,16 +179,22 @@ class StarSet(object):
                 newstate = newstate - newstate.R_s  # Shift the solute back to the origin unit cell.
                 if newstate in self.stateset:  # Check if this state is allowed to be present.
                     if not newstate in allset:  # Check if this state has already been considered.
-                        newstateind = self.complexStates.index(newstate)
+                        try:
+                            newstateind = self.complexStates.index(newstate)
+                        except:
+                            raise KeyError("Something wrong in finding index for newstate")
                         newstar.append(newstate)
                         newstar_index.append(newstateind)
                         allset.add(newstate)
             if len(newstar) == 0:
                 raise ValueError("A star must have at least one state.")
+            if not len(newstar) == len(newstar_index):
+                raise ValueError("star and index star have different lengths")
             stars.append(newstar)
             starindexed.append(newstar_index)
         print("grouped states by symmetry: {}".format(time.time() - start))
         self.stars = stars
+        self.starindexed = starindexed
         self.sortstars()
 
         for starind, star in enumerate(self.stars):
@@ -256,9 +262,9 @@ class StarSet(object):
                 for j, st in enumerate(self.mixedstates):
                     if st == state:
                         indlist.append(j)
-            starindexed.append(indlist)
+            self.starindexed.append(indlist)
         print("built mixed indexed star: {}".format(time.time() - start))
-        self.starindexed = starindexed
+        # self.starindexed = starindexed
 
         self.star2symlist = np.zeros(len(self.stars), dtype=int)
         # The i_th element of this index list gives the corresponding symorlist from which the dumbbell of the
@@ -309,9 +315,13 @@ class StarSet(object):
         sortlist = sorted(inddict.items(), key=lambda x: x[1])
         # print(sortlist)
         starnew = []
+        starIndexnew = []
         for (ind, dx2) in sortlist:
             starnew.append(self.stars[ind])
+            starIndexnew.append(self.starindexed[ind])
+
         self.stars = starnew
+        self.starindexed = starIndexnew
 
     def jumpnetwork_omega1(self):
         jumpnetwork = []
