@@ -100,24 +100,24 @@ class test_StarSet(unittest.TestCase):
             self.assertEqual(val, 3)  # check that all three orientations are present
 
     def test_indexing_stars(self):
-        # famp0 = [np.array([1., 0., 0.]) * 0.145]
-        # family = [famp0]
-        # hcp_Mg = crystal.Crystal.HCP(0.3294, chemistry=["Mg"])
-        # pdbcontainer = dbStates(hcp_Mg, 0, family)
-        # mdbcontainer = mStates(hcp_Mg, 0, family)
-        # jset0 = pdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
-        # jset2 = mdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
-        # crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 1)
-
-        latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
-        DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
         famp0 = [np.array([1., 0., 0.]) * 0.145]
         family = [famp0]
-        pdbcontainer = dbStates(DC_Si, 0, family)
-        mdbcontainer = mStates(DC_Si, 0, family)
-        jset0 = pdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
-        jset2 = mdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
+        hcp_Mg = crystal.Crystal.HCP(0.3294, chemistry=["Mg"])
+        pdbcontainer = dbStates(hcp_Mg, 0, family)
+        mdbcontainer = mStates(hcp_Mg, 0, family)
+        jset0 = pdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
+        jset2 = mdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
         crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 1)
+
+        # latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
+        # DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
+        # famp0 = [np.array([1., 0., 0.]) * 0.145]
+        # family = [famp0]
+        # pdbcontainer = dbStates(DC_Si, 0, family)
+        # mdbcontainer = mStates(DC_Si, 0, family)
+        # jset0 = pdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
+        # jset2 = mdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
+        # crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 1)
 
         # Check that the stars are properly generated
         for star in crys_stars.stars[:crys_stars.mixedstartindex]:
