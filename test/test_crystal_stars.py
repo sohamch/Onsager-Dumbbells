@@ -243,8 +243,8 @@ class test_StarSet(unittest.TestCase):
                 jmp = omega1_network[x][y]
                 # First, check that the solute does not move and is at the origin
                 self.assertTrue(jmp.state1.i_s == jmp.state2.i_s)
-                self.assertTrue(np.array_equal(jmp.state1.R_s, np.zeros(crys_stars.crys.dim), dtype=int))
-                self.assertTrue(np.array_equal(jmp.state2.R_s, np.zeros(crys_stars.crys.dim), dtype=int))
+                self.assertTrue(np.array_equal(jmp.state1.R_s, np.zeros(crys_stars.crys.dim, dtype=int)))
+                self.assertTrue(np.array_equal(jmp.state2.R_s, np.zeros(crys_stars.crys.dim, dtype=int)))
 
                 # Next, collect rotational jumps for checking later
                 if np.allclose(disp(crys_stars.pdbcontainer, jmp.state1, jmp.state2), np.zeros(3),
