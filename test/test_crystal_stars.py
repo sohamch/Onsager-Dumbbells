@@ -223,15 +223,15 @@ class test_StarSet(unittest.TestCase):
                                 # If any is true, then that means only one is true, since a jump b/w two states is
                                 # present only once.
 
-            rotset = set([]) # Here we will store the rotational jumps in the network
+            rotset = set([])  # Here we will store the rotational jumps in the network
             for x in range(len(omega1_network)):
                 # select any jump from this list at random. Idea is that we must get back the same jump list.
                 y = np.random.randint(0, len(omega1_network[x]))
                 jmp = omega1_network[x][y]
                 # First, check that the solute does not move and is at the origin
                 self.assertTrue(jmp.state1.i_s == jmp.state2.i_s)
-                self.assertTrue(np.allclose(jmp.state1.R_s, np.zeros(3)))
-                self.assertTrue(np.allclose(jmp.state2.R_s, np.zeros(3)))
+                self.assertTrue(np.array_equal(jmp.state1.R_s, np.zeros(crys_stars.crys.dim), dtype=int))
+                self.assertTrue(np.array_equal(jmp.state2.R_s, np.zeros(crys_stars.crys.dim), dtype=int))
 
                 # Next, collect rotational jumps for checking later
                 if np.allclose(disp(crys_stars.pdbcontainer, jmp.state1, jmp.state2), np.zeros(3),
