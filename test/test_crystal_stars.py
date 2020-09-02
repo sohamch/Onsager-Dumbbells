@@ -91,18 +91,26 @@ class test_StarSet(unittest.TestCase):
                 stnew, flipind = st.gop(pdbcontainer, gdumb)
                 stnew -= stnew.R_s
                 self.assertTrue(stnew in crys_stars.stateset)
-        # for fcc we can count explicitly
+        # for fcc 1nn shell we can count explicitly - 3*12 = 36 + 3 origin states
         self.assertEqual(len(crys_stars.stateset), 39)
 
         # Now let's do a 1nn2 shell
         crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 2)
+
+        # check that starset is closed under symmetry
+        for st in crys_stars.stateset:
+            for gdumb in pdbcontainer.G:
+                stnew, flipind = st.gop(pdbcontainer, gdumb)
+                stnew -= stnew.R_s
+                self.assertTrue(stnew in crys_stars.stateset)
+
         Rcounts = collections.defaultdict(int)
         for state in crys_stars.stateset:
             R = state.db.R
             Rcounts[(R[0], R[1], R[2])] += 1
 
         for (key, val) in Rcounts.items():
-            self.assertEqual(val, 3)  # check that all three orientations are present
+            self.assertEqual(val, 3)  # check that all three orientations are present at every R
 
     def test_indexing_stars(self):
         famp0 = [np.array([1., 0., 0.]) * 0.145]
