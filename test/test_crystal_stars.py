@@ -47,8 +47,13 @@ class test_StarSet(unittest.TestCase):
         jset0 = pdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
         jset2 = mdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
         crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 1)
-        # In DC Si, with 1nn shell, should have 21*2 = 42 + 6(origin) = 48 total dumbbell states.
-        self.assertTrue(len(crys_stars.stateset), 48)
+
+        # check that starset is closed under symmetry
+        for st in crys_stars.stateset:
+            for gdumb in pdbcontainer.G:
+                stnew, flipind = st.gop(pdbcontainer, gdumb)
+                stnew -= stnew.R_s
+                self.assertTrue(stnew in crys_stars.stateset)
 
         # Check that the stars are properly generated
         count_origin_states = 0

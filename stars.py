@@ -122,6 +122,8 @@ class StarSet(object):
                     continue
                 # Now go through the all the dumbbell states in the (i,or) list:
                 for idx, (i, o) in enumerate(self.pdbcontainer.iorlist):
+                    if i != self.pdbcontainer.iorlist[j.state2.iorind][0]:
+                        continue
                     dbstate = dumbbell(idx, j.state2.R)
                     pair = SdPair(self.pdbcontainer.iorlist[j.state1.iorind][0], j.state1.R, dbstate)
                     stateset.add(pair)
