@@ -154,16 +154,6 @@ class vectorStars(VectorStarSet):
                                 break
                     self.vecvec_bare.append(veclist)
 
-        # index the states into the vector stars - required in OnsagerCalc
-
-        # for st in self.starset.complexStates:
-        #     indlist = []
-        #     for IndOfStar, crStar in enumerate(self.vecpos[:self.Nvstars_pure]):
-        #         for IndOfState, state in enumerate(crStar):
-        #             if state == st:
-        #                 indlist.append((IndOfStar, IndOfState))
-        #     self.stateToVecStar_pure[st] = indlist
-
         self.stateToVecStar_pure = defaultdict(list)
         for IndofStar, crStar in enumerate(self.vecpos[:self.Nvstars_pure]):
             for IndofState, state in enumerate(crStar):
