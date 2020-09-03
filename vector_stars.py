@@ -164,7 +164,7 @@ class vectorStars(VectorStarSet):
             for IndOfState, state in enumerate(crStar):
                 self.stateToVecStar_mixed[state].append((IndOfStar + self.Nvstars_pure, IndOfState))
 
-        self.stateToVecStar_bare = {}
+        self.stateToVecStar_bare = defaultdict(list)
         if len(self.vecpos_bare) > 0:
             for IndOfStar, crStar in enumerate(self.vecpos_bare):
                 for IndOfState, state in enumerate(crStar):
