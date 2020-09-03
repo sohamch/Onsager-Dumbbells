@@ -7,6 +7,8 @@ from test_structs import *
 import unittest
 """
 Tests to check if inhereting the original Greens Function calculator works for dumbbells
+The test is imported directly from Prof. Dallas R. Trinkle's test suite, since this is an extension of the same.
+We just need to ensure we did not break anything.
 """
 def poleFT(di, u, pm, erfupm=-1):
     """
