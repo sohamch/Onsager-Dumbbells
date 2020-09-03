@@ -47,7 +47,6 @@ class GreenFuncCrystalTests(unittest.TestCase):
         family = [famp0]
         pdbcontainer = dbStates(cube,0,family)
         jset,jind = pdbcontainer.jumpnetwork(0.3,0.01,0.01)
-        jnet_cube_vacancy = cube.jumpnetwork(0, 0.3)
         cube_GF = GF_dumbbells(pdbcontainer, jind)
         preT = list(np.ones(len(jind)))
         betaeneT = list(np.ones(len(jind)))
