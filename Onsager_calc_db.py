@@ -413,6 +413,7 @@ class dumbbellMediated(VacancyMediated):
                 W2[i, i] -= rate2list[jt][jnum]  # Add the same to the diagonal
 
         self.G2 = pinv(W2)
+        self.W2 = W2
 
         self.biasBareExpansion = self.biases[-1]
 
