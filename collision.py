@@ -148,8 +148,11 @@ def collision_others(container, container2, jmp, closestdistance):
         return False
     nmax = [int(np.round(np.sqrt(dx2 / crys.metric[i, i]))) + 1 for i in range(crys.dim)]
     # print(nmax)
-    supervect = [np.array([n0, n1, n2]) for n0 in range(-nmax[0], nmax[0] + 1) for n1 in range(-nmax[1], nmax[1] + 1)
-                 for n2 in range(-nmax[2], nmax[2] + 1)]
+    if crys.dim == 2:
+        supervect = [np.array([n0, n1]) for n0 in range(-nmax[0], nmax[0] + 1) for n1 in range(-nmax[1], nmax[1] + 1)]
+    else:
+        supervect = [np.array([n0, n1, n2]) for n0 in range(-nmax[0], nmax[0] + 1) for n1 in range(-nmax[1], nmax[1] + 1)
+                     for n2 in range(-nmax[2], nmax[2] + 1)]
     # print(supervect)
     # print()
     # now test against other atoms, treating the initial atom as the origin
