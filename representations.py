@@ -26,7 +26,7 @@ class dumbbell(namedtuple('dumbbell', 'iorind R')):
     def __hash__(self):
         # o = np.round(self.o,6)
         # return hash((self.i,o[0],o[1]*5,o[2],self.R[0],self.R[1],self.R[2]))
-        return hash((self.iorind, self.R[0], self.R[1], self.R[2]))
+        return hash((self.iorind,) + tuple(self.R))
 
     def gop(self, container, gdumb, pure=True):
 
