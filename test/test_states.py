@@ -39,7 +39,7 @@ class test_statemaking(unittest.TestCase):
                                       np.allclose(tup2[1], -onew, atol=dbstates.crys.threshold)):
                         count +=1
                         self.assertEqual(gdumb.indexmap[0][idx1], idx2, msg="{}, {}".format(gdumb.indexmap[0][idx1], idx2))
-                self.assertEqual(count ,1)
+                self.assertEqual(count, 1)
 
         # test_indexedsymlist
         for i1, symindlist, symstatelist in zip(itertools.count(),dbstates.symIndlist, dbstates.symorlist):
@@ -254,3 +254,12 @@ class test_statemaking(unittest.TestCase):
                 self.assertEqual(mdbcontainer.iorlist[jset[lindex][jindex].state2.db.iorind][0], i2)
                 self.assertTrue(np.allclose(mdbcontainer.iorlist[jset[lindex][jindex].state1.db.iorind][1], o1))
                 self.assertTrue(np.allclose(mdbcontainer.iorlist[jset[lindex][jindex].state2.db.iorind][1], o2))
+
+class test_2d(test_statemaking):
+    def setUp(self):
+        o = np.array([0.1, 0.])
+        famp0 = [o.copy()]
+        self.family = [famp0]
+
+        latt = np.array([[1., 0.], [0., 1.]])
+        self.crys = crystal.Crystal(latt, [np.array([0, 0])], ["A"])
