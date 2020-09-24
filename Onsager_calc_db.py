@@ -58,23 +58,6 @@ class BareDumbbell(Interstitial):
         self.container = container
         self.jumpnetwork = jumpnetwork
         self.N = sum([len(lst) for lst in container.symorlist])
-        # self.VB, self.VV = self.FullVectorBasis(mixed)
-        # self.NV = len(self.VB)
-
-        # Need to check if this portion is still necessary
-        # self.omega_invertible = True
-        # if self.NV > 0:
-        #     self.omega_invertible = any(np.allclose(g.cartrot, -np.eye(3)) for g in self.container.crys.G)
-
-        # #What is this for though?
-        # if self.omega_invertible:
-        #     self.bias_solver = lambda omega,b : -la.solve(-omega,b,sym_pos=True)
-        # else:
-        #     # pseudoinverse required:
-        #     self.bias_solver = lambda omega, b: np.dot(pinv(omega), b)
-
-        # self.sitegroupops = self.generateStateGroupOps()
-        # self.jumpgroupops = self.generateJumpGroupOps()
 
     def FullVectorBasis(self, mixed):
         crys = self.container.crys
@@ -189,13 +172,8 @@ class BareDumbbell(Interstitial):
                 omega_ij[i, i] -= rate
                 domega_ij[i, j] += symmrate * (bET - 0.5 * (stateene[i] + stateene[j]))
                 bias_i[i] += sqrtrho[i] * rate * dx
-                # dbias_i[i] += sqrtrho[i] * rate * dx * (bET - 0.5 * (stateene[i] + Eave))
-                # for domega and dbias - read up section 2.2 in the paper.
-                # These are to evaluate the derivative of D wrt to beta. Read later.
+
                 D0 += 0.5 * np.outer(dx, dx) * rho[i] * rate
-                # Db += 0.5 * np.outer(dx, dx) * rho[i] * rate * (bET - Eave)
-                # Db - derivative with respect to beta
-        # gamma_i = np.zeros((self.N, 3))
 
         gamma_i = np.tensordot(pinv(omega_ij), bias_i, axes=(1, 0))
         Dcorr = np.zeros((3, 3))
