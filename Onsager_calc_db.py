@@ -59,49 +59,6 @@ class BareDumbbell(Interstitial):
         self.jumpnetwork = jumpnetwork
         self.N = sum([len(lst) for lst in container.symorlist])
 
-    def FullVectorBasis(self, mixed):
-        crys = self.container.crys
-        chem = self.container.chem
-        z = np.zeros(3, dtype=int)
-
-        def make_Glist(tup):
-            """
-            Returns a set of gops that leave a state unchanged
-            At the least there will be the identity
-            """
-            glist = set([])
-            for g in self.container.crys.G:
-                r1, (ch, i1) = crys.g_pos(g, z, (chem, tup[0]))
-                onew = np.dot(g.cartrot, tup[1])
-                onew -= onew.R
-                if not mixed:
-                    if np.allclose(onew + tup[1], z):
-                        onew = -onew
-                if tup[0] == i1 and np.allclose(r1, z) and np.allclose(onew, tup[1]):  # the state remains unchanged
-                    glist.add(g - crys.g_pos(g, z, (chem, tup[0]))[0])
-            return glist
-
-        lis = []
-        for statelistind, statelist in enumerate(self.container.symorlist):
-            N = len(self.container.iorlist)
-            glist = make_Glist(statelist[0])
-            vbasis = reduce(crystal.CombineVectorBasis, [crystal.VectorBasis(*g.eigen()) for g in glist])
-            for v in crys.vectlist(vbasis):
-                v /= np.sqrt(len(statelist))
-                vb = np.zeros((N, 3))
-                for gind, g in enumerate(crys.G):
-                    vb[self.container.indexmap[gind][self.container.indsymlist[statelistind][0]]] = self.g_direc(g, v)
-                    # What if this changes the vector basis for the state itself?
-                    # There are several groupos that leave a state unchanged.
-                lis.append(vb)
-
-        VV = np.zeros((3, 3, len(lis), len(lis)))
-        for i, vb_i in enumerate(lis):
-            for j, vb_j in enumerate(lis):
-                VV[:, :, i, j] = np.dot(vb_i.T, vb_j)
-
-        return np.array(lis), VV
-
     def generateStateGroupOps(self):
         """
         Returns a list of lists of groupOps that map the first element of each list in symorlist
