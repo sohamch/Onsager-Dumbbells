@@ -115,13 +115,8 @@ class BareDumbbell(Interstitial):
         omega_ij = np.zeros((self.N, self.N))
         domega_ij = np.zeros((self.N, self.N))
         bias_i = np.zeros((self.N, 3))
-        dbias_i = np.zeros((self.N, 3))
         D0 = np.zeros((3, 3))
-        # Dcorrection = np.zeros((3, 3))
-        Db = np.zeros((3, 3))
         stateene = np.array([betaene[w] for w in self.container.invmap])
-        # Boltmann averaged energies of all states
-        Eave = np.dot(rho, stateene)
 
         for jlist, rates, symmrates, bET in zip(self.jumpnetwork, rates_lst, symmrates_lst, betaeneT):
             for ((i, j), dx), rate, symmrate in zip(jlist, rates, symmrates):
