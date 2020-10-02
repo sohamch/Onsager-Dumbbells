@@ -132,7 +132,7 @@ class test_StarSet(unittest.TestCase):
         jset2 = mdbcontainer2.jumpnetwork(0.3, 0.01, 0.01)
         crys_stars2 = StarSet(pdbcontainer2, mdbcontainer2, jset0, jset2, 1)
 
-        crys2d = crystal.Crystal(np.array([[1., 0.], [0., 1.5]]), [np.array([0, 0])], ["A"])
+        crys2d = crystal.Crystal(np.array([[1., 0.], [0., 1.5]]), [[np.array([0, 0]), np.array([0.5, 0.5])]], ["A"])
 
         o = np.array([0.1, 0.])
         famp02d = [o.copy()]
