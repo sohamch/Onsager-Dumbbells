@@ -57,8 +57,8 @@ class GF_dumbbells(GFCrystalcalc):
         self.grouparray, self.indexpair = self.BreakdownGroups()
         # modified BreakdownGroups using new indexmap for dumbbells
         bmagn = np.array([np.sqrt(np.dot(self.crys.reciplatt[:, i], self.crys.reciplatt[:, i]))
-                          for i in range(3)])
-        bmagn /= np.power(np.product(bmagn), 1 / 3)
+                          for i in range(self.crys.dim)])
+        bmagn /= np.power(np.product(bmagn), 1 / self.crys.dim)
         # make sure we have even meshes - same as vacancies
         # Don't need to change the k-mesh generation.
         self.kptgrid = np.array([2 * np.int(np.ceil(2 * Nmax * b)) for b in bmagn], dtype=int) \

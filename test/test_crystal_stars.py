@@ -247,7 +247,7 @@ class test_StarSet(unittest.TestCase):
                 self.assertTrue(np.array_equal(jmp.state2.R_s, np.zeros(crys_stars.crys.dim, dtype=int)))
 
                 # Next, collect rotational jumps for checking later
-                if np.allclose(disp(crys_stars.pdbcontainer, jmp.state1, jmp.state2), np.zeros(3),
+                if np.allclose(disp(crys_stars.pdbcontainer, jmp.state1, jmp.state2), 0.,
                                 atol=crys_stars.pdbcontainer.crys.threshold):
                     for rotjmp in omega1_network[x]:
                         rotset.add(rotjmp)
