@@ -132,7 +132,7 @@ class test_StarSet(unittest.TestCase):
         jset2 = mdbcontainer2.jumpnetwork(0.3, 0.01, 0.01)
         crys_stars2 = StarSet(pdbcontainer2, mdbcontainer2, jset0, jset2, 1)
 
-        crys2d = crystal.Crystal(np.array([[1., 0.], [0., 1.]]), [np.array([0, 0])], ["A"])
+        crys2d = crystal.Crystal(np.array([[1., 0.], [0., 1.5]]), [np.array([0, 0])], ["A"])
 
         o = np.array([0.1, 0.])
         famp02d = [o.copy()]
@@ -140,7 +140,7 @@ class test_StarSet(unittest.TestCase):
         pdbcontainer2d = dbStates(crys2d, 0, family2d)
         mdbcontainer2d = mStates(crys2d, 0, family2d)
 
-        jset02d, jset22d = pdbcontainer2d.jumpnetwork(1.01, 0.01, 0.01), mdbcontainer2d.jumpnetwork(1.01, 0.01, 0.01)
+        jset02d, jset22d = pdbcontainer2d.jumpnetwork(1.51, 0.01, 0.01), mdbcontainer2d.jumpnetwork(1.51, 0.01, 0.01)
 
         crys_stars3 = StarSet(pdbcontainer2d, mdbcontainer2d, jset02d, jset22d, Nshells=1)
 
@@ -176,7 +176,8 @@ class test_StarSet(unittest.TestCase):
         fcc_Ni = crystal.Crystal.FCC(0.352, chemistry=["Ni"])
         latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
         DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
-        crys_list = [hcp_Mg, fcc_Ni, DC_Si]
+        crys2d = crystal.Crystal(np.array([[1., 0.], [0., 1.]]), [np.array([0, 0])], ["A"])
+        crys_list = [hcp_Mg, fcc_Ni, DC_Si, crys2d]
         famp0 = [np.array([1., 0., 0.]) * 0.145]
         family = [famp0]
         for struct, crys in enumerate(crys_list):
