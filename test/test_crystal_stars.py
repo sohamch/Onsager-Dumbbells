@@ -115,47 +115,61 @@ class test_StarSet(unittest.TestCase):
     def test_indexing_stars(self):
         famp0 = [np.array([1., 0., 0.]) * 0.145]
         family = [famp0]
-        hcp_Mg = crystal.Crystal.HCP(0.3294, chemistry=["Mg"])
-        pdbcontainer = dbStates(hcp_Mg, 0, family)
-        mdbcontainer = mStates(hcp_Mg, 0, family)
-        jset0 = pdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
-        jset2 = mdbcontainer.jumpnetwork(0.45, 0.01, 0.01)
-        crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 1)
 
-        # latt = np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
-        # DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
-        # famp0 = [np.array([1., 0., 0.]) * 0.145]
-        # family = [famp0]
-        # pdbcontainer = dbStates(DC_Si, 0, family)
-        # mdbcontainer = mStates(DC_Si, 0, family)
-        # jset0 = pdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
-        # jset2 = mdbcontainer.jumpnetwork(0.3, 0.01, 0.01)
-        # crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, 1)
+        hcp_Mg = crystal.Crystal.HCP(0.3294, chemistry=["Mg"])
+        pdbcontainer1 = dbStates(hcp_Mg, 0, family)
+        mdbcontainer1 = mStates(hcp_Mg, 0, family)
+        jset0 = pdbcontainer1.jumpnetwork(0.45, 0.01, 0.01)
+        jset2 = mdbcontainer1.jumpnetwork(0.45, 0.01, 0.01)
+        crys_stars1 = StarSet(pdbcontainer1, mdbcontainer1, jset0, jset2, 1)
+
+        DC_Si = crystal.Crystal(np.array([[0., 0.5, 0.5], [0.5, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
+                                , [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
+
+        pdbcontainer2 = dbStates(DC_Si, 0, family)
+        mdbcontainer2 = mStates(DC_Si, 0, family)
+        jset0 = pdbcontainer2.jumpnetwork(0.3, 0.01, 0.01)
+        jset2 = mdbcontainer2.jumpnetwork(0.3, 0.01, 0.01)
+        crys_stars2 = StarSet(pdbcontainer2, mdbcontainer2, jset0, jset2, 1)
+
+        crys2d = crystal.Crystal(np.array([[1., 0.], [0., 1.]]), [np.array([0, 0])], ["A"])
+
+        o = np.array([0.1, 0.])
+        famp02d = [o.copy()]
+        family2d = [famp02d]
+        pdbcontainer2d = dbStates(crys2d, 0, family2d)
+        mdbcontainer2d = mStates(crys2d, 0, family2d)
+
+        jset02d, jset22d = pdbcontainer2d.jumpnetwork(1.01, 0.01, 0.01), mdbcontainer2d.jumpnetwork(1.01, 0.01, 0.01)
+
+        crys_stars3 = StarSet(pdbcontainer2d, mdbcontainer2d, jset02d, jset22d, Nshells=1)
 
         # Check that the stars are properly generated
-        for star in crys_stars.stars[:crys_stars.mixedstartindex]:
-            repr = star[0]
-            considered_already = set([])
-            count = 0
-            for gdumb in crys_stars.pdbcontainer.G:
-                stnew = repr.gop(crys_stars.pdbcontainer, gdumb)[0]
-                stnew -= stnew.R_s
-                if stnew in star and not stnew in considered_already:
-                    count += 1
-                    considered_already.add(stnew)
-            self.assertEqual(count, len(star))
+        for crys_stars in [crys_stars1, crys_stars2, crys_stars3]:
 
-        # test indexing
-        for star, starind in zip(crys_stars.stars[:crys_stars.mixedstartindex],
-                                 crys_stars.starindexed[:crys_stars.mixedstartindex]):
-            self.assertEqual(len(star), len(starind))
-            for state, stateind in zip(star, starind):
-                self.assertEqual(state, crys_stars.complexStates[stateind])
+            for star in crys_stars.stars[:crys_stars.mixedstartindex]:
+                repr = star[0]
+                considered_already = set([])
+                count = 0
+                for gdumb in crys_stars.pdbcontainer.G:
+                    stnew = repr.gop(crys_stars.pdbcontainer, gdumb)[0]
+                    stnew -= stnew.R_s
+                    if stnew in star and not stnew in considered_already:
+                        count += 1
+                        considered_already.add(stnew)
+                self.assertEqual(count, len(star))
 
-        for star, starind in zip(crys_stars.stars[crys_stars.mixedstartindex:],
-                                 crys_stars.starindexed[crys_stars.mixedstartindex:]):
-            for state, stateind in zip(star, starind):
-                self.assertEqual(state, crys_stars.mixedstates[stateind])
+            # test indexing
+            for star, starind in zip(crys_stars.stars[:crys_stars.mixedstartindex],
+                                     crys_stars.starindexed[:crys_stars.mixedstartindex]):
+                self.assertEqual(len(star), len(starind))
+                for state, stateind in zip(star, starind):
+                    self.assertEqual(state, crys_stars.complexStates[stateind])
+
+            for star, starind in zip(crys_stars.stars[crys_stars.mixedstartindex:],
+                                     crys_stars.starindexed[crys_stars.mixedstartindex:]):
+                for state, stateind in zip(star, starind):
+                    self.assertEqual(state, crys_stars.mixedstates[stateind])
 
     def test_dicts(self):
         hcp_Mg = crystal.Crystal.HCP(0.3294, chemistry=["Mg"])
