@@ -248,7 +248,7 @@ class test_StarSet(unittest.TestCase):
         crys_list = [DC_Si, hcp_Mg, fcc_Ni, crys2d]
 
         for struct, crys in enumerate(crys_list):
-
+            print("Structure:{}\n  dimension:{}\n".format(struct, crys.dim))
             if crys.dim == 3:
                 pdbcontainer = dbStates(crys, 0, family)
                 mdbcontainer = mStates(crys, 0, family)
@@ -332,8 +332,14 @@ class test_StarSet(unittest.TestCase):
                                     self.assertTrue(om1types[i] == om1types[j],
                                                     msg="{},{}\n{}\n{}".format(i, j, j1, j2))
 
-            omega43, omega4, omega3 = crys_stars.jumpnetwork_omega34(0.35, 0.01, 0.01, 0.01)
+            if crys.dim == 3:
+                cut43 = 0.35
+            else:
+                cut43 = 1.51
+
+            omega43, omega4, omega3 = crys_stars.jumpnetwork_omega34(cut43, 0.01, 0.01, 0.01)
             omega43_all, omega4_network, omega3_network = omega43[0], omega4[0], omega3[0]
+            print(len(omega4_network))
             omega43_all_indexed, omega4_network_indexed, omega3_network_indexed = omega43[1], omega4[1], omega3[1]
             omega4tag, omega3tag = omega4[2], omega3[2]
             self.assertEqual(len(omega4_network), len(omega3_network))
@@ -348,8 +354,8 @@ class test_StarSet(unittest.TestCase):
                 for jmp1, jmp2 in zip(jlist_all[::2], j4list):
                     self.assertEqual(jmp1, jmp2)
 
-            for jlist_all, j4list in zip(omega43_all, omega3_network):
-                for jmp1, jmp2 in zip(jlist_all[1::2], j4list):
+            for jlist_all, j3list in zip(omega43_all, omega3_network):
+                for jmp1, jmp2 in zip(jlist_all[1::2], j3list):
                     self.assertEqual(jmp1, jmp2)
 
             ##TEST omega3 and omega4
