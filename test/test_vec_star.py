@@ -50,11 +50,20 @@ class test_vecstars(unittest.TestCase):
 
     def test_basis(self):
 
+        print(len(self.vec_stars.vecpos_bare))
+
         count_origin_states = 0
         for Rstar in self.vec_stars.vecpos[:self.vec_stars.Nvstars_pure]:
             if Rstar[0].is_zero(self.vec_stars.starset.pdbcontainer):
                 count_origin_states += 1
-        self.assertTrue(count_origin_states > 0)
+
+        if count_origin_states == 0:
+            self.assertTrue(len(self.vec_stars.vecpos_bare) == 0,
+                            msg="{} {}\n".format(count_origin_states, self.vec_stars.Nvstars_pure))
+
+        else:
+            self.assertTrue(len(self.vec_stars.vecpos_bare) == count_origin_states,
+                            msg="{} {}\n".format(count_origin_states, self.vec_stars.Nvstars_pure))
 
         self.assertEqual(len(self.vec_stars.vecpos), len(self.vec_stars.vecvec))
         self.assertEqual(len(self.vec_stars.vecpos_bare), len(self.vec_stars.vecvec_bare))
@@ -252,7 +261,7 @@ class test_vecstars(unittest.TestCase):
             print("checking zero non-local bias for pure dumbbells")
             for star in self.vec_stars.starset.barePeriodicStars:
                 for st in star:
-                    bias_st = np.zeros(3)
+                    bias_st = np.zeros(self.crys_stars.crys.dim)
                     count = 0
                     for jt, jumplist in enumerate(self.vec_stars.starset.jnet0):
                         for j in jumplist:
@@ -261,7 +270,7 @@ class test_vecstars(unittest.TestCase):
                                 dx = disp(self.pdbcontainer_si, j.state1, j.state2)
                                 bias_st += dx * self.W0list[jt]
                                 # print(bias_st)
-                    self.assertTrue(np.allclose(bias_st, np.zeros(3)))
+                    self.assertTrue(np.allclose(bias_st, np.zeros(self.crys_stars.crys.dim)))
                     self.assertTrue(count >= 1)
 
     def test_bias1expansions(self):
@@ -275,8 +284,8 @@ class test_vecstars(unittest.TestCase):
             n = np.random.randint(1, len(self.vec_stars.vecpos[starind]))
             st2 = self.vec_stars.vecpos[starind][n]
             # Now, we calculate the total bias vector - zero for solute in complex space
-            bias_st_solvent = np.zeros(3)
-            bias_st_solvent2 = np.zeros(3)
+            bias_st_solvent = np.zeros(self.crys_stars.crys.dim)
+            bias_st_solvent2 = np.zeros(self.crys_stars.crys.dim)
             count = 0
             for jt, jlist in enumerate(self.jnet_1):
                 for j in jlist:
@@ -318,10 +327,10 @@ class test_vecstars(unittest.TestCase):
             n = np.random.randint(1, len(self.vec_stars.vecpos[i]))
             st2 = self.vec_stars.vecpos[i][n]
             # Now, we calculate the total bias vector
-            bias_st_solute = np.zeros(3)
-            bias_st_solute2 = np.zeros(3)
-            bias_st_solvent = np.zeros(3)
-            bias_st_solvent2 = np.zeros(3)
+            bias_st_solute = np.zeros(self.crys_stars.crys.dim)
+            bias_st_solute2 = np.zeros(self.crys_stars.crys.dim)
+            bias_st_solvent = np.zeros(self.crys_stars.crys.dim)
+            bias_st_solvent2 = np.zeros(self.crys_stars.crys.dim)
             count = 0
             for jt, jlist in enumerate(self.vec_stars.starset.jnet2):
                 for j in jlist:
@@ -395,15 +404,15 @@ class test_vecstars(unittest.TestCase):
                 st2_mixed = self.vec_stars.vecpos[starindmixed][n_mixed]
 
                 # Now, we calculate the total bias vector
-                bias4_st_solute = np.zeros(3)
-                bias4_st_solute2 = np.zeros(3)
-                bias4_st_solvent = np.zeros(3)
-                bias4_st_solvent2 = np.zeros(3)
+                bias4_st_solute = np.zeros(self.crys_stars.crys.dim)
+                bias4_st_solute2 = np.zeros(self.crys_stars.crys.dim)
+                bias4_st_solvent = np.zeros(self.crys_stars.crys.dim)
+                bias4_st_solvent2 = np.zeros(self.crys_stars.crys.dim)
 
-                bias3_st_solute = np.zeros(3)
-                bias3_st_solute2 = np.zeros(3)
-                bias3_st_solvent = np.zeros(3)
-                bias3_st_solvent2 = np.zeros(3)
+                bias3_st_solute = np.zeros(self.crys_stars.crys.dim)
+                bias3_st_solute2 = np.zeros(self.crys_stars.crys.dim)
+                bias3_st_solvent = np.zeros(self.crys_stars.crys.dim)
+                bias3_st_solvent2 = np.zeros(self.crys_stars.crys.dim)
 
                 count = 0
                 for jt, jlist in enumerate(self.symjumplist_omega4):
@@ -595,7 +604,7 @@ class test_vecstars(unittest.TestCase):
                                 # iterate over mixed states - the second inner sum
                                 for chi_j, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
                                     # Go through the final complex states - they must be at the origin unit cell.
-                                    self.assertTrue(np.allclose(jmp.state2.R_s, np.zeros(3, dtype=int)))
+                                    self.assertTrue(np.allclose(jmp.state2.R_s, np.zeros(self.crys_stars.crys.dim, dtype=int)))
                                     if chi_j == jmp.state2:
                                         rate4expansion[i, j - self.vec_stars.Nvstars_pure, k] += np.dot(vi, vj)
                                         rate3expansion[j - self.vec_stars.Nvstars_pure, i, k] += np.dot(vj, vi)
@@ -733,7 +742,7 @@ class test_vecstars(unittest.TestCase):
                     # If both the initial and final states do not lie in the origin unit cell, we must ignore the
                     # transition
                     snew = s.gop(self.vec_stars.starset.mdbcontainer, gdumb, pure=False)
-                    if not np.allclose(snew.state2.R, np.zeros(3)):
+                    if not np.allclose(snew.state2.R, np.zeros(self.crys_stars.crys.dim)):
                         # because of the shift operation, the R of state 1 will be at zero.
                         # So, this also checks, we are ignoring connections not within the 0th unit cell
                         continue
@@ -768,37 +777,46 @@ class test_vecstars(unittest.TestCase):
 
     def test_outer(self):
         outer = self.vec_stars.outer()
-        # check 3x3 tensor for the outer products
+        # check tensor for the outer products
         # First, we do it for the complex space
+
+        dim = self.crys_stars.crys.dim
+        print("Crystal dimension: {}".format(dim))
         for i in range(self.vec_stars.Nvstars_pure):
             for j in range(self.vec_stars.Nvstars_pure):
                 if self.vec_stars.vecpos[i][0] != self.vec_stars.vecpos[j][0]:
-                    self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((3,3))))
+                    self.assertTrue(outer[:, :, i, j].shape == (dim, dim))
+                    self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((dim, dim))))
                 else:
-                    outer_test = np.zeros((3,3))
+                    outer_test = np.zeros((dim, dim))
                     for si, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
                         for sj, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
                             if si == sj:
                                 outer_test += np.outer(vi, vj)
+
+                    self.assertTrue(outer[:, :, i, j].shape == (dim, dim))
                     self.assertTrue(np.allclose(outer[:, :, i, j], outer_test))
 
         # mixed dumbbell space
         for i in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
             for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
                 if self.vec_stars.vecpos[i][0] != self.vec_stars.vecpos[j][0]:
-                    self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((3,3))))
+                    self.assertTrue(outer[:, :, i, j].shape == (dim, dim))
+                    self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((dim, dim))))
                 else:
-                    outer_test = np.zeros((3,3))
+                    outer_test = np.zeros((dim, dim))
                     for si, vi in zip(self.vec_stars.vecpos[i], self.vec_stars.vecvec[i]):
                         for sj, vj in zip(self.vec_stars.vecpos[j], self.vec_stars.vecvec[j]):
                             if si == sj:
                                 outer_test += np.outer(vi, vj)
+                    self.assertTrue(outer[:, :, i, j].shape == (dim, dim))
                     self.assertTrue(np.allclose(outer[:, :, i, j], outer_test))
 
         # check that no non-zero matrix exists between complex and mixed space.
         for i in range(self.vec_stars.Nvstars_pure):
             for j in range(self.vec_stars.Nvstars_pure, self.vec_stars.Nvstars):
-                self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((3,3))))
+                self.assertTrue(outer[:, :, i, j].shape == (dim, dim))
+                self.assertTrue(np.allclose(outer[:, :, i, j], np.zeros((dim, dim))))
 
 class test_Si(test_vecstars):
 
@@ -837,23 +855,24 @@ class test_Si(test_vecstars):
         # generate all the bias expansions - will separate out later
         self.biases = self.vec_stars.biasexpansion(self.jnet_1, self.jset2[0], self.jtype, self.symjumplist_omega43_all)
         self.rateExps = self.vec_stars.rateexpansion(self.jnet_1, self.jtype, self.symjumplist_omega43_all)
+        print(len(self.vec_stars.vecpos_bare))
         print("Instantiated")
 
 class test_2d(test_vecstars):
 
     def setUp(self):
         self.crys2d = crystal.Crystal(np.array([[1., 0.], [0., 1.5]]), [[np.array([0, 0]), np.array([0.5, 0.5])]], ["A"])
-
+        print("Crystal dimension: {}".format(self.crys2d.dim))
         o = np.array([0., 0.1])
         famp02d = [o.copy()]
         family2d = [famp02d]
 
-        self.pdbcontainer = dbStates(self.crys2d, 0, family2d)
-        self.mdbcontainer = mStates(self.crys2d, 0, family2d)
+        self.pdbcontainer_si = dbStates(self.crys2d, 0, family2d)
+        self.mdbcontainer_si = mStates(self.crys2d, 0, family2d)
 
-        jset02d, jset22d = self.pdbcontainer.jumpnetwork(1.51, 0.01, 0.01), self.mdbcontainer.jumpnetwork(1.51, 0.01, 0.01)
+        jset02d, jset22d = self.pdbcontainer_si.jumpnetwork(1.51, 0.01, 0.01), self.mdbcontainer_si.jumpnetwork(1.51, 0.01, 0.01)
 
-        self.crys_stars = StarSet(self.pdbcontainer, self.mdbcontainer, jset02d, jset22d, Nshells=1)
+        self.crys_stars = StarSet(self.pdbcontainer_si, self.mdbcontainer_si, jset02d, jset22d, Nshells=1)
         self.vec_stars = vectorStars(self.crys_stars)
 
         self.om2tags = self.vec_stars.starset.jtags2
@@ -862,8 +881,9 @@ class test_2d(test_vecstars):
         (self.symjumplist_omega43_all, self.symjumplist_omega43_all_indexed), (
             self.symjumplist_omega4, self.symjumplist_omega4_indexed, self.om4tags), (
             self.symjumplist_omega3, self.symjumplist_omega3_indexed,
-            self.om3tags) = self.crys_stars.jumpnetwork_omega34(
-            0.3, 0.01, 0.01, 0.01)
+            self.om3tags) = self.crys_stars.jumpnetwork_omega34(1.51, 0.01, 0.01, 0.01)
+
+        self.jset2 = jset22d
 
         self.W0list = np.random.rand(len(self.vec_stars.starset.jnet0))
         self.W1list = np.random.rand(len(self.jnet_1))
