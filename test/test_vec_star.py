@@ -819,9 +819,6 @@ class test_Si(test_vecstars):
         self.crys_stars = StarSet(self.pdbcontainer_si, self.mdbcontainer_si, self.jset0, self.jset2, Nshells=1)
         self.vec_stars = vectorStars(self.crys_stars)
 
-        with open('vec_star_si_pkl.pkl', 'wb') as fl:
-            pickle.dump(self.vec_stars, fl)
-
         self.om2tags = self.vec_stars.starset.jtags2
         # generate 1, 3 and 4 jumpnetworks
         (self.jnet_1, self.jnet_1_indexed, self.om1tags), self.jtype = self.crys_stars.jumpnetwork_omega1()
