@@ -838,3 +838,40 @@ class test_Si(test_vecstars):
         self.biases = self.vec_stars.biasexpansion(self.jnet_1, self.jset2[0], self.jtype, self.symjumplist_omega43_all)
         self.rateExps = self.vec_stars.rateexpansion(self.jnet_1, self.jtype, self.symjumplist_omega43_all)
         print("Instantiated")
+
+class test_2d(test_vecstars):
+
+    def setUp(self):
+        self.crys2d = crystal.Crystal(np.array([[1., 0.], [0., 1.5]]), [[np.array([0, 0]), np.array([0.5, 0.5])]], ["A"])
+
+        o = np.array([0., 0.1])
+        famp02d = [o.copy()]
+        family2d = [famp02d]
+
+        self.pdbcontainer = dbStates(self.crys2d, 0, family2d)
+        self.mdbcontainer = mStates(self.crys2d, 0, family2d)
+
+        jset02d, jset22d = self.pdbcontainer.jumpnetwork(1.51, 0.01, 0.01), self.mdbcontainer.jumpnetwork(1.51, 0.01, 0.01)
+
+        self.crys_stars = StarSet(self.pdbcontainer, self.mdbcontainer, jset02d, jset22d, Nshells=1)
+        self.vec_stars = vectorStars(self.crys_stars)
+
+        self.om2tags = self.vec_stars.starset.jtags2
+        # generate 1, 3 and 4 jumpnetworks
+        (self.jnet_1, self.jnet_1_indexed, self.om1tags), self.jtype = self.crys_stars.jumpnetwork_omega1()
+        (self.symjumplist_omega43_all, self.symjumplist_omega43_all_indexed), (
+            self.symjumplist_omega4, self.symjumplist_omega4_indexed, self.om4tags), (
+            self.symjumplist_omega3, self.symjumplist_omega3_indexed,
+            self.om3tags) = self.crys_stars.jumpnetwork_omega34(
+            0.3, 0.01, 0.01, 0.01)
+
+        self.W0list = np.random.rand(len(self.vec_stars.starset.jnet0))
+        self.W1list = np.random.rand(len(self.jnet_1))
+        self.W2list = np.random.rand(len(self.jset2[0]))
+        self.W3list = np.random.rand(len(self.symjumplist_omega3))
+        self.W4list = np.random.rand(len(self.symjumplist_omega4))
+
+        # generate all the bias expansions - will separate out later
+        self.biases = self.vec_stars.biasexpansion(self.jnet_1, self.jset2[0], self.jtype, self.symjumplist_omega43_all)
+        self.rateExps = self.vec_stars.rateexpansion(self.jnet_1, self.jtype, self.symjumplist_omega43_all)
+        print("Instantiated")

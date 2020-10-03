@@ -181,7 +181,7 @@ class test_StarSet(unittest.TestCase):
 
         crys2d = crystal.Crystal(np.array([[1., 0.], [0., 1.5]]), [[np.array([0, 0]), np.array([0.5, 0.5])]], ["A"])
 
-        o = np.array([0.1, 0.])
+        o = np.array([0., 0.1])
         famp02d = [o.copy()]
         family2d = [famp02d]
         pdbcontainer2d = dbStates(crys2d, 0, family2d)
@@ -259,7 +259,7 @@ class test_StarSet(unittest.TestCase):
                 crys_stars = StarSet(pdbcontainer, mdbcontainer, jset0, jset2, Nshells=1)
 
             else:
-                o = np.array([0.1, 0.])
+                o = np.array([0., 0.1])
                 famp02d = [o.copy()]
                 family2d = [famp02d]
                 pdbcontainer2d = dbStates(crys, 0, family2d)
