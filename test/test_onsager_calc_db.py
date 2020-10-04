@@ -27,9 +27,6 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
         self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
-
-        self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
-        self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
         self.jset0, self.jset2 = \
             self.pdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01), self.mdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01)
 
@@ -1437,6 +1434,34 @@ class test_distorted(test_dumbbell_mediated):
         o = np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126
         famp0 = [o.copy()]
         family = [famp0]
+
+        self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
+        self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
+        self.jset0, self.jset2 = \
+            self.pdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01), self.mdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01)
+
+        self.onsagercalculator = dumbbellMediated(self.pdbcontainer_si, self.mdbcontainer_si, self.jset0, self.jset2,
+                                                  0.3, 0.01, 0.01, 0.01, NGFmax=4, Nthermo=1)
+        # generate all the bias expansions - will separate out later
+        self.biases = \
+            self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet1, self.onsagercalculator.jnet2,
+                                                          self.onsagercalculator.om1types,
+                                                          self.onsagercalculator.jnet43)
+
+        self.W1list = np.random.rand(len(self.onsagercalculator.jnet1))
+        self.W2list = np.random.rand(len(self.onsagercalculator.jnet0))
+        self.W3list = np.random.rand(len(self.onsagercalculator.jnet3))
+        self.W4list = np.random.rand(len(self.onsagercalculator.jnet4))
+
+
+class test_2d(test_dumbbell_mediated):
+    def setUp(self):
+
+        self.DC_Si = Crystal(np.array([[1., 0.], [0., 1.5]]), [[np.array([0, 0]), np.array([0.5, 0.5])]], ["A"])
+        # keep it simple with [1.,0.,0.] type orientations for now
+        o = np.array([0., 0.1])
+        famp02d = [o.copy()]
+        family = [famp02d]
 
         self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
         self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
