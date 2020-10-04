@@ -1399,8 +1399,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                         self.assertTrue(np.allclose(omega2escape[mdbwyckind, jt], rate))
 
         # 6c. Now, we get the bias vector as calculated in the code from the corresponding vector stars.
-        bias_solvent_calc = np.zeros((Ncomp + Nmix, 3))
-        bias_solute_calc = np.zeros((Ncomp + Nmix, 3))
+        bias_solvent_calc = np.zeros((Ncomp + Nmix, self.onsagercalculator.crys.dim))
+        bias_solute_calc = np.zeros((Ncomp + Nmix, self.onsagercalculator.crys.dim))
 
         # first, we convert the complex states into cartesian form
         for i, state in enumerate(self.onsagercalculator.kinetic.complexStates):
