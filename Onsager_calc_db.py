@@ -475,6 +475,9 @@ class dumbbellMediated(VacancyMediated):
         self.delbias2expansion_solute = np.zeros_like(self.biases[2][0])
         self.delbias2expansion_solvent = np.zeros_like(self.biases[2][0])
 
+        if len(self.vkinetic.vecpos_bare) == 0 and not eta2shift:
+            return
+
         if eta2shift:
             for i in range(self.vkinetic.Nvstars - self.vkinetic.Nvstars_pure):
                 # get the representative state(its index in mixedstates) and vector
@@ -494,9 +497,6 @@ class dumbbellMediated(VacancyMediated):
 
                     self.delbias2expansion_solvent[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) * \
                                                              np.sum(np.dot(initindexdict[st0], eta_proj_solvent))
-
-        if len(self.vkinetic.vecpos_bare) == 0 and not eta2shift:
-            return
 
         for i in range(self.vkinetic.Nvstars_pure):
             # get the representative state(its index in complexStates) and vector
