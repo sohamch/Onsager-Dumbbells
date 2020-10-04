@@ -495,6 +495,9 @@ class dumbbellMediated(VacancyMediated):
                     self.delbias2expansion_solvent[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) * \
                                                              np.sum(np.dot(initindexdict[st0], eta_proj_solvent))
 
+        if len(self.vkinetic.vecpos_bare) == 0 and not eta2shift:
+            return
+
         for i in range(self.vkinetic.Nvstars_pure):
             # get the representative state(its index in complexStates) and vector
             v0 = self.vkinetic.vecvec[i][0]
