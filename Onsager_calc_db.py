@@ -311,7 +311,7 @@ class dumbbellMediated(VacancyMediated):
         print("built outer product tensor:{}".format(time.time() - start))
         # self.clearcache()
 
-    def calc_eta(self, rate0list, omega0escape, rate2list, omega2escape, eta2shift=False):
+    def calc_eta(self, rate0list, omega0escape, rate2list, omega2escape, eta2shift=True):
         """
         Function to calculate the periodic eta vectors.
         rate0list, rate2list - the NON-SYMMETRIZED rate lists for the bare and mixed dumbbell spaces.
@@ -453,7 +453,7 @@ class dumbbellMediated(VacancyMediated):
         self.eta0total_solvent[len(self.vkinetic.starset.complexStates):, :] = self.eta02_solvent.copy()
         self.eta0total_solute[len(self.vkinetic.starset.complexStates):, :] = self.eta02_solute.copy()
 
-    def bias_changes(self, eta2shift=False):
+    def bias_changes(self, eta2shift=True):
         """
         Function that allows us to construct new bias and bare expansions based on the eta vectors already calculated.
 
@@ -537,7 +537,7 @@ class dumbbellMediated(VacancyMediated):
                     self.delbias3expansion_solvent[i, jt] += len(self.vkinetic.vecpos[i + self.vkinetic.Nvstars_pure]) * \
                                                              np.sum(np.dot(initindexdict[st0], eta_proj_solvent))
 
-    def update_bias_expansions(self, rate0list, omega0escape, rate2list, omega2escape, eta2shift=False):
+    def update_bias_expansions(self, rate0list, omega0escape, rate2list, omega2escape, eta2shift=True):
         self.calc_eta(rate0list, omega0escape, rate2list, omega2escape, eta2shift=eta2shift)
         self.bias_changes(eta2shift=eta2shift)
         self.bias1_solute_new = zeroclean(self.biases[1][0] + self.delbias1expansion_solute)
