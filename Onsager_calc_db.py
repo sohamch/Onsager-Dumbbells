@@ -391,7 +391,6 @@ class dumbbellMediated(VacancyMediated):
 
         # For the mixed dumbbell space, translational symmetry tells us that we only need to consider the dumbbells
         # in the first unit cell only. So, we are already considering the bias out of every state we need to consider.
-        # TODO - determine if I should keep the mixed dumbbell part of the code or get rid of it.
 
         if eta2shift:
 
