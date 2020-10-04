@@ -797,13 +797,13 @@ class test_dumbbell_mediated(unittest.TestCase):
         Ncomp = len(self.onsagercalculator.vkinetic.starset.complexStates)
         for jt, jlist in enumerate(self.onsagercalculator.jnet2_indexed):
             for (IS, FS), dx in jlist:
-                o1 = self.onsagercalculator.mdbcontainer.iorlist[
-                    self.onsagercalculator.vkinetic.starset.mixedstates[IS].db.iorind][1]
-                o2 = self.onsagercalculator.mdbcontainer.iorlist[
-                    self.onsagercalculator.vkinetic.starset.mixedstates[FS].db.iorind][1]
+                # o1 = self.onsagercalculator.mdbcontainer.iorlist[
+                #     self.onsagercalculator.vkinetic.starset.mixedstates[IS].db.iorind][1]
+                # o2 = self.onsagercalculator.mdbcontainer.iorlist[
+                #     self.onsagercalculator.vkinetic.starset.mixedstates[FS].db.iorind][1]
 
-                dx_solute = dx - o1/2. + o2/2. + eta0total_solute[IS + Ncomp] - eta0total_solute[FS + Ncomp]
-                dx_solvent = dx + o1/2. - o2/2. + eta0total_solvent[IS + Ncomp] - eta0total_solvent[FS + Ncomp]
+                dx_solute = dx + eta0total_solute[IS + Ncomp] - eta0total_solute[FS + Ncomp]  #- o1/2. + o2/2.
+                dx_solvent = dx + eta0total_solvent[IS + Ncomp] - eta0total_solvent[FS + Ncomp]  #+ o1/2. - o2/2.
 
                 L_uc_om2_test_aa += np.outer(dx_solute, dx_solute)* prob_om2[jt] * 0.5
                 L_uc_om2_test_bb += np.outer(dx_solvent, dx_solvent) * prob_om2[jt] * 0.5
@@ -827,11 +827,11 @@ class test_dumbbell_mediated(unittest.TestCase):
             sm_bb = np.zeros((3, 3))
             sm_ab = np.zeros((3, 3))
             for (IS, FS), dx in jlist:
-                o1 = self.onsagercalculator.mdbcontainer.iorlist[
-                    self.onsagercalculator.vkinetic.starset.mixedstates[IS].db.iorind][1]
+                # o1 = self.onsagercalculator.mdbcontainer.iorlist[
+                #     self.onsagercalculator.vkinetic.starset.mixedstates[IS].db.iorind][1]
 
-                dx_solute = -o1/2. + eta0total_solute[IS + Ncomp] - eta0total_solute[FS]
-                dx_solvent = o1/2. + dx + eta0total_solvent[IS + Ncomp] - eta0total_solvent[FS]
+                dx_solute = eta0total_solute[IS + Ncomp] - eta0total_solute[FS]  # -o1/2.
+                dx_solvent = dx + eta0total_solvent[IS + Ncomp] - eta0total_solvent[FS]  # o1/2.
                 sm_aa += zeroclean(np.outer(dx_solute, dx_solute)) * 0.5
                 sm_bb += zeroclean(np.outer(dx_solvent, dx_solvent)) * 0.5
                 sm_ab += zeroclean(np.outer(dx_solute, dx_solvent)) * 0.5
@@ -860,8 +860,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                 o2 = self.onsagercalculator.mdbcontainer.iorlist[
                     self.onsagercalculator.vkinetic.starset.mixedstates[FS].db.iorind][1]
 
-                dx_solute = o2 / 2. + eta0total_solute[IS] - eta0total_solute[FS + Ncomp]
-                dx_solvent = -o2 / 2. + dx + eta0total_solvent[IS] - eta0total_solvent[FS + Ncomp]
+                dx_solute = eta0total_solute[IS] - eta0total_solute[FS + Ncomp]  # o2 / 2.
+                dx_solvent = dx + eta0total_solvent[IS] - eta0total_solvent[FS + Ncomp]  # -o2 / 2.
                 L_uc_om4_test_aa += np.outer(dx_solute, dx_solute) * prob_om4[jt] * 0.5
                 L_uc_om4_test_bb += np.outer(dx_solvent, dx_solvent) * prob_om4[jt] * 0.5
                 L_uc_om4_test_ab += np.outer(dx_solute, dx_solvent) * prob_om4[jt] * 0.5
