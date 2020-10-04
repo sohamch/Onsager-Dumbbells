@@ -190,8 +190,8 @@ class test_dumbbell_mediated(unittest.TestCase):
             for jt, jlist in enumerate(self.onsagercalculator.jnet2_indexed):
                 for jnum, ((IS, FS), dx) in enumerate(jlist):
                     if i == IS:
-                        or1 = self.onsagercalculator.mdbcontainer.iorlist[IS][1]
-                        or2 = self.onsagercalculator.mdbcontainer.iorlist[FS][1]
+                        # or1 = self.onsagercalculator.mdbcontainer.iorlist[IS][1]
+                        # or2 = self.onsagercalculator.mdbcontainer.iorlist[FS][1]
                         dx_solute = dx  #+ or2/2. - or1/2.
                         dx_solvent = dx  #- or2 / 2. + or1 / 2.
                         vel_true_solvent += rate2list[jt][jnum] * dx_solvent
