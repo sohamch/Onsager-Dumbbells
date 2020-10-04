@@ -1465,14 +1465,12 @@ class test_2d(test_dumbbell_mediated):
 
         self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
         self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
-
-        self.pdbcontainer_si = dbStates(self.DC_Si, 0, family)
-        self.mdbcontainer_si = mStates(self.DC_Si, 0, family)
         self.jset0, self.jset2 = \
-            self.pdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01), self.mdbcontainer_si.jumpnetwork(0.3, 0.01, 0.01)
+            self.pdbcontainer_si.jumpnetwork(1.51, 0.01, 0.01), self.mdbcontainer_si.jumpnetwork(1.51, 0.01, 0.01)
 
         self.onsagercalculator = dumbbellMediated(self.pdbcontainer_si, self.mdbcontainer_si, self.jset0, self.jset2,
-                                                  0.3, 0.01, 0.01, 0.01, NGFmax=4, Nthermo=1)
+                                                  1.51, 0.01, 0.01, 0.01, NGFmax=4, Nthermo=1)
+
         # generate all the bias expansions - will separate out later
         self.biases = \
             self.onsagercalculator.vkinetic.biasexpansion(self.onsagercalculator.jnet1, self.onsagercalculator.jnet2,
