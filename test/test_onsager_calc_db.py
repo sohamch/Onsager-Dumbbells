@@ -45,6 +45,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         self.W2list = np.random.rand(len(self.onsagercalculator.jnet0))
         self.W3list = np.random.rand(len(self.onsagercalculator.jnet3))
         self.W4list = np.random.rand(len(self.onsagercalculator.jnet4))
+        print(len(self.onsagercalculator.vkinetic.vecpos_bare))
         print("Initiated")
 
     def test_thermo2kin(self):
@@ -119,7 +120,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                         self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i, :],
                                                     self.onsagercalculator.eta00_solvent[j, :]))
                         self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent[i, :],
-                                                    self.onsagercalculator.eta00_solvent_bare[state1.iorind]))
+                                                    self.onsagercalculator.eta00_solvent_bare[state1.db.iorind]))
 
             # Check that we get the correct non-local velocity vector
             for i, db in enumerate(self.onsagercalculator.vkinetic.starset.bareStates):
@@ -1153,7 +1154,8 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         # 4.c.1 - First, we check that the symmetrization of g2 is okay.
         # 4.c.1.1 - check the symmetry.
-        for i in range(Nvstars - Nvstars_pure):
+        # print(self.onsagercalculator.g2.shape)
+        for i in range(len(self.onsagercalculator.kinetic.mixedstates)):
             for j in range(i):
                 self.assertTrue(np.allclose(self.onsagercalculator.g2[j, i], self.onsagercalculator.g2[i, j]))
 
@@ -1352,6 +1354,9 @@ class test_dumbbell_mediated(unittest.TestCase):
             vstar_indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[mixstate]
             starind = self.onsagercalculator.kinetic.mixedindexdict[mixstate][1]
             mdbwyckind = self.onsagercalculator.kinetic.star2symlist[starind]
+            dbwyck2 = self.onsagercalculator.mdbcontainer.invmap[mixstate.db.iorind]
+
+            self.assertEqual(mdbwyckind, dbwyck2)
 
             # Now, update with omega3 contributions
             for jt, jlist in enumerate(self.onsagercalculator.jnet3):
@@ -1360,7 +1365,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                         # get the jump rate
                         rate = np.exp(- bFT3[jt] + bFdb2[mdbwyckind] - bFdb2_min)
                         (IS, FS), dx = self.onsagercalculator.jnet3_indexed[jt][jnum]
-                        dx_solute = np.zeros(self.onsagercalculator.crys.dim)  # - or1 / 2.
+                        dx_solute = np.zeros(self.onsagercalculator.crys.dim)
                         dx_solvent = dx  # + or1 / 2.
                         self.assertEqual(IS, i - Ncomp)
                         bias_true_updated_solvent[i, :] += rate * np.sqrt(mixed_prob[i - Ncomp]) * \
@@ -1381,8 +1386,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                         # get the jump rate
                         rate = np.exp(- bFT2[jt] + bFdb2[mdbwyckind] - bFdb2_min)
                         (IS, FS), dx = self.onsagercalculator.jnet2_indexed[jt][jnum]
-                        dx_solute = dx  # np.zeros(self.onsagercalculator.crys.dim)  # - or1 / 2.
-                        dx_solvent = dx  # + or1 / 2.
+                        dx_solute = dx
+                        dx_solvent = dx
                         self.assertEqual(IS, i - Ncomp)
                         bias_true_updated_solvent[i, :] += rate * np.sqrt(mixed_prob[i - Ncomp]) * \
                                                            (dx_solvent +
@@ -1392,8 +1397,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                           (dx_solute +
                                                            self.onsagercalculator.eta0total_solute[IS + Ncomp] -
                                                            self.onsagercalculator.eta0total_solute[FS + Ncomp])
-                        for tup in vstar_indlist:
-                            self.assertTrue(np.allclose(omega2escape[tup[0] - Nvstars_pure, jt], rate))
+
+                        self.assertTrue(np.allclose(omega2escape[mdbwyckind, jt], rate))
 
         # 6c. Now, we get the bias vector as calculated in the code from the corresponding vector stars.
         bias_solvent_calc = np.zeros((Ncomp + Nmix, 3))
