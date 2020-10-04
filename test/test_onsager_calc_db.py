@@ -1374,7 +1374,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                         for tup in vstar_indlist:
                             self.assertTrue(np.allclose(omega3escape[tup[0] - Nvstars_pure, jt], rate))
 
-            # Now, update with omega3 contributions
+            # Now, update with omega2 contributions
             for jt, jlist in enumerate(self.onsagercalculator.jnet2):
                 for jnum, jmp in enumerate(jlist):
                     if jmp.state1 == mixstate:
