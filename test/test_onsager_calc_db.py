@@ -877,7 +877,7 @@ class test_dumbbell_mediated(unittest.TestCase):
 
     def test_Lij(self):
         """
-        This is to check the delta omega matrix
+        This is to check the delta omega matrix and the GF expansions
         """
         # 1.  First get the rates and thermodynamic data.
 
