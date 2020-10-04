@@ -701,6 +701,9 @@ class test_dumbbell_mediated(unittest.TestCase):
         Test the uncorrelated contribution to diffusivity part by part.
         Also in the process check the omega rate list creation and everything.
         """
+
+        dim = self.onsagercalculator.crys.dim
+
         # First, we need some thermodynamic data
         # We randomize site and transition energies for now.
 
@@ -779,7 +782,7 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         # Now, let's compute the contribution by omega1 jumps
         # For solutes, it's zero anyway - let's check for solvents
-        L_uc_om1_test_solvent = np.zeros((3,3))
+        L_uc_om1_test_solvent = np.zeros((dim, dim))
         for jt, jlist in enumerate(self.onsagercalculator.jnet1_indexed):
             for (IS, FS), dx in jlist:
                 L_uc_om1_test_solvent += np.outer(dx + eta0total_solvent[IS] - eta0total_solvent[FS],
@@ -791,9 +794,9 @@ class test_dumbbell_mediated(unittest.TestCase):
         L_uc_om2_bb = np.dot(D2expansion_bb, prob_om2)
         L_uc_om2_aa = np.dot(D2expansion_aa, prob_om2)
         L_uc_om2_ab = np.dot(D2expansion_ab, prob_om2)
-        L_uc_om2_test_aa = np.zeros((3, 3))
-        L_uc_om2_test_bb = np.zeros((3, 3))
-        L_uc_om2_test_ab = np.zeros((3, 3))
+        L_uc_om2_test_aa = np.zeros((dim, dim))
+        L_uc_om2_test_bb = np.zeros((dim, dim))
+        L_uc_om2_test_ab = np.zeros((dim, dim))
         Ncomp = len(self.onsagercalculator.vkinetic.starset.complexStates)
         for jt, jlist in enumerate(self.onsagercalculator.jnet2_indexed):
             for (IS, FS), dx in jlist:
@@ -823,9 +826,9 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         for jt, jlist in enumerate(self.onsagercalculator.jnet3_indexed):
             # The initial state is a  mixed dumbbell and the final is a pure dumbbell
-            sm_aa = np.zeros((3, 3))
-            sm_bb = np.zeros((3, 3))
-            sm_ab = np.zeros((3, 3))
+            sm_aa = np.zeros((dim, dim))
+            sm_bb = np.zeros((dim, dim))
+            sm_ab = np.zeros((dim, dim))
             for (IS, FS), dx in jlist:
                 # o1 = self.onsagercalculator.mdbcontainer.iorlist[
                 #     self.onsagercalculator.vkinetic.starset.mixedstates[IS].db.iorind][1]
@@ -848,9 +851,9 @@ class test_dumbbell_mediated(unittest.TestCase):
         L_uc_om4_bb = np.dot(D4expansion_bb, prob_om4)
         L_uc_om4_aa = np.dot(D4expansion_aa, prob_om4)
         L_uc_om4_ab = np.dot(D4expansion_ab, prob_om4)
-        L_uc_om4_test_aa = np.zeros((3, 3))
-        L_uc_om4_test_bb = np.zeros((3, 3))
-        L_uc_om4_test_ab = np.zeros((3, 3))
+        L_uc_om4_test_aa = np.zeros((dim, dim))
+        L_uc_om4_test_bb = np.zeros((dim, dim))
+        L_uc_om4_test_ab = np.zeros((dim, dim))
 
         for jt, jlist in enumerate(self.onsagercalculator.jnet4_indexed):
             # The initial state is a  pure dumbbell and the final is a mixed dumbbell
