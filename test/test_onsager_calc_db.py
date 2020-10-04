@@ -858,10 +858,10 @@ class test_dumbbell_mediated(unittest.TestCase):
         for jt, jlist in enumerate(self.onsagercalculator.jnet4_indexed):
             # The initial state is a  pure dumbbell and the final is a mixed dumbbell
             for (IS, FS), dx in jlist:
-                o1 = self.onsagercalculator.pdbcontainer.iorlist[
-                    self.onsagercalculator.vkinetic.starset.complexStates[IS].db.iorind][1]
-                o2 = self.onsagercalculator.mdbcontainer.iorlist[
-                    self.onsagercalculator.vkinetic.starset.mixedstates[FS].db.iorind][1]
+                # o1 = self.onsagercalculator.pdbcontainer.iorlist[
+                #     self.onsagercalculator.vkinetic.starset.complexStates[IS].db.iorind][1]
+                # o2 = self.onsagercalculator.mdbcontainer.iorlist[
+                #     self.onsagercalculator.vkinetic.starset.mixedstates[FS].db.iorind][1]
 
                 dx_solute = eta0total_solute[IS] - eta0total_solute[FS + Ncomp]  # o2 / 2.
                 dx_solvent = dx + eta0total_solvent[IS] - eta0total_solvent[FS + Ncomp]  # -o2 / 2.
