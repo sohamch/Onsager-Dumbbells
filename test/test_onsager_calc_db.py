@@ -1375,25 +1375,25 @@ class test_dumbbell_mediated(unittest.TestCase):
                             self.assertTrue(np.allclose(omega3escape[tup[0] - Nvstars_pure, jt], rate))
 
             # Now, update with omega3 contributions
-            for jt, jlist in enumerate(self.onsagercalculator.jnet3):
+            for jt, jlist in enumerate(self.onsagercalculator.jnet2):
                 for jnum, jmp in enumerate(jlist):
                     if jmp.state1 == mixstate:
                         # get the jump rate
-                        rate = np.exp(- bFT3[jt] + bFdb2[mdbwyckind] - bFdb2_min)
-                        (IS, FS), dx = self.onsagercalculator.jnet3_indexed[jt][jnum]
-                        dx_solute = np.zeros(self.onsagercalculator.crys.dim)  # - or1 / 2.
+                        rate = np.exp(- bFT2[jt] + bFdb2[mdbwyckind] - bFdb2_min)
+                        (IS, FS), dx = self.onsagercalculator.jnet2_indexed[jt][jnum]
+                        dx_solute = dx  # np.zeros(self.onsagercalculator.crys.dim)  # - or1 / 2.
                         dx_solvent = dx  # + or1 / 2.
                         self.assertEqual(IS, i - Ncomp)
                         bias_true_updated_solvent[i, :] += rate * np.sqrt(mixed_prob[i - Ncomp]) * \
                                                            (dx_solvent +
                                                             self.onsagercalculator.eta0total_solvent[IS + Ncomp] -
-                                                            self.onsagercalculator.eta0total_solvent[FS])
+                                                            self.onsagercalculator.eta0total_solvent[FS + Ncomp])
                         bias_true_updated_solute[i, :] += rate * np.sqrt(mixed_prob[i - Ncomp]) * \
                                                           (dx_solute +
                                                            self.onsagercalculator.eta0total_solute[IS + Ncomp] -
-                                                           self.onsagercalculator.eta0total_solute[FS])
+                                                           self.onsagercalculator.eta0total_solute[FS + Ncomp])
                         for tup in vstar_indlist:
-                            self.assertTrue(np.allclose(omega3escape[tup[0] - Nvstars_pure, jt], rate))
+                            self.assertTrue(np.allclose(omega2escape[tup[0] - Nvstars_pure, jt], rate))
 
         # 6c. Now, we get the bias vector as calculated in the code from the corresponding vector stars.
         bias_solvent_calc = np.zeros((Ncomp + Nmix, 3))
