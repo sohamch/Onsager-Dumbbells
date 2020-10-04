@@ -107,7 +107,8 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         if len(self.onsagercalculator.vkinetic.vecpos_bare) == 0:
             self.assertTrue(np.allclose(self.onsagercalculator.eta00_solvent,
-                                        np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))))
+                                        np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates),
+                                                  self.onsagercalculator.crys.dim))))
 
         else:
             # Here, we check if for periodic dumbbells, we have the same non- local solvent velocity vector.
@@ -180,10 +181,10 @@ class test_dumbbell_mediated(unittest.TestCase):
         # Check that we get the correct non-local velocity vector
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
             vel_calc_solvent = self.onsagercalculator.NlsolventVel_mixed[i, :]
-            vel_true_solvent = np.zeros(3)
+            vel_true_solvent = np.zeros(self.onsagercalculator.crys.dim)
 
             vel_calc_solute = self.onsagercalculator.NlsoluteVel_mixed[i, :]
-            vel_true_solute = np.zeros(3)
+            vel_true_solute = np.zeros(self.onsagercalculator.crys.dim)
 
             for jt, jlist in enumerate(self.onsagercalculator.jnet2_indexed):
                 for jnum, ((IS, FS), dx) in enumerate(jlist):
@@ -204,8 +205,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         # Now we check if the eta vectors are true
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
 
-            vel_test_solute = np.zeros(3)
-            vel_test_solvent = np.zeros(3)
+            vel_test_solute = np.zeros(self.onsagercalculator.crys.dim)
+            vel_test_solvent = np.zeros(self.onsagercalculator.crys.dim)
 
             vel_calc_solvent = self.onsagercalculator.NlsolventVel_mixed[i, :]
             vel_calc_solute = self.onsagercalculator.NlsoluteVel_mixed[i, :]
@@ -384,8 +385,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                                      for i in range(self.onsagercalculator.vkinetic.Nvstars_pure)])
 
         # Now, convert this into the Nstates x 3 form
-        solute_vel_1 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
-        solvent_vel_1 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
+        solute_vel_1 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
+        solvent_vel_1 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.complexStates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[state]
             # We have indlist as (IndOfStar, IndOfState)
@@ -414,8 +415,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         vel1_solvent_new_vs = np.array([np.dot(self.onsagercalculator.bias1_solvent_new[i, :], rate1_stars[i, :])
                                          for i in range(self.onsagercalculator.vkinetic.Nvstars_pure)])
 
-        solute_vel_1_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
-        solvent_vel_1_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
+        solute_vel_1_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
+        solvent_vel_1_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.complexStates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[state]
             solute_vel_1_new[i, :] = sum([vel1_solute_new_vs[tup[0]] *
@@ -463,7 +464,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                 for jnum0, ((ISdb0, FSdb0), dxdb0) in enumerate(self.onsagercalculator.jnet0_indexed[
                                                        self.onsagercalculator.om1types[jt]]):
                     j0 = self.onsagercalculator.jnet0[self.onsagercalculator.om1types[jt]][jnum0]
-                    if np.allclose(dxdb0, np.zeros(3)):
+                    if np.allclose(dxdb0, np.zeros(self.onsagercalculator.crys.dim)):
                         condc = (j0.c1 == jmp.c1 and j0.c2 == jmp.c2) or (-j0.c1 == jmp.c1 and -j0.c2 == jmp.c2)
                     else:
                         condc = j0.c1 == jmp.c1 and j0.c2 == jmp.c2
@@ -493,7 +494,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                       for i in range(self.onsagercalculator.vkinetic.Nvstars_pure)])
 
         # Get the new biases in the cartesian basis.
-        solvent_vel_10_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
+        solvent_vel_10_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.complexStates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[state]
             # We have indlist as (IndOfStar, IndOfState)
@@ -501,7 +502,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                                            self.onsagercalculator.vkinetic.vecvec[tup[0]][tup[1]] for tup in indlist])
 
         # Calculate the updated bias explicitly
-        vel10solvent = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
+        vel10solvent = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
         for jt, jlist, jindlist in zip(itertools.count(), self.onsagercalculator.jnet1,
                                        self.onsagercalculator.jnet1_indexed):
             for jnum, ((IS, FS), dx), jmp in zip(itertools.count(), jindlist, jlist):
@@ -520,9 +521,9 @@ class test_dumbbell_mediated(unittest.TestCase):
         # Now, check that the proper states leave zero non-local bias vectors.
         for i in range(len(self.onsagercalculator.vkinetic.starset.complexStates)):
             if elim_list[i] == 0:  # if no omega0 jumps have been eliminated
-                self.assertTrue(np.allclose(vel10solvent[i], np.zeros(3)))
+                self.assertTrue(np.allclose(vel10solvent[i], np.zeros(self.onsagercalculator.crys.dim)))
             if elim_list[i]!=0:
-                self.assertFalse(np.allclose(vel10solvent[i], np.zeros(3)))
+                self.assertFalse(np.allclose(vel10solvent[i], np.zeros(self.onsagercalculator.crys.dim)))
 
         # Now, do it for omega2
 
@@ -541,8 +542,8 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         # Now, convert this into the Nstates x 3 form in the mixed state space - write a function to generalize this
         # later on
-        solute_vel_2 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), 3))
-        solvent_vel_2 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), 3))
+        solute_vel_2 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), self.onsagercalculator.crys.dim))
+        solvent_vel_2 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), self.onsagercalculator.crys.dim))
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[state]
             # We have indlist as (IndOfStar, IndOfState)
@@ -571,8 +572,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                   ) for i in range(Nvstars_pure,
                                                                    self.onsagercalculator.vkinetic.Nvstars)])
 
-        solute_vel_2_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates),3))
-        solvent_vel_2_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates),3))
+        solute_vel_2_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), self.onsagercalculator.crys.dim))
+        solvent_vel_2_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), self.onsagercalculator.crys.dim))
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[state]
             # We have indlist as (IndOfStar, IndOfState)
@@ -598,8 +599,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                                    for i in range(Nvstars_pure, self.onsagercalculator.vkinetic.Nvstars)])
 
         # Now, convert this into the Nstates x 3 form in the mixed state space
-        solute_vel_3 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), 3))
-        solvent_vel_3 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), 3))
+        solute_vel_3 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), self.onsagercalculator.crys.dim))
+        solvent_vel_3 = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), self.onsagercalculator.crys.dim))
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[state]
             # We have indlist as (IndOfStar, IndOfState)
@@ -624,8 +625,8 @@ class test_dumbbell_mediated(unittest.TestCase):
                                                rate3_stars[i - Nvstars_pure, :])
                                         for i in range(Nvstars_pure, self.onsagercalculator.vkinetic.Nvstars)])
 
-        solute_vel_3_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), 3))
-        solvent_vel_3_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), 3))
+        solute_vel_3_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), self.onsagercalculator.crys.dim))
+        solvent_vel_3_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.mixedstates), self.onsagercalculator.crys.dim))
 
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.mixedstates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_mixed[state]
@@ -646,8 +647,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         vel4_solvent_vs = np.array([np.dot(bias4solvent[i, :], rate4_stars[i, :]) for i in range(Nvstars_pure)])
 
         # Now, convert this into the Nstates x 3 form in the mixed state space
-        solute_vel_4 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
-        solvent_vel_4 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
+        solute_vel_4 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
+        solvent_vel_4 = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
 
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.complexStates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[state]
@@ -657,8 +658,10 @@ class test_dumbbell_mediated(unittest.TestCase):
                                        for tup in indlist])
 
         # check against explicit evaluation
-        solute_vel_4_direct = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
-        solvent_vel_4_direct = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
+        solute_vel_4_direct = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates),
+                                        self.onsagercalculator.crys.dim))
+        solvent_vel_4_direct = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates),
+                                         self.onsagercalculator.crys.dim))
         for jt, jlist in enumerate(self.onsagercalculator.jnet4_indexed):
             for jnum, ((IS, FS), dx) in enumerate(jlist):
                 # or2 = self.onsagercalculator.mdbcontainer.iorlist[FS][1]
@@ -682,8 +685,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         vel4_solvent_new_vs = np.array([np.dot(self.onsagercalculator.bias4_solvent_new[i, :], rate4_stars[i, :])
                                     for i in range(Nvstars_pure)])
 
-        solute_vel_4_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
-        solvent_vel_4_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), 3))
+        solute_vel_4_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
+        solvent_vel_4_new = np.zeros((len(self.onsagercalculator.vkinetic.starset.complexStates), self.onsagercalculator.crys.dim))
         for i, state in enumerate(self.onsagercalculator.vkinetic.starset.complexStates):
             indlist = self.onsagercalculator.vkinetic.stateToVecStar_pure[state]
             solute_vel_4_new[i, :] = sum([vel4_solute_new_vs[tup[0]] *
