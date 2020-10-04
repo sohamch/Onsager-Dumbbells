@@ -820,9 +820,9 @@ class test_dumbbell_mediated(unittest.TestCase):
         L_uc_om3_bb = np.dot(D3expansion_bb, prob_om3)
         L_uc_om3_aa = np.dot(D3expansion_aa, prob_om3)
         L_uc_om3_ab = np.dot(D3expansion_ab, prob_om3)
-        L_uc_om3_test_aa = np.zeros((3, 3))
-        L_uc_om3_test_bb = np.zeros((3, 3))
-        L_uc_om3_test_ab = np.zeros((3, 3))
+        L_uc_om3_test_aa = np.zeros((dim, dim))
+        L_uc_om3_test_bb = np.zeros((dim, dim))
+        L_uc_om3_test_ab = np.zeros((dim, dim))
 
         for jt, jlist in enumerate(self.onsagercalculator.jnet3_indexed):
             # The initial state is a  mixed dumbbell and the final is a pure dumbbell
