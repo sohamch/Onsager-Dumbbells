@@ -1425,12 +1425,6 @@ class test_dumbbell_mediated(unittest.TestCase):
 class test_distorted(test_dumbbell_mediated):
     def setUp(self):
         # We test a new weird lattice because it is more interesting
-        # latt = np.array([[0., 0.1, 0.5], [0.3, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
-        # self.DC_Si = crystal.Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
-        # # keep it simple with [1.,0.,0.] type orientations for now
-        # o = np.array([1., 0., 0.]) / np.linalg.norm(np.array([1., 0., 0.])) * 0.126
-        # famp0 = [o.copy()]
-        # family = [famp0]
 
         latt = np.array([[0., 0.1, 0.5], [0.3, 0., 0.5], [0.5, 0.5, 0.]]) * 0.55
         self.DC_Si = Crystal(latt, [[np.array([0., 0., 0.]), np.array([0.25, 0.25, 0.25])]], ["Si"])
