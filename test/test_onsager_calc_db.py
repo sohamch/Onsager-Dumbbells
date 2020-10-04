@@ -192,6 +192,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                     if i == IS:
                         # or1 = self.onsagercalculator.mdbcontainer.iorlist[IS][1]
                         # or2 = self.onsagercalculator.mdbcontainer.iorlist[FS][1]
+
                         dx_solute = dx  #+ or2/2. - or1/2.
                         dx_solvent = dx  #- or2 / 2. + or1 / 2.
                         vel_true_solvent += rate2list[jt][jnum] * dx_solvent
