@@ -1262,8 +1262,8 @@ class test_dumbbell_mediated(unittest.TestCase):
         # 6. Next, we test the final bias vector
         Ncomp = len(self.onsagercalculator.kinetic.complexStates)
         Nmix = len(self.onsagercalculator.kinetic.mixedstates)
-        bias_true_updated_solute = np.zeros((Ncomp + Nmix, 3))
-        bias_true_updated_solvent = np.zeros((Ncomp + Nmix, 3))
+        bias_true_updated_solute = np.zeros((Ncomp + Nmix, self.onsagercalculator.crys.dim))
+        bias_true_updated_solvent = np.zeros((Ncomp + Nmix, self.onsagercalculator.crys.dim))
 
         # To get the unsymmetrized rate out of a state, we locate it's vector star, and get the unsymmetrized
         # rate from the escape arrays.
@@ -1312,6 +1312,7 @@ class test_dumbbell_mediated(unittest.TestCase):
                         # the non-local rate is the difference between the two.
                         rate = rate1 - rate0
                         (IS, FS), dx = self.onsagercalculator.jnet1_indexed[jt][jnum]
+                        self.assertEqual(dx.shape[0], self.onsagercalculator.crys.dim)
                         self.assertEqual(IS, i)
                         bias_true_updated_solvent[i, :] += rate * np.sqrt(complex_prob[i]) *\
                                                            (dx + self.onsagercalculator.eta0total_solvent[IS] -
