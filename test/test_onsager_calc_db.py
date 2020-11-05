@@ -966,7 +966,7 @@ class test_dumbbell_mediated(unittest.TestCase):
 
         # 2. Next, we get all the relevant data from the L_ij function.
         L0bb, (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF20, betaFs, del_om, \
-        part_func, probs, omegas, pr_states, D0expansion_bb\
+        part_func, probs, omegas, pr_states\
             = self.onsagercalculator.L_ij(bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4, eta2shift=False)
 
         # 2a - get the symmetrized and escape rates.

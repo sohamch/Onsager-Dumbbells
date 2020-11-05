@@ -1175,4 +1175,4 @@ class dumbbellMediated(VacancyMediated):
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
         return L0bb, (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF02, betaFs, del_om, \
-               part_func, probs, omegas, pr_states, D0expansion_bb
+               part_func, probs, omegas, pr_states
