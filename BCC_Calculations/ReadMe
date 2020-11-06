@@ -1,0 +1,9 @@
+** Important - It is recommended that the user go through the FCC notebooks for Ni-X alloys and tracers, since
+they are simpler, more heavily annotated and elucidate the working of the code.
+
+Data File Descriptions:
+-> All hdf5 data files : "Cr_data.h5", "Cu_data.h5" etc are generated using Green's Function method
+-> Files named "PDC_ratio_X.dat" - contains the PDC ratios for Fe-X obtained from Messina et. al.'s database.
+-> Files named "DragRatio_X.dat" - contains the drag ratios for Fe-X obtained from Messina et. al.'s database.
+
+-> All data for Fe-X alloys are generated in the correspondingly named folders.
