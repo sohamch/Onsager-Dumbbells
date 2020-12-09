@@ -1,5 +1,5 @@
 ### A Green's function method to calculate transport coefficients for interstitial dumbbell mediated diffusion in the dilute limit.
--> Requires pre-installed Onsager package: https://github.com/DallasTrinkle/Onsager.
+-> This is a preliminary release and requires pre-installed Onsager package: https://github.com/DallasTrinkle/Onsager. The current dumbbell implementations will later be incorporated into the main Onsager package itself.
 
 -> Zenodo DOI : 10.5281/zenodo.4312664
 
