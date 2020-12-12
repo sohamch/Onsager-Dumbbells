@@ -871,15 +871,18 @@ class dumbbellMediated(VacancyMediated):
         for i in range(self.vkinetic.Nvstars - Nvstars_pure):
             om23[i, i] += np.dot(rate3escape[i, :], omega3escape[i, :])
 
+        # Then invert it
+        GF2 = np.linalg.inv(om23)
+
         self.GFcalc_pure.SetRates(pre0, bFdb0, pre0T, bFT0)
 
         GF0 = np.array([self.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
                         [star[0] for star in self.GFstarset_pure]])
 
-        GF2 = np.array([self.g2[tup[0][0], tup[0][1]] for tup in
-                        [star[0] for star in self.GFstarset_mixed]])
+        # GF2 = np.array([self.g2[tup[0][0], tup[0][1]] for tup in
+        #                 [star[0] for star in self.GFstarset_mixed]])
 
-        GF02[Nvstars_pure:, Nvstars_pure:] = np.dot(self.GFexpansion_mixed, GF2)
+        GF02[Nvstars_pure:, Nvstars_pure:] = GF2
         GF02[:Nvstars_pure, :Nvstars_pure] = np.dot(self.GFexpansion_pure, GF0)
 
         # make delta omega
@@ -900,9 +903,9 @@ class dumbbellMediated(VacancyMediated):
                 np.dot(rate0escape[i, :], omega0escape[symindex, :]) + \
                 np.dot(rate4escape[i, :], omega4escape[i, :])
 
-        # omega3 terms
-        for i in range(Nvstars_pure, self.vkinetic.Nvstars):
-            delta_om[i, i] += np.dot(rate3escape[i - Nvstars_pure, :], omega3escape[i - Nvstars_pure, :])
+        # # omega3 terms
+        # for i in range(Nvstars_pure, self.vkinetic.Nvstars):
+        #     delta_om[i, i] += np.dot(rate3escape[i - Nvstars_pure, :], omega3escape[i - Nvstars_pure, :])
 
         GF_total = np.dot(np.linalg.inv(np.eye(self.vkinetic.Nvstars) + np.dot(GF02, delta_om)), GF02)
 
