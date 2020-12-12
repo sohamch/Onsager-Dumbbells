@@ -852,11 +852,11 @@ class dumbbellMediated(VacancyMediated):
 
         # Make g2 by symmetrizing G2
 
-        # First, form the probability matrix
-        P0mixedSqrt = np.diag(np.sqrt(mixed_prob))
-        P0mixedSqrt_inv = np.diag(1. / np.sqrt(mixed_prob))
-
-        self.g2 = np.dot(np.dot(P0mixedSqrt, self.G2), P0mixedSqrt_inv)
+        # # First, form the probability matrix
+        # P0mixedSqrt = np.diag(np.sqrt(mixed_prob))
+        # P0mixedSqrt_inv = np.diag(1. / np.sqrt(mixed_prob))
+        #
+        # self.g2 = np.dot(np.dot(P0mixedSqrt, self.G2), P0mixedSqrt_inv)
 
         om23 = np.zeros((self.vkinetic.Nvstars - Nvstars_pure, self.vkinetic.Nvstars - Nvstars_pure))
 
