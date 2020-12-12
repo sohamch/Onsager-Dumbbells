@@ -858,6 +858,19 @@ class dumbbellMediated(VacancyMediated):
 
         self.g2 = np.dot(np.dot(P0mixedSqrt, self.G2), P0mixedSqrt_inv)
 
+        om23 = np.zeros((self.vkinetic.Nvstars - Nvstars_pure, self.vkinetic.Nvstars - Nvstars_pure))
+
+        # off diagonal elements of om23
+        om23[:, :] += np.dot(rate2expansion, omega2)
+
+        # Next, omega2 escape terms
+        for i in range(self.vkinetic.Nvstars - Nvstars_pure):
+            om23[i, i] += np.dot(rate2escape[i, :], omega2escape[i, :])
+
+        # omega3 escapes
+        for i in range(self.vkinetic.Nvstars - Nvstars_pure):
+            om23[i, i] += np.dot(rate3escape[i, :], omega3escape[i, :])
+
         self.GFcalc_pure.SetRates(pre0, bFdb0, pre0T, bFT0)
 
         GF0 = np.array([self.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
