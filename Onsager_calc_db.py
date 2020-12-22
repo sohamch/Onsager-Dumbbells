@@ -850,15 +850,7 @@ class dumbbellMediated(VacancyMediated):
 
         pre0, pre0T = np.ones_like(bFdb0), np.ones_like(bFT0)
 
-        # Make g2 by symmetrizing G2
-
-        # # First, form the probability matrix
-        # P0mixedSqrt = np.diag(np.sqrt(mixed_prob))
-        # P0mixedSqrt_inv = np.diag(1. / np.sqrt(mixed_prob))
-        #
-        # self.g2 = np.dot(np.dot(P0mixedSqrt, self.G2), P0mixedSqrt_inv)
-
-        # Make G2 from omega2 and omega3 (escapes)
+        # Make g2 from omega2 and omega3 (escapes)
         om23 = np.zeros((self.vkinetic.Nvstars - Nvstars_pure, self.vkinetic.Nvstars - Nvstars_pure))
 
         # off diagonal elements of om23
@@ -880,9 +872,6 @@ class dumbbellMediated(VacancyMediated):
         GF0 = np.array([self.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
                         [star[0] for star in self.GFstarset_pure]])
 
-        # GF2 = np.array([self.g2[tup[0][0], tup[0][1]] for tup in
-        #                 [star[0] for star in self.GFstarset_mixed]])
-
         GF02[Nvstars_pure:, Nvstars_pure:] = GF2
         GF02[:Nvstars_pure, :Nvstars_pure] = np.dot(self.GFexpansion_pure, GF0)
 
@@ -903,10 +892,6 @@ class dumbbellMediated(VacancyMediated):
                 np.dot(rate1escape[i, :], omega1escape[i, :]) - \
                 np.dot(rate0escape[i, :], omega0escape[symindex, :]) + \
                 np.dot(rate4escape[i, :], omega4escape[i, :])
-
-        # # omega3 terms
-        # for i in range(Nvstars_pure, self.vkinetic.Nvstars):
-        #     delta_om[i, i] += np.dot(rate3escape[i - Nvstars_pure, :], omega3escape[i - Nvstars_pure, :])
 
         GF_total = np.dot(np.linalg.inv(np.eye(self.vkinetic.Nvstars) + np.dot(GF02, delta_om)), GF02)
 
