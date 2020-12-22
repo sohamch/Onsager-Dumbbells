@@ -858,6 +858,7 @@ class dumbbellMediated(VacancyMediated):
         #
         # self.g2 = np.dot(np.dot(P0mixedSqrt, self.G2), P0mixedSqrt_inv)
 
+        # Make G2 from omega2 and omega3 (escapes)
         om23 = np.zeros((self.vkinetic.Nvstars - Nvstars_pure, self.vkinetic.Nvstars - Nvstars_pure))
 
         # off diagonal elements of om23
