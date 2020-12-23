@@ -1112,7 +1112,7 @@ class test_dumbbell_mediated(unittest.TestCase):
         GF0 = np.array([self.onsagercalculator.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
                         [star[0] for star in self.onsagercalculator.GFstarset_pure]])
 
-        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.onsagercalculator.vkinetic.genGFstarset()
+        GFstarset_pure, GFPureStarInd = self.onsagercalculator.GFstarset_pure, self.onsagercalculator.GFPureStarInd
 
         # 4b. Now, we must evaluate the GF20 tensor through explicit summation
         GF0_test = np.zeros((Nvstars_pure, Nvstars_pure))

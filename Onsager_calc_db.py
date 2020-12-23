@@ -290,9 +290,7 @@ class dumbbellMediated(VacancyMediated):
 
         # Generate the GF expansions
         start = time.time()
-        (self.GFstarset_pure, self.GFPureStarInd, self.GFexpansion_pure), \
-        (self.GFstarset_mixed, self.GFMixedStarInd, self.GFexpansion_mixed) \
-            = self.vkinetic.GFexpansion()
+        (self.GFstarset_pure, self.GFPureStarInd, self.GFexpansion_pure) = self.vkinetic.GFexpansion()
         print("built GFstarsets: {}".format(time.time() - start))
 
         # generate the rate expansions
