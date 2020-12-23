@@ -1099,22 +1099,6 @@ class test_dumbbell_mediated(unittest.TestCase):
                     vdot = np.dot(vec, vec)
                     diags[vi] -= np.exp(-bFT4[jt] + bFSdb_total_shift[star_i]) * vdot
 
-        # 3b.3 - contribution by omega3
-        for jt, jlist in enumerate(self.onsagercalculator.jnet3):
-            for jmp in jlist:
-                si = jmp.state1
-
-                star_i = self.onsagercalculator.vkinetic.starset.mixedindexdict[si][1]
-                dbwyck_i = self.onsagercalculator.mdbcontainer.invmap[si.db.iorind]
-
-                indlist1 = self.onsagercalculator.vkinetic.stateToVecStar_mixed[si]
-                #         indlist2 = self.onsagercalculator.vkinetic.stateToVecStar_pure[jmp.state2]
-
-                for vi, invi in indlist1:
-                    vec = self.onsagercalculator.vkinetic.vecvec[vi][invi]
-                    vdot = np.dot(vec, vec)
-                    diags[vi] -= np.exp(-bFT3[jt] + bFdb2[dbwyck_i] - bFdb2_min) * vdot
-
         # add the diagonal contributions
         for i in range(Nvstars):
             delta_om_test[i, i] += diags[i]
@@ -1128,13 +1112,10 @@ class test_dumbbell_mediated(unittest.TestCase):
         GF0 = np.array([self.onsagercalculator.GFcalc_pure(tup[0][0], tup[0][1], tup[1]) for tup in
                         [star[0] for star in self.onsagercalculator.GFstarset_pure]])
 
-        # GF2 = np.array([self.onsagercalculator.g2[tup[0][0], tup[0][1]] for tup in
-        #                 [star[0] for star in self.onsagercalculator.GFstarset_mixed]])
-
         GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.onsagercalculator.vkinetic.genGFstarset()
 
         # 4b. Now, we must evaluate the GF20 tensor through explicit summation
-        GF20_test = np.zeros((Nvstars, Nvstars))
+        GF0_test = np.zeros((Nvstars_pure, Nvstars_pure))
         # First, we do it for the GF0 part
         for i in range(Nvstars_pure):
             for j in range(Nvstars_pure):
@@ -1148,42 +1129,9 @@ class test_dumbbell_mediated(unittest.TestCase):
                             continue
                         # If the connection has formed, locate it's star index
                         Gstarind = GFPureStarInd[ds]
-                        GF20_test[i, j] += GF0[Gstarind] * np.dot(vi, vj)
+                        GF0_test[i, j] += GF0[Gstarind] * np.dot(vi, vj)
 
-        # 4c. Now, we do it for the mixed part
-
-        # # 4.c.1 - First, we check that the symmetrization of g2 is okay.
-        # # 4.c.1.1 - check the symmetry.
-        # # print(self.onsagercalculator.g2.shape)
-        # for i in range(len(self.onsagercalculator.kinetic.mixedstates)):
-        #     for j in range(i):
-        #         self.assertTrue(np.allclose(self.onsagercalculator.g2[j, i], self.onsagercalculator.g2[i, j]))
-        #
-        # # 4.c.1.2 - check consistency with G2
-        # for i in range(len(self.onsagercalculator.kinetic.mixedstates)):
-        #     for j in range(len(self.onsagercalculator.kinetic.mixedstates)):
-        #         g_ij = np.sqrt(mixed_prob[i]) * self.onsagercalculator.G2[i, j] * 1./np.sqrt(mixed_prob[j])
-        #         self.assertTrue(np.allclose(g_ij, self.onsagercalculator.g2[i, j]))
-        #
-        # # 4.c.1.3 - check negative definiteness
-        # eigvals, eigvecs = np.linalg.eig(self.onsagercalculator.g2)
-        # for val in eigvals:
-        #     self.assertTrue(val <= 1e-8, msg="\n{}".format(val))
-        #
-        # # 4.c.1.4 - check vector star representation.
-        # for i in range(Nvstars_pure, Nvstars):
-        #     for j in range(Nvstars_pure, Nvstars):
-        #         for si, vi in zip(self.onsagercalculator.vkinetic.vecpos[i],
-        #                           self.onsagercalculator.vkinetic.vecvec[i]):
-        #             for sj, vj in zip(self.onsagercalculator.vkinetic.vecpos[j],
-        #                               self.onsagercalculator.vkinetic.vecvec[j]):
-        #                 # try to form a connection between the states
-        #                 s = connector(si.db, sj.db)
-        #                 # If the connection has formed, locate it's star index
-        #                 Gstarind = GFMixedStarInd[s]
-        #                 GF20_test[i, j] += GF2[Gstarind] * np.dot(vi, vj)
-
-        np.allclose(GF20, GF20_test)
+        self.assertTrue(np.allclose(GF20[:Nvstars_pure, :Nvstars_pure], GF0_test))
         print("passed tests 4 - checking non-local Green's function")
 
         # 5. NEXT, WE TEST THE STATE PROBABILITIES
