@@ -662,21 +662,17 @@ class test_vecstars(unittest.TestCase):
 
     def test_GFstars(self):
         # Check that every possible pair has been considered in the gfstarsets
-        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.vec_stars.genGFstarset()
+        GFstarset_pure, GFPureStarInd = self.vec_stars.genGFstarset()
 
         # Check that every state in the GFstarsets is present as keys in in the starinds
         sm = sum([len(star) for star in GFstarset_pure])
         self.assertEqual(sm, len(GFPureStarInd))
-
-        sm = sum([len(star) for star in GFstarset_mixed])
-        self.assertEqual(sm, len(GFMixedStarInd))
 
         # First for the complex states
         for st1 in self.vec_stars.starset.complexStates:
             for st2 in self.vec_stars.starset.complexStates:
                 try:
                     s = st1 ^ st2
-                    # s.shift()
                 except:
                     continue
                 dx = disp(self.vec_stars.starset.pdbcontainer, s.state1, s.state2)
