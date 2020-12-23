@@ -606,7 +606,7 @@ class dumbbellMediated(VacancyMediated):
         # iorlist_mixed = self.mdbcontainer.iorlist
         # Need versions for solute and solvent - solute dusplacements are zero anyway
         for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork_omega1):
-            d0 = np.sum(
+            d0 = sum(
                 0.5 * np.outer(dx + eta0_solvent[i] - eta0_solvent[j], dx + eta0_solvent[i] - eta0_solvent[j]) for
                 (i, j), dx in jumplist)
             D0expansion_bb[:, :, jt] += d0
