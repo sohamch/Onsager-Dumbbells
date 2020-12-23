@@ -248,56 +248,9 @@ class vectorStars(VectorStarSet):
                 GFPureStarInd[snew] = len(GFstarset_pure)
             GFstarset_pure.append(connectlist)
         print("\tComplex connections symmetry grouping time: {}".format(time.time() - start))
-
-        GFstarset_mixed = []
-        GFMixedStarInd = {}
-        connectset_mixed = set([])
-        self.connect_MixedPair = {}
-        # For the mixed dumbbells, we need only the states in the initial unit cell.
-        for i, state1 in enumerate(mixedstates):
-            for j, state2 in enumerate(mixedstates[:i+1]):
-                s = connector(state1.db, state2.db)
-                connectset_mixed.add(s)
-                connectset_mixed.add(-s)
-                self.connect_MixedPair[(state1, state2)] = s
-                self.connect_MixedPair[(state2, state1)] = -s
-
-        # Now, group them symmetrically
-        for s in connectset_mixed:
-            if s in GFMixedStarInd:
-                continue
-            connectlist =[]
-            for gdumb in self.starset.mdbcontainer.G:
-                
-                snew = s.gop(self.starset.mdbcontainer, gdumb, pure=False)
-                # snew = connector(snew.state1 - snew.state1.R, snew.state2 - snew.state2.R)
-                # snew = snew.shift()
-                if snew not in connectset_mixed:
-
-                    if np.allclose(snew.state1.R, np.zeros(self.crys.dim)) and np.allclose(snew.state2.R, np.zeros(self.crys.dim)):
-                        raise ValueError("origin cell connection not in mixed connectset")
-
-                    # If a group operation takes a connection's end point outside the origin unit cell,
-                    # we can ignore it, since the problem dictates that both initial and final states in a connection
-                    # lie inside the origin unit cell.
-                    # The sum over the unit cells is implicit in the g2 calculation.
-                    continue
-                if snew in GFMixedStarInd:
-                    continue
-                dx = disp(self.starset.mdbcontainer, snew.state1, snew.state2)
-                ind1 = self.starset.mdbcontainer.db2ind(snew.state1)
-                # db2ind does not care about which unit cell the dumbbell is at
-                ind2 = self.starset.mdbcontainer.db2ind(snew.state2)
-                tup = ((ind1, ind2), dx.copy())
-                connectlist.append(tup)
-                # slist.append(snew)
-                GFMixedStarInd[snew] = len(GFstarset_mixed)
-
-            GFstarset_mixed.append(connectlist)
-            # GFstarset_mixed_snewlist.append(slist)
         print("No. of pure dumbbell connections: {}".format(len(connectset)))
-        print("No. of mixed dumbbell connections: {}".format(len(connectset_mixed)))
-        return GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd
+
+        return GFstarset_pure, GFPureStarInd
 
     def GFexpansion(self):
         """
@@ -305,13 +258,11 @@ class vectorStars(VectorStarSet):
         """
         print("building GF starsets")
         start = time.time()
-        GFstarset_pure, GFPureStarInd, GFstarset_mixed, GFMixedStarInd = self.genGFstarset()
+        GFstarset_pure, GFPureStarInd = self.genGFstarset()
         print("GF star sets built: {}".format(time.time() - start))
 
         Nvstars_pure = self.Nvstars_pure
         Nvstars_mixed = self.Nvstars - self.Nvstars_pure
-        GFexpansion_mixed = np.zeros((Nvstars_mixed, Nvstars_mixed, len(GFstarset_mixed)))
-
 
         GFexpansion_pure = np.zeros((Nvstars_pure, Nvstars_pure, len(GFstarset_pure)))
         start = time.time()
@@ -329,31 +280,12 @@ class vectorStars(VectorStarSet):
 
         print("Built Complex GF expansions: {}".format(time.time() - start))
 
-        start = time.time()
-        for ((st1, st2), s) in self.connect_MixedPair.items():
-            i = self.stateToVecStar_mixed[st1]
-            j = self.stateToVecStar_mixed[st2]
-            k = GFMixedStarInd[s]
-            for (indOfStar_i, indOfState_i) in i:
-                for (indOfStar_j, indOfState_j) in j:
-                    GFexpansion_mixed[indOfStar_i-self.Nvstars_pure, indOfStar_j-self.Nvstars_pure, k] += \
-                        np.dot(self.vecvec[indOfStar_i][indOfState_i], self.vecvec[indOfStar_j][indOfState_j])
-
-        print("Built Mixed GF expansions: {}".format(time.time() - start))
-
         # symmetrize
         for i in range(Nvstars_pure):
             for j in range(0, i):
                 GFexpansion_pure[i, j, :] = GFexpansion_pure[j, i, :]
 
-        for i in range(Nvstars_mixed):
-            for j in range(0, i):
-                GFexpansion_mixed[i, j, :] = GFexpansion_mixed[j, i, :]
-
-        # print("Built GF expansions: {}".format(time.time() - start))
-
-        return (GFstarset_pure, GFPureStarInd, zeroclean(GFexpansion_pure)),\
-               (GFstarset_mixed, GFMixedStarInd, zeroclean(GFexpansion_mixed))
+        return (GFstarset_pure, GFPureStarInd, zeroclean(GFexpansion_pure))
 
     # See group meeting update slides of sept 10th to see how this works.
     def biasexpansion(self, jumpnetwork_omega1, jumpnetwork_omega2, jumptype, jumpnetwork_omega34):
