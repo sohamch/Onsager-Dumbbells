@@ -714,53 +714,6 @@ class test_vecstars(unittest.TestCase):
                 self.assertEqual(count, len(GFstarset_pure[listind]), msg="\n{}\n{}".format(snewlist,
                                                                                             GFstarset_pure[listind]))
 
-        # Now, we do the same tests for the mixed GF starset
-        for state1 in self.vec_stars.starset.mixedstates:
-            for state2 in self.vec_stars.starset.mixedstates:
-                s = connector(state1.db, state2.db)
-
-                ind1 = self.vec_stars.starset.mdbcontainer.db2ind(s.state1)
-                ind2 = self.vec_stars.starset.mdbcontainer.db2ind(s.state2)
-                dx = disp(self.vec_stars.starset.mdbcontainer, s.state1, s.state2)
-                # Now see if this connection is present in the GF starset
-                listind = None
-                count = 0
-                for starind, tlist in enumerate(GFstarset_mixed):
-                    for t in tlist:
-                        if t[0][0] == ind1 and t[0][1] == ind2 and np.allclose(t[1], dx, atol=1e-8):
-                            count += 1
-                            listind = starind
-
-                self.assertTrue(listind is not None)
-                self.assertEqual(listind, GFMixedStarInd[s]) # check that the dict is correctly made
-                self.assertEqual(count, 1) # See that the connection has been considered only once
-
-                # Now check the symmetries - this also kind of verifies that the gop function for connector objects
-                # works fine.
-                snewlist = []
-                for gdumb in self.vec_stars.starset.mdbcontainer.G:
-                    # If both the initial and final states do not lie in the origin unit cell, we must ignore the
-                    # transition
-                    snew = s.gop(self.vec_stars.starset.mdbcontainer, gdumb, pure=False)
-                    if not np.allclose(snew.state2.R, np.zeros(self.crys_stars.crys.dim)):
-                        # because of the shift operation, the R of state 1 will be at zero.
-                        # So, this also checks, we are ignoring connections not within the 0th unit cell
-                        continue
-                    ind1new = gdumb.indexmap[0][ind1]
-                    ind2new = gdumb.indexmap[0][ind2]
-                    dxnew = self.vec_stars.starset.crys.g_direc(self.vec_stars.starset.mdbcontainer.G_crys[gdumb], dx)
-                    if not any(t[0][0] == ind1new and t[0][1] == ind2new and np.allclose(t[1], dxnew, atol=1e-8)
-                               for t in snewlist):
-                        snewlist.append(((ind1new, ind2new), dxnew))
-                self.assertEqual(len(snewlist), len(GFstarset_mixed[listind]))
-                count = 0
-                for s1 in snewlist:
-                    for s2 in GFstarset_mixed[listind]:
-                        if s1[0][0] == s2[0][0] and s1[0][1] == s2[0][1] and np.allclose(s1[1], s2[1], atol=1e-8):
-                            count += 1
-
-                self.assertEqual(count, len(GFstarset_mixed[listind])) # check bijection
-
     def test_order(self):
         "test that we have the origin spectator states at the begining"
         dx_list = []
