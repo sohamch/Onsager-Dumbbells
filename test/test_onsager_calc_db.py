@@ -740,12 +740,10 @@ class test_dumbbell_mediated(unittest.TestCase):
             self.onsagercalculator.preene2betafree(kT, predb0, enedb0, preS, eneS, preSdb, eneSdb, predb2, enedb2,
                                                    preT0, eneT0, preT2, eneT2, preT1, eneT1, preT43, eneT43)
 
-        L0bb, (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF20, betaFs, del_om, \
-        part_func, probs, omegas, pr_states, D0expansion_bb \
-            = self.onsagercalculator.L_ij(bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4)
+        self.onsagercalculator.L_ij(bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4, eta2shift=False)
 
         (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\
-        (omega4, omega4escape) = omegas
+        (omega4, omega4escape) = self.onsagercalculator.omegas
 
         # First, check the omega1 rates coming out of origin states are zero
         for jt, rate in enumerate(omega1):
@@ -763,7 +761,7 @@ class test_dumbbell_mediated(unittest.TestCase):
             self.onsagercalculator.bareExpansion(eta0total_solute,
                                                  eta0total_solvent)
 
-        complex_prob, mixed_prob = pr_states
+        complex_prob, mixed_prob = self.onsagercalculator.pr_states
 
         # Now set up the multiplicative quantity for each jump type.
         prob_om1 = np.zeros(len(omega1))
@@ -965,9 +963,13 @@ class test_dumbbell_mediated(unittest.TestCase):
         print("Passed tests 1 - making complex energies")
 
         # 2. Next, we get all the relevant data from the L_ij function.
-        L0bb, (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF20, betaFs, del_om, \
-        part_func, probs, omegas, pr_states\
-            = self.onsagercalculator.L_ij(bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4, eta2shift=False)
+        self.onsagercalculator.L_ij(bFdb0, bFT0, bFdb2, bFT2, bFS, bFSdb, bFT1, bFT3, bFT4, eta2shift=False)
+
+        GF20 = self.onsagercalculator.GF02
+        del_om = self.onsagercalculator.del_om
+        part_func = self.onsagercalculator.part_func
+        omegas = self.onsagercalculator.omegas
+        pr_states = self.onsagercalculator.pr_states
 
         # 2a - get the symmetrized and escape rates.
         (omega0, omega0escape), (omega1, omega1escape), (omega2, omega2escape), (omega3, omega3escape),\

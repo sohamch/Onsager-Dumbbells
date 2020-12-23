@@ -1174,5 +1174,14 @@ class dumbbellMediated(VacancyMediated):
         L_uc_ab = np.dot(D1expansion_ab, prob_om1) + np.dot(D2expansion_ab, prob_om2) + \
                   np.dot(D3expansion_ab, prob_om3) + np.dot(D4expansion_ab, prob_om4)
 
-        return L0bb, (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab), GF_total, GF02, betaFs, del_om, \
-               part_func, probs, omegas, pr_states
+        # Make things that need to be tested as attributes
+        self.GF_total = GF_total
+        self.GF02 = GF02
+        self.betaFs = betaFs
+        self.del_om = del_om
+        self.part_func = part_func
+        self.probs = probs
+        self.omegas = omegas
+        self.pr_states = pr_states
+
+        return L0bb, (L_uc_aa, L_c_aa), (L_uc_bb, L_c_bb), (L_uc_ab, L_c_ab)
